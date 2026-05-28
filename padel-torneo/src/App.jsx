@@ -89,6 +89,10 @@ async function persist(newT) {
       newT.ver = (newT.ver || 0) + 1;
       verRef.current = newT.ver;
       setT(newT);
+      
+      // 👇 ESTA ES LA LÍNEA MÁGICA QUE FALTABA
+      setScreen(newT.status === "setup" ? "setup" : "play"); 
+      
       await setDoc(doc(db, "torneos", codeRef.current), {
         data: JSON.stringify(newT),
       });

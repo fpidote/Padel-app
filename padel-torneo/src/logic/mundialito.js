@@ -1,4 +1,5 @@
 // ── Mundialito Logic ─────────────────────────────────────────
+import { shuffle } from "./utils";
 export function buildGroups(pairs, groupCount) {
   const shuffled = shuffle(pairs);
   const groups = Array.from({ length: groupCount }, (_, i) => ({

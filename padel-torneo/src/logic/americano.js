@@ -1,4 +1,6 @@
 // ── Americano Logic ──────────────────────────────────────────
+import { shuffle, pk } from "./utils";
+
 function bestSplit(g, ph) {
   const opts = [
     [
