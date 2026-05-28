@@ -1,12 +1,21 @@
 // src/components/shared/PairStandings.jsx
-export default function PairStandings({ pairs, title, extra }) {
-  const sorted = [...pairs].sort((a, b) =>
-    b.pts !== a.pts
-      ? b.pts - a.pts
-      : b.gf - b.gc !== a.gf - a.gc
-        ? b.gf - b.gc - (a.gf - a.gc)
-        : 0,
-  );
+export default function PairStandings({
+  pairs,
+  title,
+  extra,
+  scoringFormat = "games",
+}) {
+  const isSetFormat = scoringFormat === "sets3" || scoringFormat === "sets5";
+
+  const sorted = [...pairs].sort((a, b) => {
+    if (b.pts !== a.pts) return b.pts - a.pts;
+    if (b.gf - b.gc !== a.gf - a.gc) return b.gf - b.gc - (a.gf - a.gc);
+    return (
+      (b.gamesFor || 0) -
+      (b.gamesAgainst || 0) -
+      ((a.gamesFor || 0) - (a.gamesAgainst || 0))
+    );
+  });
 
   return (
     <div
@@ -59,8 +68,15 @@ export default function PairStandings({ pairs, title, extra }) {
                 {p.p1} / {p.p2}
               </div>
               <div style={{ fontSize: 12, color: "#64748b" }}>
-                GF {p.gf} · GC {p.gc} · Dif {d >= 0 ? "+" : ""}
+                {isSetFormat ? "SF" : "GF"} {p.gf} · {isSetFormat ? "SC" : "GC"}{" "}
+                {p.gc} · Dif {d >= 0 ? "+" : ""}
                 {d}
+                {isSetFormat && p.gamesFor !== undefined && (
+                  <span style={{ marginLeft: 6 }}>
+                    · G Dif {p.gamesFor - p.gamesAgainst >= 0 ? "+" : ""}
+                    {p.gamesFor - p.gamesAgainst}
+                  </span>
+                )}
               </div>
             </div>
             <div style={{ textAlign: "right" }}>

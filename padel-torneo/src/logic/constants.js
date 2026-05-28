@@ -1,6 +1,5 @@
 // src/logic/constants.js
 
-// Definimos la función B aquí para que sea accesible desde cualquier archivo
 export const B = (bg, ex = {}) => ({
   background: bg,
   color: "#fff",
@@ -46,10 +45,10 @@ export const TOURNAMENT_TYPES = [
 
 export const TOURNAMENT_RULES = {
   americano: [
-    "Todos los partidos se juegan a un número fijo de puntos (ej. 24 o 32 puntos) o por tiempo.",
-    "Cada punto que gana la pareja, suma directamente a la clasificación individual de ambos jugadores.",
-    "Al terminar la ronda, los jugadores cambian de pista y de pareja según su clasificación (los mejores suben, los de abajo bajan).",
-    "Gana el jugador que más puntos individuales acumule al final de todas las rondas."
+    "Los partidos se juegan por minijuegos cortos (ej. a terminar 2-1 o 3-2).",
+    "En caso de llegar a un empate en juegos (ej. 2-2), se define con un Punto de Oro.",
+    "El jugador o pareja que gana suma 1 punto en la tabla general, además de acumular la diferencia de juegos (GF y GC).",
+    "Al terminar la ronda, los jugadores cambian de pista y de pareja según su clasificación (los mejores suben, los de abajo bajan)."
   ],
   relampago: [
     "Eliminación directa. El que gana avanza, el que pierde queda eliminado (o pasa al cuadro de consolación).",
