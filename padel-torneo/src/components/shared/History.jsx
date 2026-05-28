@@ -39,7 +39,9 @@ export default function History({ rounds }) {
                     color: aw ? "#4ade80" : "#cbd5e1",
                   }}
                 >
-                  {c.pairA.map((p) => p.name).join(" & ")}
+                  {Array.isArray(c.pairA)
+                    ? c.pairA.map((p) => p.name).join(" & ")
+                    : `${c.pairA?.p1} / ${c.pairA?.p2}`}
                 </span>
                 <span style={{ fontWeight: 800, margin: "0 8px" }}>
                   {c.scoreA}–{c.scoreB}
@@ -50,14 +52,17 @@ export default function History({ rounds }) {
                     color: !isNaN(a) && !aw && a !== b ? "#4ade80" : "#cbd5e1",
                   }}
                 >
-                  {c.pairB.map((p) => p.name).join(" & ")}
+                  {Array.isArray(c.pairB)
+                    ? c.pairB.map((p) => p.name).join(" & ")
+                    : `${c.pairB?.p1} / ${c.pairB?.p2}`}
                 </span>
               </div>
             );
           })}
           {r.sittingOut?.length > 0 && (
             <div style={{ fontSize: 12, color: "#fbbf24", marginTop: 8 }}>
-              ⏳ Descansaron: {r.sittingOut.map((p) => p.name).join(", ")}
+              ⏳ Descansaron:{" "}
+              {r.sittingOut.map((p) => p.name || `${p.p1}/${p.p2}`).join(", ")}
             </div>
           )}
         </div>

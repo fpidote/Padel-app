@@ -4,8 +4,12 @@ export function buildBracket(pairs) {
   const n = pairs.length;
   let size = 1;
   while (size < n) size *= 2;
-  const seeds = [...pairs, ...Array(size - n).fill(null)]; // nulls = byes
+
+  const BYE = { id: "bye", p1: "BYE", p2: "BYE" };
+  const seeds = [...pairs, ...Array(size - n).fill(BYE)];
   const matches = [];
+
+  // 1. Winners R1
   for (let i = 0; i < size / 2; i++) {
     matches.push({
       id: `w_r1_m${i}`,
@@ -19,28 +23,13 @@ export function buildBracket(pairs) {
       saved: false,
       winner: null,
       loser: null,
-      nextMatchId: `w_r2_m${Math.floor(i / 2)}`,
+      nextMatchId: size > 2 ? `w_r2_m${Math.floor(i / 2)}` : null,
       nextMatchSlot: i % 2 === 0 ? "A" : "B",
-      loserMatchId: seeds[i * 2] && seeds[i * 2 + 1] ? `c_r1_m${i}` : null,
+      loserMatchId: size > 2 ? `c_r1_m${Math.floor(i / 2)}` : null,
     });
   }
-  // Auto-advance byes
-  matches.forEach((m) => {
-    if (m.pairA && !m.pairB) {
-      m.winner = m.pairA;
-      m.loser = null;
-      m.saved = true;
-    } else if (!m.pairA && m.pairB) {
-      m.winner = m.pairB;
-      m.loser = null;
-      m.saved = true;
-    } else if (!m.pairA && !m.pairB) {
-      m.winner = null;
-      m.loser = null;
-      m.saved = true;
-    }
-  });
-  // Build subsequent winner rounds
+
+  // 2. Winners Subsequent Rounds
   let prevRoundSize = size / 2;
   let roundNum = 2;
   while (prevRoundSize > 1) {
@@ -67,14 +56,12 @@ export function buildBracket(pairs) {
     prevRoundSize = newSize;
     roundNum++;
   }
-  // Build consolation bracket (first round losers)
-  const consolPairs = matches
-    .filter((m) => m.bracket === "winners" && m.round === 1 && m.loserMatchId)
-    .map((m) => m.id);
-  const consolSize = consolPairs.length;
-  if (consolSize >= 2) {
-    let cSize = 1;
-    while (cSize < consolSize) cSize *= 2;
+
+  // 3. Consolation Bracket
+  if (size > 2) {
+    const cSize = size / 2;
+
+    // Consolation R1
     for (let i = 0; i < Math.floor(cSize / 2); i++) {
       const cId = `c_r1_m${i}`;
       matches.push({
@@ -89,11 +76,12 @@ export function buildBracket(pairs) {
         saved: false,
         winner: null,
         loser: null,
-        nextMatchId: cSize > 2 ? `c_r2_m${Math.floor(i / 2)}` : `c_final`,
+        nextMatchId: cSize > 2 ? `c_r2_m${Math.floor(i / 2)}` : null,
         nextMatchSlot: i % 2 === 0 ? "A" : "B",
         loserMatchId: null,
       });
     }
+
     // Consolation subsequent rounds
     let cPrev = Math.floor(cSize / 2);
     let cRound = 2;
@@ -101,7 +89,7 @@ export function buildBracket(pairs) {
       const cNew = Math.floor(cPrev / 2);
       for (let i = 0; i < cNew; i++) {
         matches.push({
-          id: cRound === 2 && cNew === 1 ? `c_final` : `c_r${cRound}_m${i}`,
+          id: `c_r${cRound}_m${i}`,
           bracket: "consolation",
           round: cRound,
           matchIndex: i,
@@ -122,6 +110,10 @@ export function buildBracket(pairs) {
       cRound++;
     }
   }
+
+  // 4. Ripple Byes
+  rippleByes(matches);
+
   return matches;
 }
 
@@ -152,5 +144,56 @@ export function advanceBracket(matches, savedId, scoreA, scoreB) {
       else cons.pairB = match.loser;
     }
   }
+
+  rippleByes(updated);
+
   return updated;
+}
+
+function rippleByes(matches) {
+  let changed = true;
+  while (changed) {
+    changed = false;
+    matches.forEach((m) => {
+      if (!m.saved && m.pairA && m.pairB) {
+        if (m.pairA.id === "bye" && m.pairB.id === "bye") {
+          m.saved = true;
+          m.winner = m.pairA;
+          m.loser = m.pairB;
+          changed = true;
+        } else if (m.pairA.id === "bye") {
+          m.saved = true;
+          m.scoreA = "0";
+          m.scoreB = "1";
+          m.winner = m.pairB;
+          m.loser = m.pairA;
+          changed = true;
+        } else if (m.pairB.id === "bye") {
+          m.saved = true;
+          m.scoreA = "1";
+          m.scoreB = "0";
+          m.winner = m.pairA;
+          m.loser = m.pairB;
+          changed = true;
+        }
+
+        if (changed) {
+          if (m.nextMatchId) {
+            const next = matches.find((nx) => nx.id === m.nextMatchId);
+            if (next) {
+              if (m.nextMatchSlot === "A") next.pairA = m.winner;
+              else next.pairB = m.winner;
+            }
+          }
+          if (m.loserMatchId && m.loser) {
+            const cons = matches.find((nx) => nx.id === m.loserMatchId);
+            if (cons) {
+              if (!cons.pairA) cons.pairA = m.loser;
+              else cons.pairB = m.loser;
+            }
+          }
+        }
+      }
+    });
+  }
 }

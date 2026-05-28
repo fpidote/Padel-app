@@ -13,6 +13,8 @@ export default function SetupAmericano({
 }) {
   const [newName, setNewName] = useState("");
   const [newLvl, setNewLvl] = useState(1);
+  const [newP1, setNewP1] = useState("");
+  const [newP2, setNewP2] = useState("");
   const deb = useRef(null);
 
   const ds = (nt) => {
@@ -20,19 +22,23 @@ export default function SetupAmericano({
     deb.current = setTimeout(() => persist(nt), 700);
   };
 
-  const act = t.config.courts * 4,
-    tot = t.playerInputs.length;
+  const isPairs = t.config.mode === "pairs";
+  const units = isPairs ? 2 : 4;
+  const act = t.config.courts * units;
+  const tot = isPairs ? t.pairInputs.length : t.playerInputs.length;
   const sit = tot > act ? tot - act : 0,
     need = tot < act ? act - tot : 0;
   const sc = sit > 0 ? "#fbbf24" : need > 0 ? "#f87171" : "#4ade80";
   const sm =
-    `${tot} jugadores · ${t.config.courts} pistas · ${act} juegan` +
+    `${tot} ${isPairs ? "parejas" : "jugadores"} · ${t.config.courts} pistas · ${act} juegan` +
     (sit > 0
       ? ` · ⏳ ${sit} descansan`
       : need > 0
         ? ` · ⚠️ faltan ${need}`
         : " · ✓");
-  const ok = tot >= 4 && t.playerInputs.every((p) => p.name.trim().length > 0);
+  const ok = isPairs
+    ? tot >= 2 && t.pairInputs.every((p) => p.p1.trim() && p.p2.trim())
+    : tot >= 4 && t.playerInputs.every((p) => p.name.trim().length > 0);
   const n1 = t.playerInputs.filter((p) => p.level === 1).length;
   const n2 = t.playerInputs.filter((p) => p.level === 2).length;
   const inp = {
@@ -47,21 +53,33 @@ export default function SetupAmericano({
   };
 
   async function onStart() {
-    const ps = t.playerInputs.map((p, i) => ({
-      id: i,
-      name: p.name.trim(),
-      level: p.level,
-      pts: 0,
-      gf: 0,
-      gc: 0,
-    }));
+    let entities;
+    if (isPairs) {
+      entities = t.pairInputs.map((p, i) => ({
+        ...p,
+        id: i,
+        pts: 0,
+        gf: 0,
+        gc: 0,
+      }));
+    } else {
+      entities = t.playerInputs.map((p, i) => ({
+        id: i,
+        name: p.name.trim(),
+        level: p.level,
+        pts: 0,
+        gf: 0,
+        gc: 0,
+      }));
+    }
     const { courts, sittingOut } = buildFirstRoundAmericano(
-      ps,
+      entities,
       t.config.courts,
+      t.config.mode,
     );
     await persist({
       ...t,
-      players: ps,
+      [isPairs ? "pairs" : "players"]: entities,
       currentRound: courts,
       sittingOut,
       status: "playing",
@@ -168,6 +186,55 @@ export default function SetupAmericano({
                 </button>
               ))}
             </div>
+            <label
+              style={{
+                display: "block",
+                fontSize: 13,
+                color: "#94a3b8",
+                fontWeight: 600,
+                marginBottom: 6,
+              }}
+            >
+              Modalidad
+            </label>
+            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+              <button
+                onClick={() =>
+                  persist({ ...t, config: { ...t.config, mode: "individual" } })
+                }
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  borderRadius: 10,
+                  border: "none",
+                  cursor: "pointer",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  background: !isPairs ? "#0284c7" : "#1e293b",
+                  color: !isPairs ? "#fff" : "#94a3b8",
+                }}
+              >
+                👤 Individual
+              </button>
+              <button
+                onClick={() =>
+                  persist({ ...t, config: { ...t.config, mode: "pairs" } })
+                }
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  borderRadius: 10,
+                  border: "none",
+                  cursor: "pointer",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  background: isPairs ? "#0284c7" : "#1e293b",
+                  color: isPairs ? "#fff" : "#94a3b8",
+                }}
+              >
+                👥 Parejas Fijas
+              </button>
+            </div>
           </>
         ) : (
           <div
@@ -197,164 +264,352 @@ export default function SetupAmericano({
         >
           {sm}
         </div>
-        <div
-          style={{
-            fontSize: 13,
-            color: "#94a3b8",
-            fontWeight: 600,
-            marginBottom: 6,
-          }}
-        >
-          Jugadores ({tot}) ·{" "}
-          <span style={{ color: "#38bdf8" }}>● N1: {n1}</span> &nbsp;
-          <span style={{ color: "#4ade80" }}>● N2: {n2}</span>
-        </div>
-        <div
-          style={{
-            background: "#1e293b",
-            borderRadius: 8,
-            padding: "8px 12px",
-            marginBottom: 10,
-            fontSize: 12,
-            color: "#94a3b8",
-          }}
-        >
-          <b style={{ color: "#38bdf8" }}>N1</b> Con experiencia &nbsp;·&nbsp;{" "}
-          <b style={{ color: "#4ade80" }}>N2</b> Poco rodaje
-        </div>
-        <div style={{ maxHeight: 260, overflowY: "auto", marginBottom: 10 }}>
-          {t.playerInputs.map((p, i) => (
+        {isPairs ? (
+          <>
             <div
-              key={i}
               style={{
-                display: "flex",
-                gap: 6,
-                marginBottom: 6,
-                alignItems: "center",
+                fontSize: 13,
+                color: "#94a3b8",
+                fontWeight: 600,
+                marginBottom: 8,
               }}
             >
-              <button
-                onClick={() => {
-                  if (!isAdmin) return;
-                  const pi = [...t.playerInputs];
-                  pi[i] = { ...pi[i], level: pi[i].level === 1 ? 2 : 1 };
-                  persist({ ...t, playerInputs: pi });
-                }}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 8,
-                  border: "none",
-                  cursor: isAdmin ? "pointer" : "default",
-                  fontWeight: 800,
-                  fontSize: 13,
-                  background: p.level === 1 ? "#0284c7" : "#16a34a",
-                  color: "#fff",
-                  flexShrink: 0,
-                }}
-              >
-                N{p.level}
-              </button>
-              <input
-                value={p.name}
-                disabled={!isAdmin}
-                onChange={(e) => {
-                  const pi = [...t.playerInputs];
-                  pi[i] = { ...pi[i], name: e.target.value };
-                  ds({ ...t, playerInputs: pi });
-                }}
-                style={{
-                  ...inp,
-                  flex: 1,
-                  opacity: isAdmin ? 1 : 0.7,
-                  padding: "8px 12px",
-                }}
-              />
-              {isAdmin && (
-                <button
-                  onClick={() =>
-                    persist({
-                      ...t,
-                      playerInputs: t.playerInputs.filter(
-                        (_, idx) => idx !== i,
-                      ),
-                    })
-                  }
-                  style={B("#dc2626", {
-                    padding: "6px 10px",
-                    fontSize: 12,
-                    flexShrink: 0,
-                  })}
-                >
-                  ✕
-                </button>
-              )}
+              Parejas ({tot})
             </div>
-          ))}
-        </div>
+            <div
+              style={{ maxHeight: 260, overflowY: "auto", marginBottom: 10 }}
+            >
+              {t.pairInputs.map((p, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    gap: 6,
+                    marginBottom: 6,
+                    alignItems: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 6,
+                      background: "#334155",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "#94a3b8",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {i + 1}
+                  </div>
+                  <input
+                    value={p.p1}
+                    disabled={!isAdmin}
+                    onChange={(e) => {
+                      const pi = [...t.pairInputs];
+                      pi[i] = { ...pi[i], p1: e.target.value };
+                      ds({ ...t, pairInputs: pi });
+                    }}
+                    placeholder="Jugador 1"
+                    style={{
+                      ...inp,
+                      flex: 1,
+                      opacity: isAdmin ? 1 : 0.7,
+                      padding: "8px 12px",
+                    }}
+                  />
+                  <span
+                    style={{ color: "#475569", fontSize: 12, fontWeight: 700 }}
+                  >
+                    /
+                  </span>
+                  <input
+                    value={p.p2}
+                    disabled={!isAdmin}
+                    onChange={(e) => {
+                      const pi = [...t.pairInputs];
+                      pi[i] = { ...pi[i], p2: e.target.value };
+                      ds({ ...t, pairInputs: pi });
+                    }}
+                    placeholder="Jugador 2"
+                    style={{
+                      ...inp,
+                      flex: 1,
+                      opacity: isAdmin ? 1 : 0.7,
+                      padding: "8px 12px",
+                    }}
+                  />
+                  {isAdmin && (
+                    <button
+                      onClick={() =>
+                        persist({
+                          ...t,
+                          pairInputs: t.pairInputs.filter(
+                            (_, idx) => idx !== i,
+                          ),
+                        })
+                      }
+                      style={B("#dc2626", {
+                        padding: "6px 10px",
+                        fontSize: 12,
+                        flexShrink: 0,
+                      })}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <div
+              style={{
+                fontSize: 13,
+                color: "#94a3b8",
+                fontWeight: 600,
+                marginBottom: 6,
+              }}
+            >
+              Jugadores ({tot}) ·{" "}
+              <span style={{ color: "#38bdf8" }}>● N1: {n1}</span> &nbsp;
+              <span style={{ color: "#4ade80" }}>● N2: {n2}</span>
+            </div>
+            <div
+              style={{
+                background: "#1e293b",
+                borderRadius: 8,
+                padding: "8px 12px",
+                marginBottom: 10,
+                fontSize: 12,
+                color: "#94a3b8",
+              }}
+            >
+              <b style={{ color: "#38bdf8" }}>N1</b> Con experiencia
+              &nbsp;·&nbsp; <b style={{ color: "#4ade80" }}>N2</b> Poco rodaje
+            </div>
+            <div
+              style={{ maxHeight: 260, overflowY: "auto", marginBottom: 10 }}
+            >
+              {t.playerInputs.map((p, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    gap: 6,
+                    marginBottom: 6,
+                    alignItems: "center",
+                  }}
+                >
+                  <button
+                    onClick={() => {
+                      if (!isAdmin) return;
+                      const pi = [...t.playerInputs];
+                      pi[i] = { ...pi[i], level: pi[i].level === 1 ? 2 : 1 };
+                      persist({ ...t, playerInputs: pi });
+                    }}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 8,
+                      border: "none",
+                      cursor: isAdmin ? "pointer" : "default",
+                      fontWeight: 800,
+                      fontSize: 13,
+                      background: p.level === 1 ? "#0284c7" : "#16a34a",
+                      color: "#fff",
+                      flexShrink: 0,
+                    }}
+                  >
+                    N{p.level}
+                  </button>
+                  <input
+                    value={p.name}
+                    disabled={!isAdmin}
+                    onChange={(e) => {
+                      const pi = [...t.playerInputs];
+                      pi[i] = { ...pi[i], name: e.target.value };
+                      ds({ ...t, playerInputs: pi });
+                    }}
+                    style={{
+                      ...inp,
+                      flex: 1,
+                      opacity: isAdmin ? 1 : 0.7,
+                      padding: "8px 12px",
+                    }}
+                  />
+                  {isAdmin && (
+                    <button
+                      onClick={() =>
+                        persist({
+                          ...t,
+                          playerInputs: t.playerInputs.filter(
+                            (_, idx) => idx !== i,
+                          ),
+                        })
+                      }
+                      style={B("#dc2626", {
+                        padding: "6px 10px",
+                        fontSize: 12,
+                        flexShrink: 0,
+                      })}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
         {isAdmin && (
           <>
             <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-              <button
-                onClick={() => setNewLvl((l) => (l === 1 ? 2 : 1))}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 8,
-                  border: "none",
-                  cursor: "pointer",
-                  fontWeight: 800,
-                  fontSize: 13,
-                  background: newLvl === 1 ? "#0284c7" : "#16a34a",
-                  color: "#fff",
-                  flexShrink: 0,
-                }}
-              >
-                N{newLvl}
-              </button>
-              <input
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    persist({
-                      ...t,
-                      playerInputs: [
-                        ...t.playerInputs,
-                        {
-                          name:
-                            newName.trim() ||
-                            `Jugador ${t.playerInputs.length + 1}`,
-                          level: newLvl,
-                        },
-                      ],
-                    });
-                    setNewName("");
-                  }
-                }}
-                placeholder="Nombre del jugador..."
-                style={{ ...inp, flex: 1, padding: "8px 12px" }}
-              />
-              <button
-                onClick={() => {
-                  persist({
-                    ...t,
-                    playerInputs: [
-                      ...t.playerInputs,
-                      {
-                        name:
-                          newName.trim() ||
-                          `Jugador ${t.playerInputs.length + 1}`,
-                        level: newLvl,
-                      },
-                    ],
-                  });
-                  setNewName("");
-                }}
-                style={B("#475569")}
-              >
-                +
-              </button>
+              {isPairs ? (
+                <>
+                  <input
+                    value={newP1}
+                    onChange={(e) => setNewP1(e.target.value)}
+                    placeholder="Jugador 1"
+                    style={{ ...inp, flex: 1, padding: "8px 12px" }}
+                  />
+                  <span
+                    style={{
+                      color: "#475569",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      alignSelf: "center",
+                    }}
+                  >
+                    /
+                  </span>
+                  <input
+                    value={newP2}
+                    onChange={(e) => setNewP2(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        persist({
+                          ...t,
+                          pairInputs: [
+                            ...t.pairInputs,
+                            {
+                              id: t.pairInputs.length,
+                              p1:
+                                newP1.trim() ||
+                                `Jugador ${t.pairInputs.length * 2 + 1}`,
+                              p2:
+                                newP2.trim() ||
+                                `Jugador ${t.pairInputs.length * 2 + 2}`,
+                              pts: 0,
+                              gf: 0,
+                              gc: 0,
+                            },
+                          ],
+                        });
+                        setNewP1("");
+                        setNewP2("");
+                      }
+                    }}
+                    placeholder="Jugador 2"
+                    style={{ ...inp, flex: 1, padding: "8px 12px" }}
+                  />
+                  <button
+                    onClick={() => {
+                      persist({
+                        ...t,
+                        pairInputs: [
+                          ...t.pairInputs,
+                          {
+                            id: t.pairInputs.length,
+                            p1:
+                              newP1.trim() ||
+                              `Jugador ${t.pairInputs.length * 2 + 1}`,
+                            p2:
+                              newP2.trim() ||
+                              `Jugador ${t.pairInputs.length * 2 + 2}`,
+                            pts: 0,
+                            gf: 0,
+                            gc: 0,
+                          },
+                        ],
+                      });
+                      setNewP1("");
+                      setNewP2("");
+                    }}
+                    style={B("#475569")}
+                  >
+                    +
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setNewLvl((l) => (l === 1 ? 2 : 1))}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 8,
+                      border: "none",
+                      cursor: "pointer",
+                      fontWeight: 800,
+                      fontSize: 13,
+                      background: newLvl === 1 ? "#0284c7" : "#16a34a",
+                      color: "#fff",
+                      flexShrink: 0,
+                    }}
+                  >
+                    N{newLvl}
+                  </button>
+                  <input
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        persist({
+                          ...t,
+                          playerInputs: [
+                            ...t.playerInputs,
+                            {
+                              name:
+                                newName.trim() ||
+                                `Jugador ${t.playerInputs.length + 1}`,
+                              level: newLvl,
+                            },
+                          ],
+                        });
+                        setNewName("");
+                      }
+                    }}
+                    placeholder="Nombre del jugador..."
+                    style={{ ...inp, flex: 1, padding: "8px 12px" }}
+                  />
+                  <button
+                    onClick={() => {
+                      persist({
+                        ...t,
+                        playerInputs: [
+                          ...t.playerInputs,
+                          {
+                            name:
+                              newName.trim() ||
+                              `Jugador ${t.playerInputs.length + 1}`,
+                            level: newLvl,
+                          },
+                        ],
+                      });
+                      setNewName("");
+                    }}
+                    style={B("#475569")}
+                  >
+                    +
+                  </button>
+                </>
+              )}
             </div>
             <button
               onClick={onStart}

@@ -139,9 +139,7 @@ export default function PlayMundialito({
     const updatedGroups = groupsWithRounds.map((g) => {
       if (g.id !== groupId) return g;
       const updatedMatches = g.matches.map((m) =>
-        m.id === matchId
-          ? { ...m, saved: false, scoreA: "", scoreB: "", sets: null }
-          : m,
+        m.id === matchId ? { ...m, saved: false } : m,
       );
       const standings = g.pairs.map((p) => ({
         ...p,
@@ -243,12 +241,7 @@ export default function PlayMundialito({
         if (nextM.pairB?.id === match.winner.id) nextM.pairB = null;
       }
     }
-    match.scoreA = "";
-    match.scoreB = "";
     match.saved = false;
-    match.winner = null;
-    match.loser = null;
-    match.sets = null;
 
     await persist({ ...t, knockoutBracket: updated });
   }

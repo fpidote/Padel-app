@@ -96,6 +96,8 @@ export default function MatchCard({
   const isValidFinal = isSetFormat ? live.matchFinished : isGamesValid;
   const finalScoreA = isSetFormat ? live.setsA : gA;
   const finalScoreB = isSetFormat ? live.setsB : gB;
+  const isEditing =
+    !match.saved && match.scoreA !== undefined && match.scoreA !== "";
 
   const iStyle = {
     width: 44,
@@ -136,7 +138,7 @@ export default function MatchCard({
           {match.bracket === "winners"
             ? "⚡ Cuadro Principal"
             : match.bracket === "consolation"
-              ? "🥈 Consolación"
+              ? "🥈 Revancha"
               : "⚽ Fase de Grupos"}
           {isSetFormat && ` · 🎾 Mejor de ${maxSets}`}
         </span>
@@ -361,23 +363,50 @@ export default function MatchCard({
       )}
 
       {isAdmin && !match.saved && match.pairA && match.pairB && (
-        <button
-          onClick={() => {
-            if (isSetFormat) {
-              onSave(match.id, finalScoreA, finalScoreB, live.setList);
-            } else {
-              onSave(match.id, finalScoreA, finalScoreB);
-            }
-          }}
-          style={B(isValidFinal ? "#10b981" : "#334155", {
-            width: "100%",
-            marginTop: 12,
-            opacity: isValidFinal ? 1 : 0.5,
-          })}
-          disabled={!isValidFinal}
-        >
-          Guardar resultado
-        </button>
+        <div style={{ display: "flex", gap: 8, width: "100%", marginTop: 12 }}>
+          {isEditing && (
+            <button
+              onClick={() => {
+                setLs((p) => {
+                  const n = { ...p };
+                  delete n[`${match.id}_A`];
+                  delete n[`${match.id}_B`];
+                  for (let i = 0; i < maxSets; i++) {
+                    delete n[`${match.id}_set${i}_A`];
+                    delete n[`${match.id}_set${i}_B`];
+                  }
+                  return n;
+                });
+                onSave(
+                  match.id,
+                  parseInt(match.scoreA),
+                  parseInt(match.scoreB),
+                  match.sets,
+                );
+              }}
+              style={B("#dc2626", { flex: 1 })}
+            >
+              ✕ Cancelar
+            </button>
+          )}
+          <button
+            onClick={() => {
+              if (isSetFormat) {
+                onSave(match.id, finalScoreA, finalScoreB, live.setList);
+              } else {
+                onSave(match.id, finalScoreA, finalScoreB);
+              }
+            }}
+            style={B(isValidFinal ? "#10b981" : "#334155", {
+              flex: isEditing ? 1 : "auto",
+              width: isEditing ? "auto" : "100%",
+              opacity: isValidFinal ? 1 : 0.5,
+            })}
+            disabled={!isValidFinal}
+          >
+            Guardar resultado
+          </button>
+        </div>
       )}
     </div>
   );

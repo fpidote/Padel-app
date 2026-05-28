@@ -108,14 +108,25 @@ export function useTournament() {
       const inits = {
         americano: {
           ...base,
-          config: { ...base.config, courts: 3 },
+          config: { ...base.config, courts: 3, mode: "individual" },
           playerInputs: Array(12)
             .fill(null)
             .map((_, i) => ({
               name: `Jugador ${i + 1}`,
               level: i % 2 === 0 ? 1 : 2,
             })),
+          pairInputs: Array(6)
+            .fill(null)
+            .map((_, i) => ({
+              id: i,
+              p1: `Jugador ${i * 2 + 1}`,
+              p2: `Jugador ${i * 2 + 2}`,
+              pts: 0,
+              gf: 0,
+              gc: 0,
+            })),
           players: [],
+          pairs: [],
           rounds: [],
           currentRound: null,
           sittingOut: [],

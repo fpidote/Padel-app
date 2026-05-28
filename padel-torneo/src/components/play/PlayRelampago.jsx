@@ -15,10 +15,10 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode }) {
     const match = t.bracket.find((m) => m.id === matchId);
     if (!match || match.saved) return;
     if (isNaN(a) || isNaN(b) || a < 0 || b < 0 || a === b) return;
-    
+
     // Al avanzar el cuadro, inyectamos el array con los resultados individuales de los sets
     const updated = advanceBracket(t.bracket, matchId, a, b).map((m) =>
-      m.id === matchId ? { ...m, sets: sets || null } : m
+      m.id === matchId ? { ...m, sets: sets || null } : m,
     );
 
     setLs((prev) => {
@@ -48,6 +48,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode }) {
     const updatedBracket = t.bracket.map((m) => ({ ...m }));
     const match = updatedBracket.find((m) => m.id === matchId);
     if (!match) return;
+    if (match.pairA?.id === "bye" || match.pairB?.id === "bye") return;
 
     const a = parseInt(match.scoreA);
     const b = parseInt(match.scoreB);
@@ -82,12 +83,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode }) {
       }
     }
 
-    match.scoreA = "";
-    match.scoreB = "";
     match.saved = false;
-    match.winner = null;
-    match.loser = null;
-    match.sets = null; // Limpiamos los sets al editar
 
     await persist({ ...t, bracket: updatedBracket, pairs });
   }
@@ -125,7 +121,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode }) {
         <Tabs
           tabs={[
             ["bracket", "⚡ Cuadro"],
-            ["consolation", "🥈 Consolación"],
+            ["consolation", "🥈 Cuadro Revancha"],
             ["standings", "🏆 Posiciones"],
             ["rules", "📖 Reglas"],
           ]}
@@ -138,20 +134,48 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode }) {
         {tab === "bracket" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
             {champion && (
-              <div style={{ background: "#1e293b", padding: 16, borderRadius: 12, textAlign: "center", border: "2px solid #f59e0b" }}>
+              <div
+                style={{
+                  background: "#1e293b",
+                  padding: 16,
+                  borderRadius: 12,
+                  textAlign: "center",
+                  border: "2px solid #f59e0b",
+                }}
+              >
                 <div style={{ fontSize: 24 }}>🏆</div>
-                <div style={{ color: "#f59e0b", fontWeight: 700, textTransform: "uppercase", fontSize: 12, marginBottom: 4 }}>
+                <div
+                  style={{
+                    color: "#f59e0b",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    fontSize: 12,
+                    marginBottom: 4,
+                  }}
+                >
                   Campeón
                 </div>
-                <div style={{ color: "#f1f5f9", fontWeight: 800, fontSize: 18 }}>
+                <div
+                  style={{ color: "#f1f5f9", fontWeight: 800, fontSize: 18 }}
+                >
                   {champion.p1} / {champion.p2}
                 </div>
               </div>
             )}
             {winnerRounds.map((round) => (
               <div key={round}>
-                <div style={{ color: "#94a3b8", fontWeight: 700, marginBottom: 8, textTransform: "uppercase", fontSize: 13 }}>
-                  {round === Math.max(...winnerRounds) ? "Final" : `Ronda ${round}`}
+                <div
+                  style={{
+                    color: "#94a3b8",
+                    fontWeight: 700,
+                    marginBottom: 8,
+                    textTransform: "uppercase",
+                    fontSize: 13,
+                  }}
+                >
+                  {round === Math.max(...winnerRounds)
+                    ? "Final"
+                    : `Ronda ${round}`}
                 </div>
                 {t.bracket
                   .filter((m) => m.bracket === "winners" && m.round === round)
@@ -176,28 +200,67 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode }) {
         {tab === "consolation" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
             {consolChampion && (
-              <div style={{ background: "#1e293b", padding: 16, borderRadius: 12, textAlign: "center", border: "2px solid #94a3b8" }}>
+              <div
+                style={{
+                  background: "#1e293b",
+                  padding: 16,
+                  borderRadius: 12,
+                  textAlign: "center",
+                  border: "2px solid #94a3b8",
+                }}
+              >
                 <div style={{ fontSize: 24 }}>🥈</div>
-                <div style={{ color: "#94a3b8", fontWeight: 700, textTransform: "uppercase", fontSize: 12, marginBottom: 4 }}>
-                  Campeón Consolación
+                <div
+                  style={{
+                    color: "#94a3b8",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    fontSize: 12,
+                    marginBottom: 4,
+                  }}
+                >
+                  Campeón Revancha
                 </div>
-                <div style={{ color: "#f1f5f9", fontWeight: 800, fontSize: 18 }}>
+                <div
+                  style={{ color: "#f1f5f9", fontWeight: 800, fontSize: 18 }}
+                >
                   {consolChampion.p1} / {consolChampion.p2}
                 </div>
               </div>
             )}
             {consolRounds.length === 0 && (
-              <div style={{ padding: 20, textAlign: "center", color: "#94a3b8", background: "#1e293b", borderRadius: 8 }}>
-                El cuadro de consolación se activa cuando hay primeras rondas jugadas.
+              <div
+                style={{
+                  padding: 20,
+                  textAlign: "center",
+                  color: "#94a3b8",
+                  background: "#1e293b",
+                  borderRadius: 8,
+                }}
+              >
+                El cuadro de Revancha se activa cuando hay primeras rondas
+                jugadas.
               </div>
             )}
             {consolRounds.map((round) => (
               <div key={round}>
-                <div style={{ color: "#94a3b8", fontWeight: 700, marginBottom: 8, textTransform: "uppercase", fontSize: 13 }}>
-                  {round === Math.max(...consolRounds, 0) ? "Final Consolación" : `Consolación Ronda ${round}`}
+                <div
+                  style={{
+                    color: "#94a3b8",
+                    fontWeight: 700,
+                    marginBottom: 8,
+                    textTransform: "uppercase",
+                    fontSize: 13,
+                  }}
+                >
+                  {round === Math.max(...consolRounds, 0)
+                    ? "Final Revancha"
+                    : `Revancha Ronda ${round}`}
                 </div>
                 {t.bracket
-                  .filter((m) => m.bracket === "consolation" && m.round === round)
+                  .filter(
+                    (m) => m.bracket === "consolation" && m.round === round,
+                  )
                   .map((match) => (
                     <MatchCard
                       key={match.id}
@@ -216,16 +279,35 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode }) {
           </div>
         )}
 
-        {tab === "standings" && <PairStandings pairs={t.pairs} title="Posiciones" />}
+        {tab === "standings" && (
+          <PairStandings pairs={t.pairs} title="Posiciones" />
+        )}
 
         {tab === "rules" && (
           <div style={{ background: "#1e293b", padding: 20, borderRadius: 12 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 800, color: "#38bdf8", marginBottom: 16 }}>
+            <h3
+              style={{
+                fontSize: 18,
+                fontWeight: 800,
+                color: "#38bdf8",
+                marginBottom: 16,
+              }}
+            >
               Reglas del Torneo Relámpago
             </h3>
-            <ul style={{ color: "#cbd5e1", fontSize: 14, lineHeight: "1.6", paddingLeft: 20, listStyleType: "disc" }}>
+            <ul
+              style={{
+                color: "#cbd5e1",
+                fontSize: 14,
+                lineHeight: "1.6",
+                paddingLeft: 20,
+                listStyleType: "disc",
+              }}
+            >
               {TOURNAMENT_RULES.relampago.map((rule, i) => (
-                <li key={i} style={{ marginBottom: 10 }}>{rule}</li>
+                <li key={i} style={{ marginBottom: 10 }}>
+                  {rule}
+                </li>
               ))}
             </ul>
           </div>

@@ -53,9 +53,14 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode }) {
     }
   }
 
-  async function onSaveCourt(ci) {
-    const a = parseInt(ls[`${ci}_A`] ?? "");
-    const b = parseInt(ls[`${ci}_B`] ?? "");
+  async function onSaveCourt(ci, isCancel = false) {
+    const court = t.currentPozoRound[ci];
+    const a = parseInt(
+      isCancel ? court.scoreA : (ls[`${ci}_A`] ?? (court.scoreA || "")),
+    );
+    const b = parseInt(
+      isCancel ? court.scoreB : (ls[`${ci}_B`] ?? (court.scoreB || "")),
+    );
     if (isNaN(a) || isNaN(b) || a < 0 || b < 0 || a === b) return;
     const updated = t.currentPozoRound.map((c, i) =>
       i === ci
@@ -74,7 +79,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode }) {
   // 👇 NUESTRA NUEVA FUNCIÓN PARA EDITAR
   async function onEditCourt(ci) {
     const updated = t.currentPozoRound.map((c, i) =>
-      i === ci ? { ...c, saved: false, scoreA: "", scoreB: "" } : c,
+      i === ci ? { ...c, saved: false } : c,
     );
     await persist({ ...t, currentPozoRound: updated });
   }
@@ -499,20 +504,55 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode }) {
                     </div>
                   )}
                   {isAdmin && !court.saved && (
-                    <button
-                      onClick={() => onSaveCourt(ci)}
-                      disabled={!valid}
-                      style={B(valid ? "#d97706" : "#334155", {
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 8,
                         width: "100%",
                         marginTop: 12,
-                        borderRadius: 8,
-                        padding: 10,
-                        opacity: valid ? 1 : 0.5,
-                        cursor: valid ? "pointer" : "not-allowed",
-                      })}
+                      }}
                     >
-                      Guardar resultado
-                    </button>
+                      {court.scoreA !== undefined && court.scoreA !== "" && (
+                        <button
+                          onClick={() => {
+                            setLs((p) => {
+                              const n = { ...p };
+                              delete n[`${ci}_A`];
+                              delete n[`${ci}_B`];
+                              return n;
+                            });
+                            onSaveCourt(ci, true);
+                          }}
+                          style={B("#dc2626", {
+                            flex: 1,
+                            borderRadius: 8,
+                            padding: 10,
+                          })}
+                        >
+                          ✕ Cancelar
+                        </button>
+                      )}
+                      <button
+                        onClick={() => onSaveCourt(ci)}
+                        disabled={!valid}
+                        style={B(valid ? "#d97706" : "#334155", {
+                          flex:
+                            court.scoreA !== undefined && court.scoreA !== ""
+                              ? 1
+                              : "auto",
+                          width:
+                            court.scoreA !== undefined && court.scoreA !== ""
+                              ? "auto"
+                              : "100%",
+                          borderRadius: 8,
+                          padding: 10,
+                          opacity: valid ? 1 : 0.5,
+                          cursor: valid ? "pointer" : "not-allowed",
+                        })}
+                      >
+                        Guardar resultado
+                      </button>
+                    </div>
                   )}
                 </div>
               );
