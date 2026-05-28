@@ -84,127 +84,143 @@ export default function App() {
     return () => unsubscribe();
   }, [code]);
 
-  async function persist(newT) {
-    newT.ver = (newT.ver || 0) + 1;
-    verRef.current = newT.ver;
-    setT(newT);
-    await setDoc(doc(db, "torneos", codeRef.current), {
-      data: JSON.stringify(newT),
-    });
+async function persist(newT) {
+    try {
+      newT.ver = (newT.ver || 0) + 1;
+      verRef.current = newT.ver;
+      setT(newT);
+      await setDoc(doc(db, "torneos", codeRef.current), {
+        data: JSON.stringify(newT),
+      });
+    } catch (error) {
+      console.error("Error al guardar los datos:", error);
+      alert("No se pudieron guardar los cambios en la base de datos.");
+    }
   }
 
   async function onCreate(type) {
-    const c = genCode();
-    const base = {
-      ver: 1,
-      status: "setup",
-      type,
-      config: {
-        name: `Torneo ${TOURNAMENT_TYPES.find((x) => x.id === type).name}`,
-        courts: 2,
-      },
-    };
-    let init = { ...base };
-    if (type === "americano") {
-      init = {
-        ...init,
-        config: { ...init.config, courts: 3 },
-        playerInputs: Array(12)
-          .fill(null)
-          .map((_, i) => ({
-            name: `Jugador ${i + 1}`,
-            level: i % 2 === 0 ? 1 : 2,
-          })),
-        players: [],
-        rounds: [],
-        currentRound: null,
-        sittingOut: [],
-        partnerHistory: {},
-        sitOutHistory: {},
-        roundNum: 1,
+    try {
+      const c = genCode();
+      const base = {
+        ver: 1,
+        status: "setup",
+        type,
+        config: {
+          name: `Torneo ${TOURNAMENT_TYPES.find((x) => x.id === type).name}`,
+          courts: 2,
+        },
       };
-    } else if (type === "relampago") {
-      init = {
-        ...init,
-        pairInputs: Array(8)
-          .fill(null)
-          .map((_, i) => ({
-            id: i,
-            p1: `Jugador ${i * 2 + 1}`,
-            p2: `Jugador ${i * 2 + 2}`,
-            pts: 0,
-            gf: 0,
-            gc: 0,
-          })),
-        bracket: null,
-        phase: "setup",
-      };
-    } else if (type === "mundialito") {
-      init = {
-        ...init,
-        config: { ...init.config, groupCount: 2, advancePerGroup: 2 },
-        pairInputs: Array(8)
-          .fill(null)
-          .map((_, i) => ({
-            id: i,
-            p1: `Jugador ${i * 2 + 1}`,
-            p2: `Jugador ${i * 2 + 2}`,
-            pts: 0,
-            gf: 0,
-            gc: 0,
-          })),
-        groups: null,
-        knockoutBracket: null,
-        phase: "setup",
-      };
-    } else if (type === "pozo") {
-      init = {
-        ...init,
-        pairInputs: Array(8)
-          .fill(null)
-          .map((_, i) => ({
-            id: i,
-            p1: `Jugador ${i * 2 + 1}`,
-            p2: `Jugador ${i * 2 + 2}`,
-            pts: 0,
-            gf: 0,
-            gc: 0,
-            courtLevel: 0,
-          })),
-        pozoRounds: [],
-        currentPozoRound: null,
-        roundNum: 1,
-        phase: "setup",
-        timerSeconds: 600,
-        timerRunning: false,
-        timerStartedAt: null,
-        timerElapsed: 0,
-      };
+      let init = { ...base };
+      if (type === "americano") {
+        init = {
+          ...init,
+          config: { ...init.config, courts: 3 },
+          playerInputs: Array(12)
+            .fill(null)
+            .map((_, i) => ({
+              name: `Jugador ${i + 1}`,
+              level: i % 2 === 0 ? 1 : 2,
+            })),
+          players: [],
+          rounds: [],
+          currentRound: null,
+          sittingOut: [],
+          partnerHistory: {},
+          sitOutHistory: {},
+          roundNum: 1,
+        };
+      } else if (type === "relampago") {
+        init = {
+          ...init,
+          pairInputs: Array(8)
+            .fill(null)
+            .map((_, i) => ({
+              id: i,
+              p1: `Jugador ${i * 2 + 1}`,
+              p2: `Jugador ${i * 2 + 2}`,
+              pts: 0,
+              gf: 0,
+              gc: 0,
+            })),
+          bracket: null,
+          phase: "setup",
+        };
+      } else if (type === "mundialito") {
+        init = {
+          ...init,
+          config: { ...init.config, groupCount: 2, advancePerGroup: 2 },
+          pairInputs: Array(8)
+            .fill(null)
+            .map((_, i) => ({
+              id: i,
+              p1: `Jugador ${i * 2 + 1}`,
+              p2: `Jugador ${i * 2 + 2}`,
+              pts: 0,
+              gf: 0,
+              gc: 0,
+            })),
+          groups: null,
+          knockoutBracket: null,
+          phase: "setup",
+        };
+      } else if (type === "pozo") {
+        init = {
+          ...init,
+          pairInputs: Array(8)
+            .fill(null)
+            .map((_, i) => ({
+              id: i,
+              p1: `Jugador ${i * 2 + 1}`,
+              p2: `Jugador ${i * 2 + 2}`,
+              pts: 0,
+              gf: 0,
+              gc: 0,
+              courtLevel: 0,
+            })),
+          pozoRounds: [],
+          currentPozoRound: null,
+          roundNum: 1,
+          phase: "setup",
+          timerSeconds: 600,
+          timerRunning: false,
+          timerStartedAt: null,
+          timerElapsed: 0,
+        };
+      }
+      
+      await setDoc(doc(db, "torneos", c), { data: JSON.stringify(init) });
+      localStorage.setItem(`admin_${c}`, "1");
+      setCode(c);
+      setIsAdmin(true);
+      setT(init);
+      setScreen("setup");
+      verRef.current = 1;
+    } catch (error) {
+      console.error("Error al crear el torneo:", error);
+      alert("Hubo un error al crear el torneo. Verifica tu conexión a Firebase.");
     }
-    await setDoc(doc(db, "torneos", c), { data: JSON.stringify(init) });
-    localStorage.setItem(`admin_${c}`, "1");
-    setCode(c);
-    setIsAdmin(true);
-    setT(init);
-    setScreen("setup");
-    verRef.current = 1;
   }
 
   async function onJoin() {
-    const c = joinVal.trim().toUpperCase();
-    if (!c) return;
-    const docSnap = await getDoc(doc(db, "torneos", c));
-    if (!docSnap.exists()) {
-      alert("Código no encontrado");
-      return;
+    try {
+      const c = joinVal.trim().toUpperCase();
+      if (!c) return;
+      const docSnap = await getDoc(doc(db, "torneos", c));
+      if (!docSnap.exists()) {
+        alert("Código no encontrado");
+        return;
+      }
+      const admin = !!localStorage.getItem(`admin_${c}`);
+      const data = JSON.parse(docSnap.data().data);
+      setCode(c);
+      setIsAdmin(admin);
+      setT(data);
+      verRef.current = data.ver;
+      setScreen(data.status === "setup" ? "setup" : "play");
+    } catch (error) {
+      console.error("Error al unirse al torneo:", error);
+      alert("Hubo un error de conexión con Firebase. Revisa la consola.");
     }
-    const admin = !!localStorage.getItem(`admin_${c}`);
-    const data = JSON.parse(docSnap.data().data);
-    setCode(c);
-    setIsAdmin(admin);
-    setT(data);
-    verRef.current = data.ver;
-    setScreen(data.status === "setup" ? "setup" : "play");
   }
 
   function copyCode() {
