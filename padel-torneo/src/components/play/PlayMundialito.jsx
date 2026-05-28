@@ -1,112 +1,113 @@
+// src/components/play/PlayRelampago.jsx
 import { useState } from "react";
-import { B } from "../../logic/constants";
+import { B, TOURNAMENT_RULES } from "../../logic/constants";
 import { advanceBracket } from "../../logic/relampago";
-import { buildKnockoutFromGroups } from "../../logic/mundialito";
 import { THeader, Tabs } from "../shared/Components";
 import MatchCard from "../shared/MatchCard";
 import PairStandings from "../shared/PairStandings";
 
-export default function PlayMundialito({
-  t,
-  code,
-  isAdmin,
-  persist,
-  copyCode,
-}) {
-  const [tab, setTab] = useState("groups");
+export default function PlayRelampago({ t, code, isAdmin, persist, copyCode }) {
+  const [tab, setTab] = useState("bracket");
   const [ls, setLs] = useState({});
 
-  async function onSaveGroupMatch(groupId, matchId, a, b) {
-    const group = t.groups.find((g) => g.id === groupId);
-    if (!group) return;
-    const match = group.matches.find((m) => m.id === matchId);
+  async function onSaveMatch(matchId, a, b) {
+    const match = t.bracket.find((m) => m.id === matchId);
     if (!match || match.saved) return;
     if (isNaN(a) || isNaN(b) || a < 0 || b < 0 || a === b) return;
-
-    const updatedGroups = t.groups.map((g) => {
-      if (g.id !== groupId) return g;
-      const updatedMatches = g.matches.map((m) =>
-        m.id === matchId
-          ? { ...m, scoreA: String(a), scoreB: String(b), saved: true }
-          : m,
-      );
-      const standings = g.pairs.map((p) => ({
-        ...p,
-        pts: 0,
-        gf: 0,
-        gc: 0,
-        played: 0,
-        wins: 0,
-      }));
-      updatedMatches
-        .filter((m) => m.saved)
-        .forEach((m) => {
-          const sa = parseInt(m.scoreA),
-            sb = parseInt(m.scoreB);
-          const idxA = standings.findIndex((s) => s.id === m.pairA.id);
-          const idxB = standings.findIndex((s) => s.id === m.pairB.id);
-          if (idxA >= 0) {
-            standings[idxA].played++;
-            standings[idxA].gf += sa;
-            standings[idxA].gc += sb;
-            standings[idxA].pts += sa > sb ? 3 : sb > sa ? 0 : 1;
-            if (sa > sb) standings[idxA].wins++;
-          }
-          if (idxB >= 0) {
-            standings[idxB].played++;
-            standings[idxB].gf += sb;
-            standings[idxB].gc += sa;
-            standings[idxB].pts += sb > sa ? 3 : sa > sb ? 0 : 1;
-            if (sb > sa) standings[idxB].wins++;
-          }
-        });
-      return { ...g, matches: updatedMatches, standings };
-    });
-
+    const updated = advanceBracket(t.bracket, matchId, a, b);
     setLs((prev) => {
       const n = { ...prev };
       delete n[`${matchId}_A`];
       delete n[`${matchId}_B`];
       return n;
     });
-    await persist({ ...t, groups: updatedGroups });
-  }
-
-  const allGroupsDone =
-    t.groups && t.groups.every((g) => g.matches.every((m) => m.saved));
-
-  async function onStartKnockout() {
-    if (!allGroupsDone) return;
-    const bracket = buildKnockoutFromGroups(
-      t.groups,
-      t.config.advancePerGroup || 2,
-    );
-    await persist({ ...t, knockoutBracket: bracket, phase: "knockout" });
-  }
-
-  async function onSaveKnockoutMatch(matchId, a, b) {
-    const match = t.knockoutBracket.find((m) => m.id === matchId);
-    if (!match || match.saved) return;
-    if (isNaN(a) || isNaN(b) || a < 0 || b < 0 || a === b) return;
-    const updated = advanceBracket(t.knockoutBracket, matchId, a, b);
-    setLs((prev) => {
-      const n = { ...prev };
-      delete n[`${matchId}_A`];
-      delete n[`${matchId}_B`];
-      return n;
+    const pairs = [...t.pairs];
+    const wPair = a > b ? match.pairA : match.pairB;
+    const lPair = a > b ? match.pairB : match.pairA;
+    [wPair, lPair].forEach((pair, pi) => {
+      if (!pair) return;
+      const idx = pairs.findIndex((p) => p.id === pair.id);
+      if (idx < 0) return;
+      pairs[idx] = {
+        ...pairs[idx],
+        pts: pairs[idx].pts + (pi === 0 ? 1 : 0),
+        gf: pairs[idx].gf + (pi === 0 ? a : b),
+        gc: pairs[idx].gc + (pi === 0 ? b : a),
+      };
     });
-    await persist({ ...t, knockoutBracket: updated });
+    await persist({ ...t, bracket: updated, pairs });
   }
 
-  const koRounds = t.knockoutBracket
-    ? [...new Set(t.knockoutBracket.map((m) => m.round))].sort((a, b) => a - b)
-    : [];
+  // 👇 NUEVA FUNCIÓN PARA DESHACER Y EDITAR EL PARTIDO
+  async function onEditMatch(matchId) {
+    const updatedBracket = t.bracket.map((m) => ({ ...m }));
+    const match = updatedBracket.find((m) => m.id === matchId);
+    if (!match) return;
 
-  const champion = t.knockoutBracket?.find(
-    (m) => !m.nextMatchId && m.saved,
+    // 1. Quitar los puntos e historial de juegos de las estadísticas globales
+    const a = parseInt(match.scoreA);
+    const b = parseInt(match.scoreB);
+    const pairs = [...t.pairs];
+    const wPair = a > b ? match.pairA : match.pairB;
+    const lPair = a > b ? match.pairB : match.pairA;
+    [wPair, lPair].forEach((pair, pi) => {
+      if (!pair) return;
+      const idx = pairs.findIndex((p) => p.id === pair.id);
+      if (idx >= 0) {
+        pairs[idx] = {
+          ...pairs[idx],
+          pts: pairs[idx].pts - (pi === 0 ? 1 : 0),
+          gf: pairs[idx].gf - (pi === 0 ? a : b),
+          gc: pairs[idx].gc - (pi === 0 ? b : a),
+        };
+      }
+    });
+
+    // 2. Deshacer el avance automático en las siguientes llaves del cuadro
+    if (match.nextMatchId && match.winner) {
+      const nextM = updatedBracket.find((m) => m.id === match.nextMatchId);
+      if (nextM) {
+        if (nextM.pairA?.id === match.winner.id) nextM.pairA = null;
+        if (nextM.pairB?.id === match.winner.id) nextM.pairB = null;
+      }
+    }
+    if (match.loserMatchId && match.loser) {
+      const consM = updatedBracket.find((m) => m.id === match.loserMatchId);
+      if (consM) {
+        if (consM.pairA?.id === match.loser.id) consM.pairA = null;
+        if (consM.pairB?.id === match.loser.id) consM.pairB = null;
+      }
+    }
+
+    // 3. Limpiar los datos del partido actual
+    match.scoreA = "";
+    match.scoreB = "";
+    match.saved = false;
+    match.winner = null;
+    match.loser = null;
+
+    await persist({ ...t, bracket: updatedBracket, pairs });
+  }
+
+  const winnerRounds = [
+    ...new Set(
+      t.bracket.filter((m) => m.bracket === "winners").map((m) => m.round),
+    ),
+  ].sort((a, b) => a - b);
+
+  const consolRounds = [
+    ...new Set(
+      t.bracket.filter((m) => m.bracket === "consolation").map((m) => m.round),
+    ),
+  ].sort((a, b) => a - b);
+
+  const champion = t.bracket.find(
+    (m) => m.bracket === "winners" && !m.nextMatchId && m.saved,
   )?.winner;
 
-  const allPairs = t.groups ? t.groups.flatMap((g) => g.standings) : [];
+  const consolChampion = t.bracket.find(
+    (m) => m.bracket === "consolation" && !m.nextMatchId && m.saved,
+  )?.winner;
 
   return (
     <div style={{ paddingBottom: 80 }}>
@@ -115,204 +116,119 @@ export default function PlayMundialito({
         code={code}
         isAdmin={isAdmin}
         copyCode={copyCode}
-        subtitle="Fase de Grupos y Eliminatoria"
+        subtitle="Cuadro de eliminación"
       />
       <div style={{ padding: 16 }}>
         <Tabs
           tabs={[
-            ["groups", "🏁 Grupos"],
-            ["knockout", "⚡ Eliminatoria"],
+            ["bracket", "⚡ Cuadro"],
+            ["consolation", "🥈 Consolación"],
             ["standings", "🏆 Posiciones"],
+            ["rules", "📖 Reglas"], // 👇 AÑADIMOS LA PESTAÑA DE REGLAS
           ]}
           active={tab}
           setActive={setTab}
         />
       </div>
 
-      <div
-        style={{
-          padding: "0 16px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 24,
-        }}
-      >
-        {tab === "groups" && (
-          <>
-            {t.groups?.map((group) => (
+      <div style={{ padding: "0 16px" }}>
+        {tab === "bracket" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            {champion && (
               <div
-                key={group.id}
-                style={{ background: "#1e293b", borderRadius: 12, padding: 16 }}
+                style={{
+                  background: "#1e293b",
+                  padding: 16,
+                  borderRadius: 12,
+                  textAlign: "center",
+                  border: "2px solid #f59e0b",
+                }}
               >
+                <div style={{ fontSize: 24 }}>🏆</div>
                 <div
                   style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: 12,
+                    color: "#f59e0b",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    fontSize: 12,
+                    marginBottom: 4,
                   }}
                 >
-                  <div
-                    style={{ fontWeight: 800, fontSize: 16, color: "#f1f5f9" }}
-                  >
-                    {group.name}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: "#64748b",
-                      background: "#334155",
-                      padding: "2px 8px",
-                      borderRadius: 99,
-                    }}
-                  >
-                    {group.matches.filter((m) => m.saved).length}/
-                    {group.matches.length} partidos
-                  </div>
+                  Campeón
                 </div>
-
-                {/* Standings Table */}
-                <div style={{ marginBottom: 16 }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      fontSize: 10,
-                      color: "#64748b",
-                      textTransform: "uppercase",
-                      fontWeight: 700,
-                      padding: "4px 8px",
-                    }}
-                  >
-                    <div style={{ flex: 1 }}>Pareja</div>
-                    <div style={{ width: 30, textAlign: "center" }}>PJ</div>
-                    <div style={{ width: 30, textAlign: "center" }}>GF</div>
-                    <div style={{ width: 30, textAlign: "center" }}>GC</div>
-                    <div
-                      style={{
-                        width: 30,
-                        textAlign: "center",
-                        fontWeight: 800,
-                      }}
-                    >
-                      Pts
-                    </div>
-                  </div>
-                  {[...group.standings]
-                    .sort((a, b) =>
-                      b.pts !== a.pts
-                        ? b.pts - a.pts
-                        : b.gf - b.gc - (a.gf - a.gc),
-                    )
-                    .map((s, si) => (
-                      <div
-                        key={s.id}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          fontSize: 13,
-                          padding: "6px 8px",
-                          borderRadius: 4,
-                          background:
-                            si < (t.config.advancePerGroup || 2)
-                              ? "#16a34a22"
-                              : "transparent",
-                        }}
-                      >
-                        <div
-                          style={{ flex: 1, fontWeight: 700, color: "#f1f5f9" }}
-                        >
-                          {si < (t.config.advancePerGroup || 2) && "⚡ "}
-                          {s.p1} / {s.p2}
-                        </div>
-                        <div
-                          style={{
-                            width: 30,
-                            textAlign: "center",
-                            color: "#94a3b8",
-                          }}
-                        >
-                          {s.played}
-                        </div>
-                        <div
-                          style={{
-                            width: 30,
-                            textAlign: "center",
-                            color: "#94a3b8",
-                          }}
-                        >
-                          {s.gf}
-                        </div>
-                        <div
-                          style={{
-                            width: 30,
-                            textAlign: "center",
-                            color: "#94a3b8",
-                          }}
-                        >
-                          {s.gc}
-                        </div>
-                        <div
-                          style={{
-                            width: 30,
-                            textAlign: "center",
-                            fontWeight: 800,
-                            color: "#38bdf8",
-                          }}
-                        >
-                          {s.pts}
-                        </div>
-                      </div>
-                    ))}
+                <div
+                  style={{ color: "#f1f5f9", fontWeight: 800, fontSize: 18 }}
+                >
+                  {champion.p1} / {champion.p2}
                 </div>
-
-                {/* Matches */}
-                <div>
-                  {group.matches.map((match) => (
+              </div>
+            )}
+            {winnerRounds.map((round) => (
+              <div key={round}>
+                <div
+                  style={{
+                    color: "#94a3b8",
+                    fontWeight: 700,
+                    marginBottom: 8,
+                    textTransform: "uppercase",
+                    fontSize: 13,
+                  }}
+                >
+                  {round === Math.max(...winnerRounds)
+                    ? "Final"
+                    : `Ronda ${round}`}
+                </div>
+                {t.bracket
+                  .filter((m) => m.bracket === "winners" && m.round === round)
+                  .map((match) => (
                     <MatchCard
                       key={match.id}
                       match={match}
                       isAdmin={isAdmin}
                       ls={ls}
                       setLs={setLs}
-                      onSave={(matchId, a, b) =>
-                        onSaveGroupMatch(group.id, matchId, a, b)
-                      }
-                      accentColor="#059669"
+                      onSave={onSaveMatch}
+                      onEdit={onEditMatch} // 👇 PROP DE EDICIÓN AÑADIDA AQUÍ
+                      accentColor="#7c3aed"
                     />
                   ))}
-                </div>
               </div>
             ))}
-            {allGroupsDone && t.phase === "groups" && isAdmin && (
-              <button
-                onClick={onStartKnockout}
-                style={B("#10b981", {
-                  width: "100%",
-                  padding: 16,
-                  fontSize: 16,
-                })}
-              >
-                Iniciar Fase Eliminatoria ⚡
-              </button>
-            )}
-            {!isAdmin && !allGroupsDone && (
-              <div
-                style={{
-                  textAlign: "center",
-                  color: "#64748b",
-                  padding: 20,
-                  fontSize: 14,
-                }}
-              >
-                👀 Modo vista · Esperando resultados de la fase de grupos
-              </div>
-            )}
-          </>
+          </div>
         )}
 
-        {tab === "knockout" && (
-          <>
-            {t.phase === "groups" && (
+        {tab === "consolation" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            {consolChampion && (
+              <div
+                style={{
+                  background: "#1e293b",
+                  padding: 16,
+                  borderRadius: 12,
+                  textAlign: "center",
+                  border: "2px solid #94a3b8",
+                }}
+              >
+                <div style={{ fontSize: 24 }}>🥈</div>
+                <div
+                  style={{
+                    color: "#94a3b8",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    fontSize: 12,
+                    marginBottom: 4,
+                  }}
+                >
+                  Campeón Consolación
+                </div>
+                <div
+                  style={{ color: "#f1f5f9", fontWeight: 800, fontSize: 18 }}
+                >
+                  {consolChampion.p1} / {consolChampion.p2}
+                </div>
+              </div>
+            )}
+            {consolRounds.length === 0 && (
               <div
                 style={{
                   padding: 20,
@@ -322,89 +238,79 @@ export default function PlayMundialito({
                   borderRadius: 8,
                 }}
               >
-                Completa la fase de grupos primero para ver la eliminatoria.
+                El cuadro de consolación se activa cuando hay primeras rondas
+                jugadas.
               </div>
             )}
-            {t.phase === "knockout" && (
-              <>
-                {champion && (
-                  <div
-                    style={{
-                      background: "#1e293b",
-                      padding: 16,
-                      borderRadius: 12,
-                      textAlign: "center",
-                      border: "2px solid #f59e0b",
-                    }}
-                  >
-                    <div style={{ fontSize: 24 }}>🏆</div>
-                    <div
-                      style={{
-                        color: "#f59e0b",
-                        fontWeight: 700,
-                        textTransform: "uppercase",
-                        fontSize: 12,
-                        marginBottom: 4,
-                      }}
-                    >
-                      Campeón del Mundialito
-                    </div>
-                    <div
-                      style={{
-                        color: "#f1f5f9",
-                        fontWeight: 800,
-                        fontSize: 18,
-                      }}
-                    >
-                      {champion.p1} / {champion.p2}
-                    </div>
-                  </div>
-                )}
-                {koRounds.map((round) => (
-                  <div key={round}>
-                    <div
-                      style={{
-                        color: "#94a3b8",
-                        fontWeight: 700,
-                        marginBottom: 8,
-                        textTransform: "uppercase",
-                        fontSize: 13,
-                      }}
-                    >
-                      {round === Math.max(...koRounds)
-                        ? "Final"
-                        : `Ronda ${round}`}
-                    </div>
-                    {t.knockoutBracket
-                      .filter((m) => m.round === round)
-                      .map((match) => (
-                        <MatchCard
-                          key={match.id}
-                          match={match}
-                          isAdmin={isAdmin}
-                          ls={ls}
-                          setLs={setLs}
-                          onSave={onSaveKnockoutMatch}
-                          accentColor="#059669"
-                        />
-                      ))}
-                  </div>
-                ))}
-              </>
-            )}
-          </>
+            {consolRounds.map((round) => (
+              <div key={round}>
+                <div
+                  style={{
+                    color: "#94a3b8",
+                    fontWeight: 700,
+                    marginBottom: 8,
+                    textTransform: "uppercase",
+                    fontSize: 13,
+                  }}
+                >
+                  {round === Math.max(...consolRounds, 0)
+                    ? "Final Consolación"
+                    : `Consolación Ronda ${round}`}
+                </div>
+                {t.bracket
+                  .filter(
+                    (m) => m.bracket === "consolation" && m.round === round,
+                  )
+                  .map((match) => (
+                    <MatchCard
+                      key={match.id}
+                      match={match}
+                      isAdmin={isAdmin}
+                      ls={ls}
+                      setLs={setLs}
+                      onSave={onSaveMatch}
+                      onEdit={onEditMatch} // 👇 PROP DE EDICIÓN AÑADIDA AQUÍ
+                      accentColor="#0284c7"
+                    />
+                  ))}
+              </div>
+            ))}
+          </div>
         )}
 
         {tab === "standings" && (
-          <PairStandings
-            pairs={allPairs}
-            title="Clasificación General"
-            extra={
-              <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 12 }}>
-                Puntos fase de grupos: Victoria=3, Empate=1, Derrota=0
-              </div>
-            }
-          />
+          <PairStandings pairs={t.pairs} title="Posiciones" />
+        )}
+
+        {/* 👇 NUEVA PESTAÑA VISUAL PARA LAS REGLAS */}
+        {tab === "rules" && (
+          <div style={{ background: "#1e293b", padding: 20, borderRadius: 12 }}>
+            <h3
+              style={{
+                fontSize: 18,
+                fontWeight: 800,
+                color: "#38bdf8",
+                marginBottom: 16,
+              }}
+            >
+              Reglas del Torneo Relámpago
+            </h3>
+            <ul
+              style={{
+                color: "#cbd5e1",
+                fontSize: 14,
+                lineHeight: "1.6",
+                paddingLeft: 20,
+                listStyleType: "disc",
+              }}
+            >
+              {TOURNAMENT_RULES.relampago.map((rule, i) => (
+                <li key={i} style={{ marginBottom: 10 }}>
+                  {rule}
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </div>
     </div>

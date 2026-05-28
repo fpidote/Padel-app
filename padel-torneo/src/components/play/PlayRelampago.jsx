@@ -1,5 +1,6 @@
+// src/components/play/PlayRelampago.jsx
 import { useState } from "react";
-import { B } from "../../logic/constants";
+import { B, TOURNAMENT_RULES } from "../../logic/constants";
 import { advanceBracket } from "../../logic/relampago";
 import { THeader, Tabs } from "../shared/Components";
 import MatchCard from "../shared/MatchCard";
@@ -37,6 +38,57 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode }) {
     await persist({ ...t, bracket: updated, pairs });
   }
 
+  // 👇 NUEVA FUNCIÓN PARA DESHACER Y EDITAR EL PARTIDO
+  async function onEditMatch(matchId) {
+    const updatedBracket = t.bracket.map(m => ({...m}));
+    const match = updatedBracket.find(m => m.id === matchId);
+    if (!match) return;
+
+    // 1. Quitar los puntos e historial de juegos de las estadísticas globales
+    const a = parseInt(match.scoreA);
+    const b = parseInt(match.scoreB);
+    const pairs = [...t.pairs];
+    const wPair = a > b ? match.pairA : match.pairB;
+    const lPair = a > b ? match.pairB : match.pairA;
+    [wPair, lPair].forEach((pair, pi) => {
+      if (!pair) return;
+      const idx = pairs.findIndex((p) => p.id === pair.id);
+      if (idx >= 0) {
+        pairs[idx] = {
+          ...pairs[idx],
+          pts: pairs[idx].pts - (pi === 0 ? 1 : 0),
+          gf: pairs[idx].gf - (pi === 0 ? a : b),
+          gc: pairs[idx].gc - (pi === 0 ? b : a),
+        };
+      }
+    });
+
+    // 2. Deshacer el avance automático en las siguientes llaves del cuadro
+    if (match.nextMatchId && match.winner) {
+      const nextM = updatedBracket.find(m => m.id === match.nextMatchId);
+      if (nextM) {
+        if (nextM.pairA?.id === match.winner.id) nextM.pairA = null;
+        if (nextM.pairB?.id === match.winner.id) nextM.pairB = null;
+      }
+    }
+    if (match.loserMatchId && match.loser) {
+      const consM = updatedBracket.find(m => m.id === match.loserMatchId);
+      if (consM) {
+        if (consM.pairA?.id === match.loser.id) consM.pairA = null;
+        if (consM.pairB?.id === match.loser.id) consM.pairB = null;
+      }
+    }
+
+    // 3. Limpiar los datos del partido actual
+    match.scoreA = "";
+    match.scoreB = "";
+    match.saved = false;
+    match.winner = null;
+    match.loser = null;
+
+    await persist({ ...t, bracket: updatedBracket, pairs });
+  }
+
   const winnerRounds = [
     ...new Set(
       t.bracket.filter((m) => m.bracket === "winners").map((m) => m.round),
@@ -72,6 +124,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode }) {
             ["bracket", "⚡ Cuadro"],
             ["consolation", "🥈 Consolación"],
             ["standings", "🏆 Posiciones"],
+            ["rules", "📖 Reglas"], // 👇 AÑADIMOS LA PESTAÑA DE REGLAS
           ]}
           active={tab}
           setActive={setTab}
@@ -135,6 +188,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode }) {
                       ls={ls}
                       setLs={setLs}
                       onSave={onSaveMatch}
+                      onEdit={onEditMatch} // 👇 PROP DE EDICIÓN AÑADIDA AQUÍ
                       accentColor="#7c3aed"
                     />
                   ))}
@@ -215,6 +269,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode }) {
                       ls={ls}
                       setLs={setLs}
                       onSave={onSaveMatch}
+                      onEdit={onEditMatch} // 👇 PROP DE EDICIÓN AÑADIDA AQUÍ
                       accentColor="#0284c7"
                     />
                   ))}
@@ -225,6 +280,20 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode }) {
 
         {tab === "standings" && (
           <PairStandings pairs={t.pairs} title="Posiciones" />
+        )}
+
+        {/* 👇 NUEVA PESTAÑA VISUAL PARA LAS REGLAS */}
+        {tab === "rules" && (
+          <div style={{ background: "#1e293b", padding: 20, borderRadius: 12 }}>
+            <h3 style={{ fontSize: 18, fontWeight: 800, color: "#38bdf8", marginBottom: 16 }}>
+              Reglas del Torneo Relámpago
+            </h3>
+            <ul style={{ color: "#cbd5e1", fontSize: 14, lineHeight: "1.6", paddingLeft: 20, listStyleType: "disc" }}>
+              {TOURNAMENT_RULES.relampago.map((rule, i) => (
+                <li key={i} style={{ marginBottom: 10 }}>{rule}</li>
+              ))}
+            </ul>
+          </div>
         )}
       </div>
     </div>

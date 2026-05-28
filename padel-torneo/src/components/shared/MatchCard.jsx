@@ -7,6 +7,7 @@ export default function MatchCard({
   ls,
   setLs,
   onSave,
+  onEdit, // 👇 NUEVA PROP
   accentColor = "#7c3aed",
 }) {
   const sA = ls[`${match.id}_A`] ?? (match.scoreA || "");
@@ -53,9 +54,31 @@ export default function MatchCard({
         <span>
           {match.bracket === "winners"
             ? "⚡ Cuadro Principal"
-            : "🥈 Consolación"}
+            : match.bracket === "consolation"
+              ? "🥈 Consolación"
+              : "⚽ Fase de Grupos"}
         </span>
-        {match.saved && <span style={{ color: "#4ade80" }}>✅ Guardado</span>}
+        {match.saved && (
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <span style={{ color: "#4ade80" }}>✅ Guardado</span>
+            {isAdmin && onEdit && (
+              <button
+                onClick={() => onEdit(match.id)}
+                style={{
+                  fontSize: 12,
+                  color: "#f87171",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                  fontWeight: 700,
+                }}
+              >
+                Editar
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div
@@ -66,14 +89,12 @@ export default function MatchCard({
           gap: 8,
         }}
       >
-        {/* Pareja A */}
         <div style={{ flex: 1, textAlign: "right" }}>
           <div style={{ fontWeight: 700, color: "#f1f5f9" }}>
             {match.pairA ? `${match.pairA.p1} / ${match.pairA.p2}` : "TBD"}
           </div>
         </div>
 
-        {/* Score */}
         <div
           style={{
             display: "flex",
@@ -88,6 +109,10 @@ export default function MatchCard({
             <>
               <input
                 type="number"
+                min="0"
+                onKeyDown={(e) =>
+                  ["-", "e", ".", ","].includes(e.key) && e.preventDefault()
+                }
                 value={sA}
                 onChange={(e) =>
                   setLs((p) => ({ ...p, [`${match.id}_A`]: e.target.value }))
@@ -97,6 +122,10 @@ export default function MatchCard({
               <span style={{ color: "#64748b", fontWeight: 700 }}>–</span>
               <input
                 type="number"
+                min="0"
+                onKeyDown={(e) =>
+                  ["-", "e", ".", ","].includes(e.key) && e.preventDefault()
+                }
                 value={sB}
                 onChange={(e) =>
                   setLs((p) => ({ ...p, [`${match.id}_B`]: e.target.value }))
@@ -117,7 +146,6 @@ export default function MatchCard({
           )}
         </div>
 
-        {/* Pareja B */}
         <div style={{ flex: 1, textAlign: "left" }}>
           <div style={{ fontWeight: 700, color: "#f1f5f9" }}>
             {match.pairB ? `${match.pairB.p1} / ${match.pairB.p2}` : "TBD"}

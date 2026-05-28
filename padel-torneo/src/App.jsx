@@ -48,7 +48,8 @@ export default function App() {
 
   if (screen === "setup") {
     if (t.type === "americano") return <SetupAmericano {...props} />;
-    return <SetupPairs {...props} />;
+    // 👇 Agrega typeInfo={typeInfo} aquí
+    return <SetupPairs {...props} typeInfo={typeInfo} />;
   }
 
   // ── Play ──────────────────────────────────────────────────────

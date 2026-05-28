@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { B } from "../../logic/constants";
+import { B, TOURNAMENT_RULES } from "../../logic/constants";
 import { buildPozoRound } from "../../logic/pozo";
 import { THeader, Tabs } from "../shared/Components";
 import PairStandings from "../shared/PairStandings";
@@ -71,6 +71,14 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode }) {
     await persist({ ...t, currentPozoRound: updated });
   }
 
+  // 👇 NUESTRA NUEVA FUNCIÓN PARA EDITAR
+  async function onEditCourt(ci) {
+    const updated = t.currentPozoRound.map((c, i) =>
+      i === ci ? { ...c, saved: false, scoreA: "", scoreB: "" } : c,
+    );
+    await persist({ ...t, currentPozoRound: updated });
+  }
+
   async function onNextRound() {
     if (!t.currentPozoRound.every((c) => c.saved)) return;
     let updatedPairs = [...t.pairs];
@@ -123,6 +131,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode }) {
 
   const allSaved = t.currentPozoRound?.every((c) => c.saved);
 
+  // A PARTIR DE AQUÍ EMPIEZA EL "JSX" (Lo visual de la pantalla)
   return (
     <div style={{ paddingBottom: 80 }}>
       <THeader
@@ -138,6 +147,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode }) {
             ["courts", "⚔️ Pistas"],
             ["standings", "🏆 Clasificación"],
             ["history", "📜 Historial"],
+            ["rules", "📖 Reglas"], // 👇 AÑADIMOS LA PESTAÑA REGLAS AQUÍ
           ]}
           active={tab}
           setActive={setTab}
@@ -318,8 +328,33 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode }) {
                       {!isTop && (
                         <span style={{ color: "#38bdf8" }}>↑ Ganador sube</span>
                       )}
+                      {/* 👇 AQUÍ REEMPLAZAMOS EL CHECK POR EL BLOQUE CON EL BOTÓN EDITAR */}
                       {court.saved && (
-                        <span style={{ color: "#4ade80" }}>✅ Guardado</span>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "12px",
+                          }}
+                        >
+                          <span style={{ color: "#4ade80" }}>✅ Guardado</span>
+                          {isAdmin && (
+                            <button
+                              onClick={() => onEditCourt(ci)}
+                              style={{
+                                fontSize: 12,
+                                color: "#f87171",
+                                background: "none",
+                                border: "none",
+                                cursor: "pointer",
+                                textDecoration: "underline",
+                                fontWeight: 700,
+                              }}
+                            >
+                              Editar
+                            </button>
+                          )}
+                        </div>
                       )}
                     </span>
                   </div>
@@ -371,6 +406,11 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode }) {
                         <>
                           <input
                             type="number"
+                            min="0"
+                            onKeyDown={(e) =>
+                              ["-", "e", ".", ","].includes(e.key) &&
+                              e.preventDefault()
+                            }
                             value={sA}
                             onChange={(e) =>
                               setLs((p) => ({
@@ -385,6 +425,11 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode }) {
                           </span>
                           <input
                             type="number"
+                            min="0"
+                            onKeyDown={(e) =>
+                              ["-", "e", ".", ","].includes(e.key) &&
+                              e.preventDefault()
+                            }
                             value={sB}
                             onChange={(e) =>
                               setLs((p) => ({
@@ -587,6 +632,37 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode }) {
                 </div>
               ))
             )}
+          </div>
+        )}
+
+        {/* 👇 AÑADIMOS EL BLOQUE VISUAL DE LAS REGLAS */}
+        {tab === "rules" && (
+          <div style={{ background: "#1e293b", padding: 20, borderRadius: 12 }}>
+            <h3
+              style={{
+                fontSize: 18,
+                fontWeight: 800,
+                color: "#38bdf8",
+                marginBottom: 16,
+              }}
+            >
+              Reglas de El Pozo
+            </h3>
+            <ul
+              style={{
+                color: "#cbd5e1",
+                fontSize: 14,
+                lineHeight: "1.6",
+                paddingLeft: 20,
+                listStyleType: "disc",
+              }}
+            >
+              {TOURNAMENT_RULES.pozo.map((rule, i) => (
+                <li key={i} style={{ marginBottom: 10 }}>
+                  {rule}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>

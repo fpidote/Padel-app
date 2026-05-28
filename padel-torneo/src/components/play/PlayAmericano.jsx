@@ -4,6 +4,7 @@ import { pk } from "../../logic/utils";
 import { buildRoundAmericano } from "../../logic/americano";
 import { THeader, Tabs, PName, PTag } from "../shared/Components";
 import History from "../shared/History";
+import { TOURNAMENT_RULES } from "../../logic/constants";
 
 export default function PlayAmericano({ t, code, isAdmin, persist, copyCode }) {
   const [tab, setTab] = useState("courts");
@@ -25,6 +26,13 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode }) {
       delete n[`${ci}_B`];
       return n;
     });
+    await persist({ ...t, currentRound: cr });
+  }
+
+  async function onEdit(ci) {
+    const cr = t.currentRound.map((c, i) =>
+      i === ci ? { ...c, saved: false, scoreA: "", scoreB: "" } : c,
+    );
     await persist({ ...t, currentRound: cr });
   }
 
@@ -86,7 +94,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode }) {
         code={code}
         isAdmin={isAdmin}
         copyCode={copyCode}
-        subtitle={`Ronda ${t.roundNum} de ${t.config.rounds}`}
+        subtitle={`Ronda ${t.roundNum} de ${t.config.rounds || "∞"}`}
       />
       <div style={{ padding: 16 }}>
         <Tabs
@@ -94,6 +102,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode }) {
             ["courts", "⚔️ Pistas"],
             ["standings", "🏆 Posiciones"],
             ["history", "📜 Historial"],
+            ["rules", "📖 Reglas"],
           ]}
           active={tab}
           setActive={setTab}
@@ -109,18 +118,57 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode }) {
             allSaved={allSaved}
             onSave={onSave}
             onNext={onNext}
+            onEdit={onEdit}
           />
         )}
         {tab === "standings" && (
           <StandingsAmericano rows={standings} roundNum={t.roundNum} />
         )}
         {tab === "history" && <History rounds={t.rounds} />}
+        {tab === "rules" && (
+          <div style={{ background: "#1e293b", padding: 20, borderRadius: 12 }}>
+            <h3
+              style={{
+                fontSize: 18,
+                fontWeight: 800,
+                color: "#38bdf8",
+                marginBottom: 16,
+              }}
+            >
+              Reglas del Torneo Americano
+            </h3>
+            <ul
+              style={{
+                color: "#cbd5e1",
+                fontSize: 14,
+                lineHeight: "1.6",
+                paddingLeft: 20,
+                listStyleType: "disc",
+              }}
+            >
+              {TOURNAMENT_RULES.americano.map((rule, i) => (
+                <li key={i} style={{ marginBottom: 10 }}>
+                  {rule}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext }) {
+function CourtsAmericano({
+  t,
+  isAdmin,
+  ls,
+  setLs,
+  allSaved,
+  onSave,
+  onNext,
+  onEdit,
+}) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {t.sittingOut?.length > 0 && (
@@ -209,8 +257,29 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext }) {
                   </span>
                 )}
               </span>
+
               {court.saved && (
-                <span style={{ color: "#4ade80" }}>✅ Guardado</span>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "12px" }}
+                >
+                  <span style={{ color: "#4ade80" }}>✅ Guardado</span>
+                  {isAdmin && (
+                    <button
+                      onClick={() => onEdit(ci)}
+                      style={{
+                        fontSize: 12,
+                        color: "#f87171",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                        fontWeight: 700,
+                      }}
+                    >
+                      Editar
+                    </button>
+                  )}
+                </div>
               )}
             </div>
 
@@ -255,15 +324,21 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext }) {
                   <>
                     <input
                       type="number"
+                      min="0"
+                      onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
                       value={sA}
                       onChange={(e) =>
                         setLs((p) => ({ ...p, [`${ci}_A`]: e.target.value }))
                       }
                       style={iStyle(!isNaN(a) && !isNaN(b) && a > b)}
                     />
-                    <span style={{ color: "#64748b", fontWeight: 700 }}>-</span>
+                    <span style={{ color: "#64748b", fontWeight: 700 }}>
+                      -
+                    </span>
                     <input
                       type="number"
+                      min="0"
+                      onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
                       value={sB}
                       onChange={(e) =>
                         setLs((p) => ({ ...p, [`${ci}_B`]: e.target.value }))
