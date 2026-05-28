@@ -198,27 +198,6 @@ export default function PlayMundialito({
     groupsWithRounds.length > 0 &&
     groupsWithRounds.every((g) => g.matches.every((m) => m.saved));
 
-  // 👇 LÓGICA PARA AVANZAR RONDA POR RONDA EN LA FASE DE GRUPOS
-  const groupRoundNum = t.groupRoundNum || 1;
-  const maxGroupRound =
-    groupsWithRounds.length > 0
-      ? Math.max(
-          1,
-          ...groupsWithRounds.flatMap((g) => g.matches.map((m) => m.round)),
-        )
-      : 1;
-
-  const currentRoundMatches = groupsWithRounds.flatMap((g) =>
-    g.matches.filter((m) => m.round === groupRoundNum),
-  );
-  const currentRoundAllSaved =
-    currentRoundMatches.length > 0 && currentRoundMatches.every((m) => m.saved);
-
-  async function onNextGroupRound() {
-    if (!currentRoundAllSaved) return;
-    await persist({ ...t, groupRoundNum: groupRoundNum + 1 });
-  }
-
   async function onStartKnockout() {
     if (!allGroupsDone) return;
     const bracket = buildKnockoutFromGroups(
@@ -474,65 +453,28 @@ export default function PlayMundialito({
                   {/* PARTIDOS AGRUPADOS POR RONDA */}
                   {Array.from(new Set(group.matches.map((m) => m.round)))
                     .sort((a, b) => a - b)
-                    .filter((roundNum) => roundNum <= groupRoundNum) // 👈 Solo mostramos hasta la ronda activa
                     .map((roundNum) => (
-                      <div key={roundNum} style={{ marginBottom: 20 }}>
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: "#94a3b8",
-                            fontWeight: 800,
-                            marginBottom: 10,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
-                            borderBottom: "1px solid #334155",
-                            paddingBottom: 4,
-                          }}
-                        >
-                          Ronda {roundNum}
-                        </div>
-
-                        {group.matches
-                          .filter((m) => m.round === roundNum)
-                          .map((match) => (
-                            <MatchCard
-                              key={match.id}
-                              match={match}
-                              isAdmin={isAdmin}
-                              ls={ls}
-                              setLs={setLs}
-                              onSave={(matchId, a, b, sets) =>
-                                onSaveGroupMatch(group.id, matchId, a, b, sets)
-                              }
-                              onEdit={(matchId) =>
-                                onEditGroupMatch(group.id, matchId)
-                              }
-                              accentColor="#059669"
-                              scoringFormat={t.config?.scoringFormat || "games"}
-                            />
-                          ))}
-                      </div>
+                      <RoundAccordion
+                        key={roundNum}
+                        roundNum={roundNum}
+                        matches={group.matches.filter(
+                          (m) => m.round === roundNum,
+                        )}
+                        isAdmin={isAdmin}
+                        ls={ls}
+                        setLs={setLs}
+                        onSave={(matchId, a, b, sets) =>
+                          onSaveGroupMatch(group.id, matchId, a, b, sets)
+                        }
+                        onEdit={(matchId) =>
+                          onEditGroupMatch(group.id, matchId)
+                        }
+                        scoringFormat={t.config?.scoringFormat || "games"}
+                      />
                     ))}
                 </div>
               </div>
             ))}
-
-            {/* 👇 BOTÓN PARA HABILITAR LA SIGUIENTE RONDA */}
-            {groupRoundNum < maxGroupRound &&
-              t.phase === "groups" &&
-              isAdmin &&
-              currentRoundAllSaved && (
-                <button
-                  onClick={onNextGroupRound}
-                  style={B("#0284c7", {
-                    width: "100%",
-                    padding: 16,
-                    fontSize: 16,
-                  })}
-                >
-                  Siguiente Ronda de Grupos ({groupRoundNum + 1}) ➔
-                </button>
-              )}
 
             {allGroupsDone && t.phase === "groups" && isAdmin && (
               <button
@@ -555,7 +497,7 @@ export default function PlayMundialito({
                   fontSize: 14,
                 }}
               >
-                👀 Modo vista · Esperando resultados de la Ronda {groupRoundNum}
+                👀 Modo vista · Esperando resultados de la fase de grupos
               </div>
             )}
           </>
@@ -769,6 +711,76 @@ export default function PlayMundialito({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// 👇 NUEVO COMPONENTE PARA EL DESPLEGABLE DE CADA RONDA
+function RoundAccordion({
+  roundNum,
+  matches,
+  isAdmin,
+  ls,
+  setLs,
+  onSave,
+  onEdit,
+  scoringFormat,
+}) {
+  // El acordeón se abre por defecto si hay partidos sin guardar o si es la Ronda 1
+  const hasUnsaved = matches.some((m) => !m.saved);
+  const [isOpen, setIsOpen] = useState(hasUnsaved || roundNum === 1);
+
+  return (
+    <div
+      style={{
+        marginBottom: 16,
+        background: "#0f172a",
+        borderRadius: 8,
+        overflow: "hidden",
+        border: "1px solid #334155",
+      }}
+    >
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          padding: "12px 16px",
+          background: "#1e293b",
+          cursor: "pointer",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          fontWeight: 800,
+          color: hasUnsaved ? "#38bdf8" : "#4ade80",
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+          fontSize: 13,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span>Ronda {roundNum}</span>
+          {!hasUnsaved && <span style={{ fontSize: 16 }}>✓</span>}
+        </div>
+        <span style={{ color: "#64748b", fontSize: 12 }}>
+          {isOpen ? "▲ OCULTAR" : "▼ VER PARTIDOS"}
+        </span>
+      </div>
+      {isOpen && (
+        <div style={{ padding: 16 }}>
+          {matches.map((match) => (
+            <MatchCard
+              key={match.id}
+              match={match}
+              isAdmin={isAdmin}
+              ls={ls}
+              setLs={setLs}
+              onSave={(matchId, a, b, sets) => onSave(matchId, a, b, sets)}
+              onEdit={(matchId) => onEdit(matchId)}
+              accentColor="#059669"
+              scoringFormat={scoringFormat}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
