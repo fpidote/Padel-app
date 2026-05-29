@@ -1,17 +1,46 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db, googleProvider } from "./firebase";
-import { B, TOURNAMENT_TYPES } from "./logic/constants.js";
+import { TOURNAMENT_TYPES } from "./logic/constants.js";
 import { genCode } from "./logic/utils.js";
 import { buildInitialTournament } from "./logic/initTournament.js";
+
+const BENEFITS = [
+  {
+    icon: "📊",
+    title: "Resultados en vivo",
+    desc: "La clasificación se actualiza sola al cargar un resultado",
+  },
+  {
+    icon: "💬",
+    title: "Comparte por WhatsApp",
+    desc: "Un link y todos siguen el torneo desde su móvil",
+  },
+  {
+    icon: "🔓",
+    title: "Sin apps, sin cuentas",
+    desc: "Los jugadores entran directo con el link, sin registrarse",
+  },
+];
 
 export default function Home() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [creating, setCreating] = useState(false);
   const [joinVal, setJoinVal] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     return onAuthStateChanged(auth, setUser);
@@ -44,6 +73,35 @@ export default function Home() {
     }
   }
 
+  async function handleFormatClick(type) {
+    try {
+      if (!auth.currentUser) {
+        await signInWithPopup(auth, googleProvider);
+      }
+      await onCreate(type);
+    } catch (err) {
+      if (err.code !== "auth/popup-closed-by-user") {
+        console.error(err);
+        alert("No se pudo iniciar sesión con Google.");
+      }
+    }
+  }
+
+  async function handleCtaClick() {
+    if (!user) {
+      try {
+        await signInWithPopup(auth, googleProvider);
+        document.getElementById("formats")?.scrollIntoView({ behavior: "smooth" });
+      } catch (err) {
+        if (err.code !== "auth/popup-closed-by-user") {
+          alert("No se pudo iniciar sesión con Google.");
+        }
+      }
+    } else {
+      document.getElementById("formats")?.scrollIntoView({ behavior: "smooth" });
+    }
+  }
+
   async function onJoin() {
     try {
       const code = joinVal.trim().toUpperCase();
@@ -61,264 +119,227 @@ export default function Home() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-        fontFamily: "system-ui",
-        background: "#0f172a",
-        color: "#f1f5f9",
-      }}
-    >
-      <div style={{ textAlign: "center", marginBottom: 32 }}>
-        <div style={{ fontSize: 64, marginBottom: 12 }}>🏓</div>
-        <h1
-          style={{
-            fontSize: 28,
-            fontWeight: 900,
-            color: "#38bdf8",
-            marginBottom: 8,
-          }}
-        >
-          Pádel Torneo
-        </h1>
-        <p style={{ color: "#64748b", fontSize: 14 }}>
-          Organizá y seguí tu torneo en tiempo real
-        </p>
-      </div>
+    <div className="min-h-screen bg-[#111827] text-gray-50" style={{ fontFamily: "system-ui" }}>
 
-      {!creating ? (
-        <div
-          style={{
-            width: "100%",
-            maxWidth: 380,
-            display: "flex",
-            flexDirection: "column",
-            gap: 12,
-          }}
-        >
-          {user ? (
-            <>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  background: "#1e293b",
-                  borderRadius: 10,
-                  padding: "8px 12px",
-                }}
+      {/* ── Header fijo ── */}
+      <header className="sticky top-0 z-10 w-full bg-[#111827]/90 backdrop-blur-sm border-b border-gray-800">
+        <div className="w-full max-w-lg mx-auto px-6 py-4 flex items-center justify-between">
+          <span className="text-xl font-black text-lime-500 tracking-tight">Padeldesk</span>
+
+          {user && (
+            <div className="relative" ref={menuRef}>
+              {/* Trigger */}
+              <button
+                onClick={() => setMenuOpen((o) => !o)}
+                className="flex items-center gap-2 cursor-pointer"
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: "50%",
-                      background: "#0284c7",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: "#fff",
-                      flexShrink: 0,
-                      position: "relative",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {user.displayName?.[0]?.toUpperCase() ?? "?"}
-                    {user.photoURL && (
-                      <img
-                        src={user.photoURL}
-                        alt=""
-                        onError={(e) => (e.currentTarget.style.display = "none")}
-                        style={{
-                          position: "absolute",
-                          inset: 0,
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                        }}
-                      />
-                    )}
-                  </div>
-                  <span style={{ fontSize: 13, color: "#cbd5e1" }}>
-                    {user.displayName}
-                  </span>
+                <div className="w-7 h-7 rounded-full bg-lime-500/20 border border-lime-500/30 flex items-center justify-center text-xs font-bold text-lime-400 relative overflow-hidden shrink-0">
+                  {user.displayName?.[0]?.toUpperCase() ?? "?"}
+                  {user.photoURL && (
+                    <img
+                      src={user.photoURL}
+                      alt=""
+                      onError={(e) => (e.currentTarget.style.display = "none")}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  )}
                 </div>
-                <button
-                  onClick={() => signOut(auth)}
+                <span className="text-gray-400 text-xs truncate max-w-[100px]">
+                  {user.displayName}
+                </span>
+                <span className="text-gray-500 text-xs leading-none">▾</span>
+              </button>
+
+              {/* Dropdown */}
+              {menuOpen && (
+                <div
                   style={{
-                    background: "none",
-                    border: "none",
-                    color: "#64748b",
-                    fontSize: 12,
-                    cursor: "pointer",
-                    padding: "2px 6px",
+                    position: "absolute",
+                    top: "calc(100% + 8px)",
+                    right: 0,
+                    background: "#1f2937",
+                    border: "1px solid #374151",
+                    borderRadius: 12,
+                    minWidth: 180,
+                    zIndex: 50,
+                    overflow: "hidden",
                   }}
                 >
-                  Salir
-                </button>
-              </div>
-              <button
-                onClick={() => setCreating(true)}
-                style={B("#0284c7", {
-                  padding: 16,
-                  fontSize: 16,
-                  borderRadius: 12,
-                  width: "100%",
-                })}
-              >
-                ➕ Crear nuevo torneo
-              </button>
-              <button
-                onClick={() => navigate("/panel")}
-                style={B("#1e40af", {
-                  padding: 12,
-                  fontSize: 14,
-                  borderRadius: 12,
-                  width: "100%",
-                })}
-              >
-                📋 Mis torneos
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={onGoogleSignIn}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 10,
-                background: "#fff",
-                color: "#1e293b",
-                border: "none",
-                borderRadius: 12,
-                padding: 16,
-                fontSize: 15,
-                fontWeight: 700,
-                cursor: "pointer",
-                width: "100%",
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 48 48">
-                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-              </svg>
-              Entrar con Google
-            </button>
+                  {[
+                    { icon: "📋", label: "Mis torneos", action: () => { setMenuOpen(false); navigate("/panel"); } },
+                    { icon: "👤", label: "Mi perfil", action: () => { setMenuOpen(false); navigate("/perfil"); } },
+                  ].map((item) => (
+                    <button
+                      key={item.label}
+                      onClick={item.action}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        width: "100%",
+                        padding: "10px 16px",
+                        background: "transparent",
+                        border: "none",
+                        color: "#f9fafb",
+                        fontSize: 14,
+                        cursor: "pointer",
+                        textAlign: "left",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "#374151")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                    >
+                      <span>{item.icon}</span>
+                      {item.label}
+                    </button>
+                  ))}
+                  <div style={{ borderTop: "1px solid #374151", margin: "4px 0" }} />
+                  <button
+                    onClick={() => { setMenuOpen(false); signOut(auth); }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      width: "100%",
+                      padding: "10px 16px",
+                      background: "transparent",
+                      border: "none",
+                      color: "#f9fafb",
+                      fontSize: 14,
+                      cursor: "pointer",
+                      textAlign: "left",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#374151")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <span>🚪</span>
+                    Salir
+                  </button>
+                </div>
+              )}
+            </div>
           )}
-
-          <div style={{ color: "#64748b", textAlign: "center", fontSize: 13 }}>
-            — o unirte a uno existente —
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <input
-              value={joinVal}
-              onChange={(e) => setJoinVal(e.target.value.toUpperCase())}
-              onKeyDown={(e) => e.key === "Enter" && onJoin()}
-              maxLength={6}
-              placeholder="Código"
-              style={{
-                flex: 1,
-                background: "#1e293b",
-                border: "1px solid #334155",
-                borderRadius: 10,
-                color: "#f1f5f9",
-                padding: "10px 0",
-                fontSize: 20,
-                letterSpacing: 6,
-                textAlign: "center",
-                outline: "none",
-              }}
-            />
-            <button
-              onClick={onJoin}
-              style={B("#0284c7", { padding: "10px 16px", borderRadius: 10 })}
-            >
-              Unirse
-            </button>
-          </div>
         </div>
-      ) : (
-        <div style={{ width: "100%", maxWidth: 480 }}>
-          <div
-            style={{
-              textAlign: "center",
-              color: "#94a3b8",
-              fontSize: 14,
-              marginBottom: 16,
-            }}
-          >
-            Elegí el formato del torneo
+      </header>
+
+      <main className="w-full max-w-lg mx-auto px-6 pb-12">
+
+        {/* ── Hero ── */}
+        <section className="pt-10 pb-8 text-center">
+          <div className="inline-flex items-center gap-1.5 bg-green-900/60 text-lime-400 border border-green-800 text-xs font-semibold px-3 py-1.5 rounded-full mb-6 select-none">
+            ✅ 100% gratis · ⚡ Tiempo real
           </div>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 12,
-            }}
+
+          <h1 className="text-3xl font-black leading-tight mb-4 text-gray-50">
+            Organiza. Comparte. Juega.
+          </h1>
+
+          <p className="text-gray-400 text-sm leading-relaxed mb-8 max-w-xs mx-auto">
+            Monta tu torneo en 2 minutos, comparte el link y que empiece el juego.
+          </p>
+
+          <button
+            onClick={handleCtaClick}
+            className="w-full bg-lime-500 hover:bg-lime-400 text-green-950 font-black py-4 rounded-2xl text-base transition-colors cursor-pointer shadow-lg shadow-lime-500/20"
           >
+            + Crear torneo gratis
+          </button>
+        </section>
+
+        {/* ── Divider ── */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex-1 h-px bg-gray-800" />
+          <span className="text-gray-500 text-xs">o únete con un código</span>
+          <div className="flex-1 h-px bg-gray-800" />
+        </div>
+
+        {/* ── Join ── */}
+        <div className="flex gap-2 mb-10">
+          <input
+            value={joinVal}
+            onChange={(e) => setJoinVal(e.target.value.toUpperCase())}
+            onKeyDown={(e) => e.key === "Enter" && onJoin()}
+            maxLength={6}
+            placeholder="CÓDIGO"
+            className="flex-1 min-w-0 bg-[#1f2937] border border-gray-700 focus:border-lime-600 rounded-xl text-gray-50 text-xl font-bold tracking-[0.35em] text-center py-3 outline-none transition-colors placeholder:text-gray-600 placeholder:tracking-widest placeholder:text-sm placeholder:font-normal"
+          />
+          <button
+            onClick={onJoin}
+            className="bg-gray-700 hover:bg-gray-600 text-gray-50 font-bold px-5 py-3 rounded-xl transition-colors cursor-pointer shrink-0"
+          >
+            Unirse
+          </button>
+        </div>
+
+        {/* ── Formatos ── */}
+        <section id="formats" className="mb-10">
+          <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-3">
+            Elige tu formato
+          </p>
+          <div className="flex flex-col gap-2">
             {TOURNAMENT_TYPES.map((tt) => (
               <button
                 key={tt.id}
-                onClick={() => onCreate(tt.id)}
+                onClick={() => handleFormatClick(tt.id)}
+                className="w-full flex items-center gap-3 p-4 rounded-xl text-left transition-all duration-150 cursor-pointer active:scale-95"
                 style={{
-                  background: "#1e293b",
-                  border: `2px solid ${tt.color}44`,
-                  borderRadius: 14,
-                  padding: "18px 12px",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  transition: "border-color .2s",
+                  background: tt.color + "14",
+                  border: "1px solid " + tt.color + "40",
+                  borderLeft: "4px solid " + tt.color,
                 }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.borderColor = tt.color)
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.borderColor = `${tt.color}44`)
-                }
               >
-                <div style={{ fontSize: 32, marginBottom: 6 }}>{tt.icon}</div>
-                <div
-                  style={{
-                    fontWeight: 800,
-                    color: "#f1f5f9",
-                    fontSize: 15,
-                    marginBottom: 4,
-                  }}
-                >
-                  {tt.name}
+                <span className="text-2xl flex-shrink-0">{tt.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-sm" style={{ color: tt.color }}>
+                    {tt.name}
+                  </div>
+                  <div className="text-gray-400 text-xs mt-0.5">
+                    {tt.desc}
+                  </div>
                 </div>
-                <div
-                  style={{ fontSize: 11, color: "#64748b", lineHeight: 1.4 }}
+                <span
+                  className="text-xl shrink-0 leading-none"
+                  style={{ color: tt.color, opacity: 0.5 }}
                 >
-                  {tt.desc}
-                </div>
+                  ›
+                </span>
               </button>
             ))}
           </div>
-          <button
-            onClick={() => setCreating(false)}
-            style={{
-              ...B("#334155"),
-              width: "100%",
-              marginTop: 12,
-              padding: 10,
-            }}
-          >
-            ← Volver
-          </button>
-        </div>
-      )}
+        </section>
+
+        {/* ── Beneficios ── */}
+        <section className="border-t border-gray-800 pt-8 mb-10">
+          <div className="flex flex-col gap-5">
+            {BENEFITS.map((b) => (
+              <div key={b.title} className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-lg bg-[#14532d] flex items-center justify-center shrink-0 text-xl leading-none">
+                  {b.icon}
+                </div>
+                <div>
+                  <div className="text-gray-50 text-sm font-semibold">{b.title}</div>
+                  <div className="text-gray-400 text-xs mt-0.5 leading-relaxed">{b.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Footer ── */}
+        <footer className="text-center border-t border-gray-800 pt-6">
+          <p className="text-gray-500 text-xs mb-3">
+            Al crear necesitas iniciar sesión con Google
+          </p>
+          <div className="flex items-center justify-center gap-3 text-xs text-gray-600">
+            <a href="#" className="hover:text-gray-400 transition-colors">
+              Política de privacidad
+            </a>
+            <span>·</span>
+            <a href="#" className="hover:text-gray-400 transition-colors">
+              Contacto
+            </a>
+          </div>
+        </footer>
+      </main>
     </div>
   );
 }

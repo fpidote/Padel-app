@@ -10,6 +10,7 @@ export default function App() {
       <Route path="/" element={<Home />} />
       <Route path="/torneo/:code" element={<TournamentPage />} />
       <Route path="/panel" element={<Panel />} />
+      <Route path="/perfil" element={<div>Perfil próximamente</div>} />
     </Routes>
   );
 }
