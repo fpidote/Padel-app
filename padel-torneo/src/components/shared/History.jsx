@@ -1,72 +1,93 @@
-// src/components/shared/History.jsx
-export default function History({ rounds }) {
-  if (!rounds?.length)
-    return (
-      <div style={{ padding: 20, textAlign: "center", color: "#94a3b8" }}>
-        Aún no hay rondas completadas.
-      </div>
-    );
+export default function History({ rounds, matchesSearch }) {
+  const filterCourt = matchesSearch ?? (() => true);
+  if (!rounds?.length) return (
+    <div className="text-center text-gray-600 py-8 text-sm">
+      Aún no hay rondas completadas
+    </div>
+  );
+
+  function renderNames(pair) {
+    if (!pair) return [];
+    if (Array.isArray(pair)) return pair.map(p => p.name || `${p.p1} / ${p.p2}`);
+    return [`${pair.p1}`, `${pair.p2}`];
+  }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {[...rounds].reverse().map((r) => (
-        <div
-          key={r.num}
-          style={{ background: "#1e293b", padding: 12, borderRadius: 8 }}
-        >
-          <div style={{ fontWeight: 700, color: "#38bdf8", marginBottom: 8 }}>
-            Ronda {r.num}
-          </div>
-          {r.courts.map((c, i) => {
-            const a = parseInt(c.scoreA),
-              b = parseInt(c.scoreB);
-            const aw = a > b;
-            return (
-              <div
-                key={i}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: 13,
-                  padding: "4px 0",
-                  borderBottom: "1px solid #334155",
-                }}
-              >
-                <span style={{ color: "#94a3b8" }}>Pista {i + 1} · </span>
-                <span
-                  style={{
-                    fontWeight: aw ? 700 : 400,
-                    color: aw ? "#4ade80" : "#cbd5e1",
-                  }}
-                >
-                  {Array.isArray(c.pairA)
-                    ? c.pairA.map((p) => p.name).join(" & ")
-                    : `${c.pairA?.p1} / ${c.pairA?.p2}`}
+    <div className="space-y-3">
+      {rounds.map((round, ri) => {
+        const sitting = round.sittingOut || [];
+        const visibleCourts = (round.courts || [])
+          .map((court, idx) => ({ court, idx }))
+          .filter(({ court }) => filterCourt(court));
+        if (!visibleCourts.length && matchesSearch) return null;
+        return (
+          <div key={ri} className="bg-[#1f2937] rounded-2xl border border-gray-700 overflow-hidden">
+
+            {/* Header de ronda */}
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-700">
+              <span className="text-xs font-bold text-sky-400 tracking-widest">
+                RONDA {round.num || ri + 1}
+              </span>
+              {sitting.length > 0 && (
+                <span className="text-xs text-gray-500">
+                  ⏳ Descansó: {sitting.map(p => p.name || p.p1).join(', ')}
                 </span>
-                <span style={{ fontWeight: 800, margin: "0 8px" }}>
-                  {c.scoreA}–{c.scoreB}
-                </span>
-                <span
-                  style={{
-                    fontWeight: !isNaN(a) && !aw && a !== b ? 700 : 400,
-                    color: !isNaN(a) && !aw && a !== b ? "#4ade80" : "#cbd5e1",
-                  }}
-                >
-                  {Array.isArray(c.pairB)
-                    ? c.pairB.map((p) => p.name).join(" & ")
-                    : `${c.pairB?.p1} / ${c.pairB?.p2}`}
-                </span>
-              </div>
-            );
-          })}
-          {r.sittingOut?.length > 0 && (
-            <div style={{ fontSize: 12, color: "#fbbf24", marginTop: 8 }}>
-              ⏳ Descansaron:{" "}
-              {r.sittingOut.map((p) => p.name || `${p.p1}/${p.p2}`).join(", ")}
+              )}
             </div>
-          )}
-        </div>
-      ))}
+
+            {/* Partidos */}
+            {visibleCourts.map(({ court, idx }) => {
+              const scoreA = parseInt(court.scoreA);
+              const scoreB = parseInt(court.scoreB);
+              const aWon = scoreA > scoreB;
+              const namesA = renderNames(court.pairA);
+              const namesB = renderNames(court.pairB);
+
+              return (
+                <div key={idx}
+                  className="grid items-center px-4 py-3 border-t border-gray-800 first:border-0"
+                  style={{ gridTemplateColumns: '1fr auto 1fr', gap: '10px' }}>
+
+                  {/* Equipo A */}
+                  <div className="flex flex-col items-end text-right">
+                    {namesA.map((name, i) => (
+                      <span key={i} className={`text-sm leading-snug font-bold ${aWon ? 'text-green-400' : 'text-gray-500'}`}>
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Score badge con label de pista */}
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-xs font-bold text-gray-600 tracking-widest">
+                      PISTA {idx + 1}
+                    </span>
+                    <div className="flex items-center gap-1.5 bg-[#111827] border border-gray-700 rounded-lg px-3 py-1.5">
+                      <span className={`text-base font-black ${aWon ? 'text-green-400' : 'text-gray-500'}`}>
+                        {court.scoreA}
+                      </span>
+                      <span className="text-gray-700 font-black text-sm">—</span>
+                      <span className={`text-base font-black ${!aWon ? 'text-green-400' : 'text-gray-500'}`}>
+                        {court.scoreB}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Equipo B */}
+                  <div className="flex flex-col items-start text-left">
+                    {namesB.map((name, i) => (
+                      <span key={i} className={`text-sm leading-snug font-bold ${!aWon ? 'text-green-400' : 'text-gray-500'}`}>
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
     </div>
   );
 }

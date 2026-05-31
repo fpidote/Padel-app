@@ -9,26 +9,31 @@ export function buildInitialTournament(type, ownerUid) {
     config: {
       name: `Torneo ${TOURNAMENT_TYPES.find((x) => x.id === type).name}`,
       courts: 2,
+      scoringSystem: "timed",
+      matchMinutes: 10,
+      rallyPoints: 24,
+      targetGames: 6,
+      goldenPoint: true,
+      timedMetric: "games",
+      useLevels: false,
+      description: "",
+      datetime: null,
+      location: "",
     },
   };
 
   const inits = {
     americano: {
       ...base,
-      config: { ...base.config, courts: 3, mode: "individual" },
-      playerInputs: Array(12)
-        .fill(null)
-        .map((_, i) => ({ name: `Jugador ${i + 1}`, level: i % 2 === 0 ? 1 : 2 })),
-      pairInputs: Array(6)
-        .fill(null)
-        .map((_, i) => ({
-          id: i,
-          p1: `Jugador ${i * 2 + 1}`,
-          p2: `Jugador ${i * 2 + 2}`,
-          pts: 0,
-          gf: 0,
-          gc: 0,
-        })),
+      config: {
+        ...base.config,
+        courts: 3,
+        mode: "individual",
+        matchmaking: "americano",
+        maxRounds: null,
+      },
+      playerInputs: [],
+      pairInputs: [],
       players: [],
       pairs: [],
       rounds: [],
@@ -40,49 +45,21 @@ export function buildInitialTournament(type, ownerUid) {
     },
     relampago: {
       ...base,
-      pairInputs: Array(8)
-        .fill(null)
-        .map((_, i) => ({
-          id: i,
-          p1: `Jugador ${i * 2 + 1}`,
-          p2: `Jugador ${i * 2 + 2}`,
-          pts: 0,
-          gf: 0,
-          gc: 0,
-        })),
+      pairInputs: [],
       bracket: null,
       phase: "setup",
     },
     mundialito: {
       ...base,
       config: { ...base.config, groupCount: 2, advancePerGroup: 2 },
-      pairInputs: Array(8)
-        .fill(null)
-        .map((_, i) => ({
-          id: i,
-          p1: `Jugador ${i * 2 + 1}`,
-          p2: `Jugador ${i * 2 + 2}`,
-          pts: 0,
-          gf: 0,
-          gc: 0,
-        })),
+      pairInputs: [],
       groups: null,
       knockoutBracket: null,
       phase: "setup",
     },
     pozo: {
       ...base,
-      pairInputs: Array(8)
-        .fill(null)
-        .map((_, i) => ({
-          id: i,
-          p1: `Jugador ${i * 2 + 1}`,
-          p2: `Jugador ${i * 2 + 2}`,
-          pts: 0,
-          gf: 0,
-          gc: 0,
-          courtLevel: 0,
-        })),
+      pairInputs: [],
       pozoRounds: [],
       currentPozoRound: null,
       roundNum: 1,

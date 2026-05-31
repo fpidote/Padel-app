@@ -1,6 +1,10 @@
 // ── Americano Logic ──────────────────────────────────────────
 import { shuffle, pk } from "./utils";
 
+function levelPenalty(pair) {
+  return Math.abs((pair[0].level || 0) - (pair[1].level || 0));
+}
+
 function bestSplit(g, ph) {
   const opts = [
     [
@@ -20,10 +24,10 @@ function bestSplit(g, ph) {
     bs = Infinity;
   opts.forEach((s) => {
     const sc = s.reduce(
-      (acc, p) =>
+      (acc, pair) =>
         acc +
-        (ph[pk(p[0].id, p[1].id)] || 0) * 10 +
-        (p[0].level === p[1].level ? 5 : 0),
+        (ph[pk(pair[0].id, pair[1].id)] || 0) * 10 +
+        levelPenalty(pair) * 3,
       0,
     );
     if (sc < bs) {
@@ -58,17 +62,8 @@ export function buildFirstRoundAmericano(
       });
     }
   } else {
-    let l1 = shuffle(act.filter((p) => p.level === 1)),
-      l2 = shuffle(act.filter((p) => p.level === 2));
     for (let c = 0; c < courts; c++) {
-      const g = [];
-      g.push(...l1.splice(0, Math.min(2, l1.length)));
-      g.push(...l2.splice(0, Math.min(4 - g.length, l2.length)));
-      while (g.length < 4) {
-        if (l1.length) g.push(l1.shift());
-        else if (l2.length) g.push(l2.shift());
-        else break;
-      }
+      const g = act.slice(c * 4, c * 4 + 4);
       if (g.length === 4) {
         const [pA, pB] = bestSplit(g, {});
         cs.push({ pairA: pA, pairB: pB, scoreA: "", scoreB: "", saved: false });

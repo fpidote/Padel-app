@@ -1,82 +1,143 @@
-// ── Setup Americano ──────────────────────────────────────────
-// src/components/setup/SetupAmericano.jsx
 import { useState, useRef } from "react";
-import { B } from "../../logic/constants";
 import { buildFirstRoundAmericano } from "../../logic/americano";
+import { buildShareMessage } from "../../logic/utils";
 
-export default function SetupAmericano({
-  t,
-  code,
-  isAdmin,
-  persist,
-  copyCode,
-}) {
-  const [newName, setNewName] = useState("");
-  const [newLvl, setNewLvl] = useState(1);
-  const [newP1, setNewP1] = useState("");
-  const [newP2, setNewP2] = useState("");
-  const deb = useRef(null);
+const COLOR = "#0284c7";
 
-  const ds = (nt) => {
-    clearTimeout(deb.current);
-    deb.current = setTimeout(() => persist(nt), 700);
-  };
+const SCORING_OPTIONS = [
+  { id: "timed",  icon: "⏱️", name: "Por tiempo",    desc: "Se anota al terminar el tiempo" },
+  { id: "rally",  icon: "🎯", name: "Rally scoring",  desc: "Cada punto ganado cuenta" },
+  { id: "games",  icon: "🏆", name: "Por games",      desc: "Primero en llegar a X games" },
+];
 
+const LEVELS = [
+  { id: 0, label: "Sin definir",  short: "-", color: "#64748b" },
+  { id: 1, label: "Principiante", short: "P", color: "#94a3b8" },
+  { id: 2, label: "Intermedio",   short: "M", color: "#38bdf8" },
+  { id: 3, label: "Avanzado",     short: "A", color: "#84cc16" },
+];
+
+function SectionHeader({ children }) {
+  return (
+    <div className="flex items-center gap-3 mt-7 mb-4">
+      <span className="text-xs font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap">
+        {children}
+      </span>
+      <div className="flex-1 h-px bg-gray-800" />
+    </div>
+  );
+}
+
+export default function SetupAmericano({ t, code, isAdmin, persist, copyCode }) {
   const isPairs = t.config.mode === "pairs";
+
+  const [localName,     setLocalName]     = useState(t.config.name      || "");
+  const [localDesc,     setLocalDesc]     = useState(t.config.description || "");
+  const [localLocation, setLocalLocation] = useState(t.config.location  || "");
+  const [localDatetime, setLocalDatetime] = useState(t.config.datetime  || "");
+  const [newName,       setNewName]       = useState("");
+  const [newLvl,        setNewLvl]        = useState(0);
+  const [newP1,         setNewP1]         = useState("");
+  const [newP2,         setNewP2]         = useState("");
+  const [showAdvanced,  setShowAdvanced]  = useState(false);
+  const [copied,        setCopied]        = useState(false);
+  const [rallyCustom,   setRallyCustom]   = useState("");
+  const [gamesCustom,   setGamesCustom]   = useState("");
+  const [editingIdx,    setEditingIdx]    = useState(null);
+  const [editName,      setEditName]      = useState("");
+  const [editLvl,       setEditLvl]       = useState(0);
+  const [editP1,        setEditP1]        = useState("");
+  const [editP2,        setEditP2]        = useState("");
+
+  const debName     = useRef(null);
+  const debDesc     = useRef(null);
+  const debLocation = useRef(null);
+  const debDatetime = useRef(null);
+  const debRally    = useRef(null);
+  const debGames    = useRef(null);
+  const nameInputRef = useRef(null);
+  const p1InputRef   = useRef(null);
+  const p2InputRef   = useRef(null);
+
   const units = isPairs ? 2 : 4;
-  const act = t.config.courts * units;
-  const tot = isPairs ? t.pairInputs.length : t.playerInputs.length;
-  const sit = tot > act ? tot - act : 0,
-    need = tot < act ? act - tot : 0;
-  const sc = sit > 0 ? "#fbbf24" : need > 0 ? "#f87171" : "#4ade80";
-  const sm =
-    `${tot} ${isPairs ? "parejas" : "jugadores"} · ${t.config.courts} pistas · ${act} juegan` +
-    (sit > 0
-      ? ` · ⏳ ${sit} descansan`
-      : need > 0
-        ? ` · ⚠️ faltan ${need}`
-        : " · ✓");
+  const act   = t.config.courts * units;
+  const tot   = isPairs ? (t.pairInputs?.length ?? 0) : (t.playerInputs?.length ?? 0);
+  const sit   = Math.max(0, tot - act);
+  const need  = Math.max(0, act - tot);
+
+  const statusBg  = need > 0 ? "bg-red-400/10 border-red-400/20"    : sit > 0 ? "bg-yellow-400/10 border-yellow-400/20"    : "bg-green-400/10 border-green-400/20";
+  const statusTxt = need > 0 ? "text-red-400"                       : sit > 0 ? "text-yellow-400"                          : "text-green-400";
+  const statusMsg = `${tot} ${isPairs ? "parejas" : "jugadores"} · ${t.config.courts} pistas · ${Math.min(tot, act)} juegan` +
+    (sit > 0 ? ` · ⏳ ${sit} descansan` : need > 0 ? ` · ⚠️ faltan ${need}` : " · ✓ listo");
+
   const ok = isPairs
-    ? tot >= 2 && t.pairInputs.every((p) => p.p1.trim() && p.p2.trim())
-    : tot >= 4 && t.playerInputs.every((p) => p.name.trim().length > 0);
-  const n1 = t.playerInputs.filter((p) => p.level === 1).length;
-  const n2 = t.playerInputs.filter((p) => p.level === 2).length;
-  const inp = {
-    width: "100%",
-    background: "#1e293b",
-    border: "1px solid #334155",
-    borderRadius: 10,
-    color: "#f1f5f9",
-    padding: "10px 12px",
-    fontSize: 14,
-    outline: "none",
-  };
+    ? tot >= 2 && (t.pairInputs || []).every(p => p.p1.trim() && p.p2.trim())
+    : tot >= 4 && (t.playerInputs || []).every(p => p.name.trim().length > 0);
+
+  const scoring = t.config.scoringSystem || "timed";
+  const useLevels = !!t.config.useLevels;
+
+  function handleName(val) {
+    setLocalName(val);
+    clearTimeout(debName.current);
+    debName.current = setTimeout(() => persist({ ...t, config: { ...t.config, name: val } }), 600);
+  }
+  function handleDesc(val) {
+    setLocalDesc(val);
+    clearTimeout(debDesc.current);
+    debDesc.current = setTimeout(() => persist({ ...t, config: { ...t.config, description: val } }), 600);
+  }
+  function handleLocation(val) {
+    setLocalLocation(val);
+    clearTimeout(debLocation.current);
+    debLocation.current = setTimeout(() => persist({ ...t, config: { ...t.config, location: val } }), 600);
+  }
+  function handleDatetime(val) {
+    setLocalDatetime(val);
+    clearTimeout(debDatetime.current);
+    debDatetime.current = setTimeout(() => persist({ ...t, config: { ...t.config, datetime: val } }), 600);
+  }
+  function handleRallyCustom(val) {
+    setRallyCustom(val);
+    clearTimeout(debRally.current);
+    const num = parseInt(val);
+    if (!isNaN(num) && num > 0) {
+      debRally.current = setTimeout(() => persist({ ...t, config: { ...t.config, rallyPoints: num } }), 600);
+    }
+  }
+  function handleGamesCustom(val) {
+    setGamesCustom(val);
+    clearTimeout(debGames.current);
+    const num = parseInt(val);
+    if (!isNaN(num) && num > 0) {
+      debGames.current = setTimeout(() => persist({ ...t, config: { ...t.config, targetGames: num } }), 600);
+    }
+  }
+
+  function addPlayer() {
+    if (!newName.trim()) return;
+    persist({ ...t, playerInputs: [...(t.playerInputs || []), { name: newName.trim(), level: useLevels ? newLvl : 0 }] });
+    setNewName("");
+    nameInputRef.current?.focus();
+  }
+
+  function addPair() {
+    if (!newP1.trim() || !newP2.trim()) return;
+    const arr = t.pairInputs || [];
+    persist({ ...t, pairInputs: [...arr, { id: arr.length, p1: newP1.trim(), p2: newP2.trim(), pts: 0, gf: 0, gc: 0 }] });
+    setNewP1("");
+    setNewP2("");
+    p1InputRef.current?.focus();
+  }
 
   async function onStart() {
     let entities;
     if (isPairs) {
-      entities = t.pairInputs.map((p, i) => ({
-        ...p,
-        id: i,
-        pts: 0,
-        gf: 0,
-        gc: 0,
-      }));
+      entities = t.pairInputs.map((p, i) => ({ ...p, id: i, pts: 0, gf: 0, gc: 0 }));
     } else {
-      entities = t.playerInputs.map((p, i) => ({
-        id: i,
-        name: p.name.trim(),
-        level: p.level,
-        pts: 0,
-        gf: 0,
-        gc: 0,
-      }));
+      entities = t.playerInputs.map((p, i) => ({ id: i, name: p.name.trim(), level: p.level, pts: 0, gf: 0, gc: 0 }));
     }
-    const { courts, sittingOut } = buildFirstRoundAmericano(
-      entities,
-      t.config.courts,
-      t.config.mode,
-    );
+    const { courts, sittingOut } = buildFirstRoundAmericano(entities, t.config.courts, t.config.mode);
     await persist({
       ...t,
       [isPairs ? "pairs" : "players"]: entities,
@@ -90,543 +151,557 @@ export default function SetupAmericano({
     });
   }
 
+  function startEdit(i) {
+    if (isPairs) {
+      const p = (t.pairInputs || [])[i];
+      setEditP1(p.p1); setEditP2(p.p2);
+    } else {
+      const p = (t.playerInputs || [])[i];
+      setEditName(p.name); setEditLvl(p.level);
+    }
+    setEditingIdx(i);
+  }
+
+  function commitEdit(i) {
+    if (isPairs) {
+      const arr = [...(t.pairInputs || [])];
+      arr[i] = { ...arr[i], p1: editP1.trim() || arr[i].p1, p2: editP2.trim() || arr[i].p2 };
+      persist({ ...t, pairInputs: arr });
+    } else {
+      const arr = [...(t.playerInputs || [])];
+      arr[i] = { ...arr[i], name: editName.trim() || arr[i].name, level: editLvl };
+      persist({ ...t, playerInputs: arr });
+    }
+    setEditingIdx(null);
+  }
+
+  async function handleShare() {
+    const msg = buildShareMessage(t, code);
+    if (navigator.share) {
+      try { await navigator.share({ title: t.config.name, text: msg }); } catch (_) {}
+    } else {
+      try {
+        await navigator.clipboard.writeText(msg);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (_) {}
+    }
+  }
+
+  const inputCls = "w-full bg-[#1f2937] border border-gray-700 focus:border-sky-600 rounded-xl text-gray-50 px-4 py-3 text-sm outline-none transition-colors";
+  const addInputCls = "flex-1 bg-[#1f2937] border border-gray-700 focus:border-sky-600 rounded-xl text-gray-50 px-4 py-2.5 text-sm outline-none transition-colors min-w-0";
+
   return (
-    <div
-      style={{
-        fontFamily: "system-ui",
-        background: "#0f172a",
-        minHeight: "100vh",
-        color: "#f1f5f9",
-        padding: 20,
-      }}
-    >
-      <div style={{ maxWidth: 520, margin: "0 auto" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            marginBottom: 24,
-          }}
-        >
+    <div className="min-h-screen bg-[#111827] text-gray-50" style={{ fontFamily: "system-ui" }}>
+      <div className="max-w-lg mx-auto px-4 pb-16 pt-6">
+
+        {/* ── Header ── */}
+        <div className="flex items-start justify-between mb-6">
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 900, color: "#38bdf8" }}>
-              🔄 Americano — Configuración
-            </h1>
-            <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-              Código:{" "}
-              <b style={{ color: "#fbbf24", fontSize: 15, letterSpacing: 3 }}>
-                {code}
-              </b>
-            </div>
+            <h1 className="text-xl font-black" style={{ color: COLOR }}>🔄 Americano</h1>
+            <p className="text-xs text-gray-500 mt-1">
+              Código: <span className="text-yellow-400 font-bold tracking-widest">{code}</span>
+            </p>
           </div>
           <button
-            onClick={copyCode}
-            style={B("#1e293b", {
-              border: "1px solid #334155",
-              color: "#94a3b8",
-              fontSize: 12,
-            })}
+            onClick={handleShare}
+            className="text-xs px-3 py-2 rounded-xl border transition-colors cursor-pointer shrink-0 font-semibold"
+            style={copied
+              ? { background: "#16a34a20", border: "1px solid #16a34a50", color: "#4ade80" }
+              : { background: "#1f2937",   border: "1px solid #374151",   color: "#94a3b8" }
+            }
           >
-            📤 Compartir
+            {copied ? "✓ Copiado" : "📤 Compartir"}
           </button>
         </div>
 
-        {isAdmin ? (
-          <>
-            <label
-              style={{
-                display: "block",
-                fontSize: 13,
-                color: "#94a3b8",
-                fontWeight: 600,
-                marginBottom: 6,
-              }}
-            >
-              Nombre del torneo
-            </label>
-            <input
-              value={t.config.name}
-              onChange={(e) =>
-                ds({ ...t, config: { ...t.config, name: e.target.value } })
-              }
-              style={{ ...inp, marginBottom: 12 }}
-            />
-            <label
-              style={{
-                display: "block",
-                fontSize: 13,
-                color: "#94a3b8",
-                fontWeight: 600,
-                marginBottom: 6,
-              }}
-            >
-              Número de pistas
-            </label>
-            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-              {[1, 2, 3, 4, 5, 6].map((n) => (
-                <button
-                  key={n}
-                  onClick={() =>
-                    persist({ ...t, config: { ...t.config, courts: n } })
-                  }
-                  style={{
-                    flex: 1,
-                    padding: "10px 0",
-                    borderRadius: 10,
-                    border: "none",
-                    cursor: "pointer",
-                    fontWeight: 700,
-                    fontSize: 16,
-                    background: t.config.courts === n ? "#0284c7" : "#1e293b",
-                    color: t.config.courts === n ? "#fff" : "#94a3b8",
-                  }}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-            <label
-              style={{
-                display: "block",
-                fontSize: 13,
-                color: "#94a3b8",
-                fontWeight: 600,
-                marginBottom: 6,
-              }}
-            >
-              Modalidad
-            </label>
-            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-              <button
-                onClick={() =>
-                  persist({ ...t, config: { ...t.config, mode: "individual" } })
-                }
-                style={{
-                  flex: 1,
-                  padding: "10px 0",
-                  borderRadius: 10,
-                  border: "none",
-                  cursor: "pointer",
-                  fontWeight: 700,
-                  fontSize: 14,
-                  background: !isPairs ? "#0284c7" : "#1e293b",
-                  color: !isPairs ? "#fff" : "#94a3b8",
-                }}
-              >
-                👤 Individual
-              </button>
-              <button
-                onClick={() =>
-                  persist({ ...t, config: { ...t.config, mode: "pairs" } })
-                }
-                style={{
-                  flex: 1,
-                  padding: "10px 0",
-                  borderRadius: 10,
-                  border: "none",
-                  cursor: "pointer",
-                  fontWeight: 700,
-                  fontSize: 14,
-                  background: isPairs ? "#0284c7" : "#1e293b",
-                  color: isPairs ? "#fff" : "#94a3b8",
-                }}
-              >
-                👥 Parejas Fijas
-              </button>
-            </div>
-          </>
-        ) : (
-          <div
-            style={{
-              background: "#1e293b",
-              borderRadius: 10,
-              padding: 12,
-              marginBottom: 16,
-            }}
-          >
-            <div style={{ fontSize: 15, fontWeight: 700 }}>{t.config.name}</div>
-            <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
-              {t.config.courts} pistas · Esperando al admin...
-            </div>
+        {/* ── Vista no-admin ── */}
+        {!isAdmin && (
+          <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 mb-4">
+            <div className="font-bold">{t.config.name}</div>
+            <div className="text-xs text-gray-500 mt-1">{t.config.courts} pistas · Esperando al organizador...</div>
           </div>
         )}
 
-        <div
-          style={{
-            fontSize: 12,
-            marginBottom: 12,
-            padding: "8px 12px",
-            background: "#1e293b",
-            borderRadius: 8,
-            color: sc,
-          }}
-        >
-          {sm}
-        </div>
-        {isPairs ? (
-          <>
-            <div
-              style={{
-                fontSize: 13,
-                color: "#94a3b8",
-                fontWeight: 600,
-                marginBottom: 8,
-              }}
-            >
-              Parejas ({tot})
-            </div>
-            <div
-              style={{ maxHeight: 260, overflowY: "auto", marginBottom: 10 }}
-            >
-              {t.pairInputs.map((p, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: "flex",
-                    gap: 6,
-                    marginBottom: 6,
-                    alignItems: "center",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: 6,
-                      background: "#334155",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      color: "#94a3b8",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {i + 1}
-                  </div>
-                  <input
-                    value={p.p1}
-                    disabled={!isAdmin}
-                    onChange={(e) => {
-                      const pi = [...t.pairInputs];
-                      pi[i] = { ...pi[i], p1: e.target.value };
-                      ds({ ...t, pairInputs: pi });
-                    }}
-                    placeholder="Jugador 1"
-                    style={{
-                      ...inp,
-                      flex: 1,
-                      opacity: isAdmin ? 1 : 0.7,
-                      padding: "8px 12px",
-                    }}
-                  />
-                  <span
-                    style={{ color: "#475569", fontSize: 12, fontWeight: 700 }}
-                  >
-                    /
-                  </span>
-                  <input
-                    value={p.p2}
-                    disabled={!isAdmin}
-                    onChange={(e) => {
-                      const pi = [...t.pairInputs];
-                      pi[i] = { ...pi[i], p2: e.target.value };
-                      ds({ ...t, pairInputs: pi });
-                    }}
-                    placeholder="Jugador 2"
-                    style={{
-                      ...inp,
-                      flex: 1,
-                      opacity: isAdmin ? 1 : 0.7,
-                      padding: "8px 12px",
-                    }}
-                  />
-                  {isAdmin && (
-                    <button
-                      onClick={() =>
-                        persist({
-                          ...t,
-                          pairInputs: t.pairInputs.filter(
-                            (_, idx) => idx !== i,
-                          ),
-                        })
-                      }
-                      style={B("#dc2626", {
-                        padding: "6px 10px",
-                        fontSize: 12,
-                        flexShrink: 0,
-                      })}
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </>
-        ) : (
-          <>
-            <div
-              style={{
-                fontSize: 13,
-                color: "#94a3b8",
-                fontWeight: 600,
-                marginBottom: 6,
-              }}
-            >
-              Jugadores ({tot}) ·{" "}
-              <span style={{ color: "#38bdf8" }}>● N1: {n1}</span> &nbsp;
-              <span style={{ color: "#4ade80" }}>● N2: {n2}</span>
-            </div>
-            <div
-              style={{
-                background: "#1e293b",
-                borderRadius: 8,
-                padding: "8px 12px",
-                marginBottom: 10,
-                fontSize: 12,
-                color: "#94a3b8",
-              }}
-            >
-              <b style={{ color: "#38bdf8" }}>N1</b> Con experiencia
-              &nbsp;·&nbsp; <b style={{ color: "#4ade80" }}>N2</b> Poco rodaje
-            </div>
-            <div
-              style={{ maxHeight: 260, overflowY: "auto", marginBottom: 10 }}
-            >
-              {t.playerInputs.map((p, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: "flex",
-                    gap: 6,
-                    marginBottom: 6,
-                    alignItems: "center",
-                  }}
-                >
-                  <button
-                    onClick={() => {
-                      if (!isAdmin) return;
-                      const pi = [...t.playerInputs];
-                      pi[i] = { ...pi[i], level: pi[i].level === 1 ? 2 : 1 };
-                      persist({ ...t, playerInputs: pi });
-                    }}
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 8,
-                      border: "none",
-                      cursor: isAdmin ? "pointer" : "default",
-                      fontWeight: 800,
-                      fontSize: 13,
-                      background: p.level === 1 ? "#0284c7" : "#16a34a",
-                      color: "#fff",
-                      flexShrink: 0,
-                    }}
-                  >
-                    N{p.level}
-                  </button>
-                  <input
-                    value={p.name}
-                    disabled={!isAdmin}
-                    onChange={(e) => {
-                      const pi = [...t.playerInputs];
-                      pi[i] = { ...pi[i], name: e.target.value };
-                      ds({ ...t, playerInputs: pi });
-                    }}
-                    style={{
-                      ...inp,
-                      flex: 1,
-                      opacity: isAdmin ? 1 : 0.7,
-                      padding: "8px 12px",
-                    }}
-                  />
-                  {isAdmin && (
-                    <button
-                      onClick={() =>
-                        persist({
-                          ...t,
-                          playerInputs: t.playerInputs.filter(
-                            (_, idx) => idx !== i,
-                          ),
-                        })
-                      }
-                      style={B("#dc2626", {
-                        padding: "6px 10px",
-                        fontSize: 12,
-                        flexShrink: 0,
-                      })}
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </>
-        )}
         {isAdmin && (
           <>
-            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-              {isPairs ? (
-                <>
+            {/* ── Información ── */}
+            <SectionHeader>📋 Información</SectionHeader>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-400 font-semibold block mb-1.5">Nombre del torneo</label>
+                <input value={localName} onChange={e => handleName(e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 font-semibold block mb-1.5">
+                  Descripción <span className="text-gray-600 font-normal">(opcional)</span>
+                </label>
+                <textarea
+                  value={localDesc}
+                  onChange={e => handleDesc(e.target.value)}
+                  placeholder="Reglas especiales, mensaje a los jugadores..."
+                  rows={2}
+                  className="w-full bg-[#1f2937] border border-gray-700 focus:border-sky-600 rounded-xl text-gray-50 px-4 py-3 text-sm outline-none transition-colors resize-none"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-400 font-semibold block mb-1.5">Fecha y hora</label>
                   <input
-                    value={newP1}
-                    onChange={(e) => setNewP1(e.target.value)}
-                    placeholder="Jugador 1"
-                    style={{ ...inp, flex: 1, padding: "8px 12px" }}
+                    type="datetime-local"
+                    value={localDatetime}
+                    onChange={e => handleDatetime(e.target.value)}
+                    className="w-full bg-[#1f2937] border border-gray-700 focus:border-sky-600 rounded-xl text-gray-50 px-3 py-3 text-sm outline-none transition-colors"
                   />
-                  <span
-                    style={{
-                      color: "#475569",
-                      fontSize: 12,
-                      fontWeight: 700,
-                      alignSelf: "center",
-                    }}
-                  >
-                    /
-                  </span>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 font-semibold block mb-1.5">Ubicación</label>
                   <input
-                    value={newP2}
-                    onChange={(e) => setNewP2(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        persist({
-                          ...t,
-                          pairInputs: [
-                            ...t.pairInputs,
-                            {
-                              id: t.pairInputs.length,
-                              p1:
-                                newP1.trim() ||
-                                `Jugador ${t.pairInputs.length * 2 + 1}`,
-                              p2:
-                                newP2.trim() ||
-                                `Jugador ${t.pairInputs.length * 2 + 2}`,
-                              pts: 0,
-                              gf: 0,
-                              gc: 0,
-                            },
-                          ],
-                        });
-                        setNewP1("");
-                        setNewP2("");
-                      }
-                    }}
-                    placeholder="Jugador 2"
-                    style={{ ...inp, flex: 1, padding: "8px 12px" }}
+                    value={localLocation}
+                    onChange={e => handleLocation(e.target.value)}
+                    placeholder="Club, dirección..."
+                    className={inputCls}
                   />
-                  <button
-                    onClick={() => {
-                      persist({
-                        ...t,
-                        pairInputs: [
-                          ...t.pairInputs,
-                          {
-                            id: t.pairInputs.length,
-                            p1:
-                              newP1.trim() ||
-                              `Jugador ${t.pairInputs.length * 2 + 1}`,
-                            p2:
-                              newP2.trim() ||
-                              `Jugador ${t.pairInputs.length * 2 + 2}`,
-                            pts: 0,
-                            gf: 0,
-                            gc: 0,
-                          },
-                        ],
-                      });
-                      setNewP1("");
-                      setNewP2("");
-                    }}
-                    style={B("#475569")}
-                  >
-                    +
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={() => setNewLvl((l) => (l === 1 ? 2 : 1))}
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 8,
-                      border: "none",
-                      cursor: "pointer",
-                      fontWeight: 800,
-                      fontSize: 13,
-                      background: newLvl === 1 ? "#0284c7" : "#16a34a",
-                      color: "#fff",
-                      flexShrink: 0,
-                    }}
-                  >
-                    N{newLvl}
-                  </button>
-                  <input
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        persist({
-                          ...t,
-                          playerInputs: [
-                            ...t.playerInputs,
-                            {
-                              name:
-                                newName.trim() ||
-                                `Jugador ${t.playerInputs.length + 1}`,
-                              level: newLvl,
-                            },
-                          ],
-                        });
-                        setNewName("");
-                      }
-                    }}
-                    placeholder="Nombre del jugador..."
-                    style={{ ...inp, flex: 1, padding: "8px 12px" }}
-                  />
-                  <button
-                    onClick={() => {
-                      persist({
-                        ...t,
-                        playerInputs: [
-                          ...t.playerInputs,
-                          {
-                            name:
-                              newName.trim() ||
-                              `Jugador ${t.playerInputs.length + 1}`,
-                            level: newLvl,
-                          },
-                        ],
-                      });
-                      setNewName("");
-                    }}
-                    style={B("#475569")}
-                  >
-                    +
-                  </button>
-                </>
-              )}
+                </div>
+              </div>
             </div>
-            <button
-              onClick={onStart}
-              disabled={!ok}
-              style={B(ok ? "#0284c7" : "#334155", {
-                width: "100%",
-                padding: 16,
-                fontSize: 17,
-                borderRadius: 14,
-                opacity: ok ? 1 : 0.4,
-                cursor: ok ? "pointer" : "not-allowed",
-              })}
-            >
-              🎾 Iniciar Torneo
-            </button>
+
+            {/* ── Configuración ── */}
+            <SectionHeader>🏓 Configuración</SectionHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs text-gray-400 font-semibold block mb-2">Pistas</label>
+                <div className="flex gap-2">
+                  {[1,2,3,4,5,6].map(n => (
+                    <button key={n}
+                      onClick={() => persist({ ...t, config: { ...t.config, courts: n } })}
+                      className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer"
+                      style={{ background: t.config.courts === n ? COLOR : "#1f2937", color: t.config.courts === n ? "#fff" : "#94a3b8" }}
+                    >{n}</button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 font-semibold block mb-2">Modalidad</label>
+                <div className="flex gap-2">
+                  {[
+                    { id: "individual", label: "👤 Individual" },
+                    { id: "pairs",      label: "👥 Parejas Fijas" },
+                  ].map(opt => (
+                    <button key={opt.id}
+                      onClick={() => persist({ ...t, config: { ...t.config, mode: opt.id } })}
+                      className="flex-1 py-3 rounded-xl font-bold text-sm transition-colors cursor-pointer"
+                      style={{ background: t.config.mode === opt.id ? COLOR : "#1f2937", color: t.config.mode === opt.id ? "#fff" : "#94a3b8" }}
+                    >{opt.label}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* ── Puntuación ── */}
+            <SectionHeader>🎯 Puntuación</SectionHeader>
+            <div className="flex flex-col gap-2">
+              {SCORING_OPTIONS.map(opt => (
+                <button key={opt.id}
+                  onClick={() => persist({ ...t, config: { ...t.config, scoringSystem: opt.id } })}
+                  className="flex items-center gap-3 p-3.5 rounded-xl text-left transition-all cursor-pointer"
+                  style={{
+                    background: scoring === opt.id ? COLOR + "20" : "#1f2937",
+                    border: `1px solid ${scoring === opt.id ? COLOR + "50" : "#374151"}`,
+                  }}
+                >
+                  <span className="text-xl flex-shrink-0">{opt.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold" style={{ color: scoring === opt.id ? COLOR : "#f9fafb" }}>{opt.name}</div>
+                    <div className="text-xs text-gray-500">{opt.desc}</div>
+                  </div>
+                  {scoring === opt.id && <span className="text-xs font-bold" style={{ color: COLOR }}>✓</span>}
+                </button>
+              ))}
+            </div>
+
+            {scoring === "timed" && (
+              <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 mt-2 space-y-4">
+                <div>
+                  <p className="text-xs text-gray-500 mb-3">Al terminar el tiempo se anota el resultado. En caso de empate, punto de oro.</p>
+                  <label className="text-xs text-gray-400 font-semibold block mb-2">Minutos por partido</label>
+                  <div className="flex gap-2">
+                    {[8,10,12,15,20].map(n => (
+                      <button key={n}
+                        onClick={() => persist({ ...t, config: { ...t.config, matchMinutes: n } })}
+                        className="flex-1 py-2 rounded-lg font-bold text-sm cursor-pointer transition-colors"
+                        style={{ background: (t.config.matchMinutes ?? 10) === n ? COLOR : "#374151", color: (t.config.matchMinutes ?? 10) === n ? "#fff" : "#94a3b8" }}
+                      >{n}</button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 font-semibold block mb-2">¿Qué se anota?</label>
+                  <div className="flex gap-2">
+                    {[
+                      { id: "games",  label: "Games ganados" },
+                      { id: "points", label: "Puntos acumulados" },
+                    ].map(opt => (
+                      <button key={opt.id}
+                        onClick={() => persist({ ...t, config: { ...t.config, timedMetric: opt.id } })}
+                        className="flex-1 py-2 rounded-lg font-bold text-sm cursor-pointer transition-colors"
+                        style={{
+                          background: (t.config.timedMetric ?? "games") === opt.id ? COLOR : "#374151",
+                          color:      (t.config.timedMetric ?? "games") === opt.id ? "#fff" : "#94a3b8",
+                        }}
+                      >{opt.label}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+            {scoring === "rally" && (
+              <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 mt-2">
+                <p className="text-xs text-gray-500 mb-3">Cada punto ganado cuenta. Si el partido termina 16-8, cada jugador acumula esos puntos.</p>
+                <label className="text-xs text-gray-400 font-semibold block mb-2">Puntos por partido</label>
+                <div className="flex gap-2">
+                  {[16,24,32].map(n => (
+                    <button key={n}
+                      onClick={() => { setRallyCustom(""); persist({ ...t, config: { ...t.config, rallyPoints: n } }); }}
+                      className="flex-1 py-2 rounded-lg font-bold text-sm cursor-pointer transition-colors"
+                      style={{ background: (t.config.rallyPoints ?? 24) === n ? COLOR : "#374151", color: (t.config.rallyPoints ?? 24) === n ? "#fff" : "#94a3b8" }}
+                    >{n}</button>
+                  ))}
+                  <input
+                    type="number"
+                    value={rallyCustom}
+                    onChange={e => handleRallyCustom(e.target.value)}
+                    placeholder="Otro"
+                    min={1}
+                    className="w-16 py-2 rounded-lg text-sm text-center font-bold outline-none transition-colors bg-[#374151] text-gray-300 placeholder:text-gray-600 shrink-0"
+                  />
+                </div>
+              </div>
+            )}
+            {scoring === "games" && (
+              <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 mt-2">
+                <p className="text-xs text-gray-500 mb-3">Primero en llegar a X games gana el partido.</p>
+                <label className="text-xs text-gray-400 font-semibold block mb-2">Games para ganar</label>
+                <div className="flex gap-2">
+                  {[4,6,8].map(n => (
+                    <button key={n}
+                      onClick={() => { setGamesCustom(""); persist({ ...t, config: { ...t.config, targetGames: n } }); }}
+                      className="flex-1 py-2 rounded-lg font-bold text-sm cursor-pointer transition-colors"
+                      style={{ background: (t.config.targetGames ?? 6) === n ? COLOR : "#374151", color: (t.config.targetGames ?? 6) === n ? "#fff" : "#94a3b8" }}
+                    >{n}</button>
+                  ))}
+                  <input
+                    type="number"
+                    value={gamesCustom}
+                    onChange={e => handleGamesCustom(e.target.value)}
+                    placeholder="Otro"
+                    min={1}
+                    className="w-16 py-2 rounded-lg text-sm text-center font-bold outline-none transition-colors bg-[#374151] text-gray-300 placeholder:text-gray-600 shrink-0"
+                  />
+                </div>
+              </div>
+            )}
           </>
         )}
+
+        {/* ── Barra de estado ── */}
+        <div className={`flex items-center px-4 py-2.5 rounded-xl border text-sm font-medium mt-6 mb-1 ${statusBg} ${statusTxt}`}>
+          {statusMsg}
+        </div>
+
+        {/* ── Jugadores / Parejas ── */}
+        <SectionHeader>{isPairs ? "👥 Parejas" : "👤 Jugadores"}</SectionHeader>
+
+        {!isPairs && isAdmin && (
+          <div className="bg-[#1f2937] rounded-xl border border-gray-700 mb-3 overflow-hidden">
+            <div className="flex items-center justify-between p-3">
+              <div>
+                <div className="text-sm font-semibold text-gray-200">Usar niveles de jugador</div>
+                <div className="text-xs text-gray-500 mt-0.5">Mezcla jugadores por nivel. Solo visible para el organizador durante el torneo.</div>
+              </div>
+              <button
+                onClick={() => persist({ ...t, config: { ...t.config, useLevels: !useLevels } })}
+                className="px-4 py-1.5 rounded-lg text-sm font-bold cursor-pointer shrink-0"
+                style={{
+                  background: useLevels ? "#16a34a30" : "#374151",
+                  color:      useLevels ? "#4ade80"   : "#94a3b8",
+                  border:     `1px solid ${useLevels ? "#4ade8040" : "transparent"}`,
+                }}
+              >
+                {useLevels ? "ON" : "OFF"}
+              </button>
+            </div>
+            {useLevels && (
+              <div className="flex gap-4 px-3 pb-3">
+                {LEVELS.map(l => (
+                  <div key={l.id} className="flex items-center gap-1.5">
+                    <span className="text-xs font-black" style={{ color: l.color }}>{l.short}</span>
+                    <span className="text-xs text-gray-500">{l.label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Lista */}
+        <div className="space-y-2">
+          {isPairs
+            ? (t.pairInputs || []).map((p, i) => (
+                <div key={i} className="flex items-center gap-3 px-3 py-2.5 bg-[#1f2937] rounded-xl">
+                  <span className="w-6 h-6 rounded-md bg-gray-700 text-gray-400 text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                  {editingIdx === i && isAdmin ? (
+                    <div
+                      className="flex-1 flex items-center gap-2 min-w-0"
+                      onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) commitEdit(i); }}
+                    >
+                      <input
+                        value={editP1}
+                        onChange={e => setEditP1(e.target.value)}
+                        onKeyDown={e => e.key === "Enter" && commitEdit(i)}
+                        autoFocus
+                        className="flex-1 min-w-0 text-sm font-medium bg-transparent border-b border-sky-600 outline-none text-gray-50 py-0.5"
+                      />
+                      <span className="text-gray-600 font-bold shrink-0">/</span>
+                      <input
+                        value={editP2}
+                        onChange={e => setEditP2(e.target.value)}
+                        onKeyDown={e => e.key === "Enter" && commitEdit(i)}
+                        className="flex-1 min-w-0 text-sm font-medium bg-transparent border-b border-sky-600 outline-none text-gray-50 py-0.5"
+                      />
+                    </div>
+                  ) : (
+                    <span
+                      className={`flex-1 text-sm ${isAdmin ? "cursor-pointer hover:underline hover:decoration-dotted" : ""}`}
+                      onClick={() => isAdmin && startEdit(i)}
+                    >
+                      <span className="font-medium">{p.p1}</span>
+                      <span className="text-gray-600 mx-1.5">/</span>
+                      <span className="font-medium">{p.p2}</span>
+                    </span>
+                  )}
+                  {isAdmin && (
+                    <button
+                      onClick={() => { setEditingIdx(null); persist({ ...t, pairInputs: t.pairInputs.filter((_, idx) => idx !== i) }); }}
+                      className="text-gray-600 hover:text-red-400 transition-colors cursor-pointer text-sm leading-none shrink-0"
+                    >✕</button>
+                  )}
+                </div>
+              ))
+            : (t.playerInputs || []).map((p, i) => (
+                <div key={i} className="flex items-center gap-3 px-3 py-2.5 bg-[#1f2937] rounded-xl">
+                  <span className="w-6 h-6 rounded-md bg-gray-700 text-gray-400 text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                  {editingIdx === i && isAdmin ? (
+                    <input
+                      value={editName}
+                      onChange={e => setEditName(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && commitEdit(i)}
+                      onBlur={() => commitEdit(i)}
+                      autoFocus
+                      className="flex-1 text-sm font-medium bg-transparent border-b border-sky-600 outline-none text-gray-50 py-0.5"
+                    />
+                  ) : (
+                    <span
+                      className={`flex-1 text-sm font-medium ${isAdmin ? "cursor-pointer hover:underline hover:decoration-dotted" : ""}`}
+                      onClick={() => isAdmin && startEdit(i)}
+                    >{p.name}</span>
+                  )}
+                  {useLevels && (() => {
+                    const lvl = LEVELS[editingIdx === i ? editLvl : (p.level || 0)];
+                    return (
+                      <button
+                        onClick={() => {
+                          if (!isAdmin) return;
+                          if (editingIdx === i) {
+                            setEditLvl(l => (l + 1) % 4);
+                          } else {
+                            const arr = [...t.playerInputs];
+                            arr[i] = { ...arr[i], level: ((arr[i].level || 0) + 1) % 4 };
+                            persist({ ...t, playerInputs: arr });
+                          }
+                        }}
+                        className="w-6 h-6 flex items-center justify-center text-xs font-bold rounded-md shrink-0"
+                        style={{
+                          background: lvl.color + "20",
+                          color: lvl.color,
+                          cursor: isAdmin ? "pointer" : "default",
+                        }}
+                      >
+                        {lvl.short}
+                      </button>
+                    );
+                  })()}
+                  {isAdmin && (
+                    <button
+                      onClick={() => { setEditingIdx(null); persist({ ...t, playerInputs: t.playerInputs.filter((_, idx) => idx !== i) }); }}
+                      className="text-gray-600 hover:text-red-400 transition-colors cursor-pointer text-sm leading-none shrink-0"
+                    >✕</button>
+                  )}
+                </div>
+              ))
+          }
+        </div>
+
+        {/* Formulario de agregar */}
+        {isAdmin && (
+          <div className="mt-3">
+            {isPairs ? (
+              <div className="space-y-2">
+                <div className="flex gap-2 items-center">
+                  <input
+                    ref={p1InputRef}
+                    value={newP1}
+                    onChange={e => setNewP1(e.target.value)}
+                    onKeyDown={e => e.key === "Tab" && (e.preventDefault(), p2InputRef.current?.focus())}
+                    placeholder="Jugador 1"
+                    className={addInputCls}
+                  />
+                  <span className="text-gray-600 font-bold shrink-0">/</span>
+                  <input
+                    ref={p2InputRef}
+                    value={newP2}
+                    onChange={e => setNewP2(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && addPair()}
+                    placeholder="Jugador 2"
+                    className={addInputCls}
+                  />
+                </div>
+                <button
+                  onClick={addPair}
+                  className="w-full py-2.5 rounded-xl font-bold text-sm cursor-pointer transition-colors"
+                  style={{ background: newP1.trim() && newP2.trim() ? COLOR : "#374151", color: "#fff" }}
+                >
+                  + Agregar pareja
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                {useLevels && (
+                  <button
+                    onClick={() => setNewLvl(l => (l + 1) % 4)}
+                    className="w-10 h-10 flex items-center justify-center rounded-xl shrink-0 font-bold text-sm cursor-pointer transition-colors"
+                    style={{ background: "#1f2937", border: `1px solid ${LEVELS[newLvl].color}`, color: LEVELS[newLvl].color }}
+                  >
+                    {LEVELS[newLvl].short}
+                  </button>
+                )}
+                <input
+                  ref={nameInputRef}
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && addPlayer()}
+                  placeholder="Nombre del jugador..."
+                  className={addInputCls}
+                />
+                <button
+                  onClick={addPlayer}
+                  className="px-4 py-2.5 rounded-xl font-bold text-sm shrink-0 cursor-pointer transition-colors"
+                  style={{ background: newName.trim() ? COLOR : "#374151", color: "#fff" }}
+                >
+                  Agregar
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Avanzado ── */}
+        {isAdmin && (
+          <div className="mt-7">
+            <button
+              onClick={() => setShowAdvanced(s => !s)}
+              className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-300 font-semibold transition-colors cursor-pointer"
+            >
+              <span>{showAdvanced ? "▾" : "▸"}</span>
+              ⚙️ Configuración avanzada
+            </button>
+
+            {showAdvanced && (
+              <div className="mt-4 bg-[#1f2937] border border-gray-700 rounded-xl p-4 space-y-5">
+
+                {/* Punto de oro */}
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-sm font-semibold text-gray-200">Punto de oro en empate</div>
+                    <div className="text-xs text-gray-500 mt-0.5">El punto decide el partido igualado</div>
+                  </div>
+                  <button
+                    onClick={() => persist({ ...t, config: { ...t.config, goldenPoint: !(t.config.goldenPoint !== false) } })}
+                    className="px-4 py-1.5 rounded-lg text-sm font-bold cursor-pointer shrink-0"
+                    style={{
+                      background: t.config.goldenPoint !== false ? "#16a34a30" : "#374151",
+                      color:      t.config.goldenPoint !== false ? "#4ade80"   : "#94a3b8",
+                      border:     `1px solid ${t.config.goldenPoint !== false ? "#4ade8040" : "transparent"}`,
+                    }}
+                  >
+                    {t.config.goldenPoint !== false ? "ON" : "OFF"}
+                  </button>
+                </div>
+
+                {/* Emparejamiento */}
+                <div>
+                  <div className="text-sm font-semibold text-gray-200 mb-2">Emparejamiento</div>
+                  <div className="flex gap-2">
+                    {[
+                      { id: "americano", label: "Americano" },
+                      { id: "mexicano",  label: "Mexicano"  },
+                    ].map(opt => (
+                      <button key={opt.id}
+                        onClick={() => persist({ ...t, config: { ...t.config, matchmaking: opt.id } })}
+                        className="flex-1 py-2 rounded-xl text-sm font-bold cursor-pointer transition-colors"
+                        style={{
+                          background: (t.config.matchmaking || "americano") === opt.id ? COLOR : "#374151",
+                          color:      (t.config.matchmaking || "americano") === opt.id ? "#fff" : "#94a3b8",
+                        }}
+                      >{opt.label}</button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-600 mt-1.5">
+                    {(t.config.matchmaking || "americano") === "americano"
+                      ? "Parejas aleatorias cada ronda"
+                      : "Desde ronda 2, los mejores juegan entre sí"}
+                  </p>
+                </div>
+
+                {/* Número de rondas */}
+                <div>
+                  <div className="text-sm font-semibold text-gray-200 mb-2">Número de rondas</div>
+                  <div className="flex gap-2 flex-wrap">
+                    {[null, 4, 6, 8, 10, 12].map(n => (
+                      <button
+                        key={n ?? "ilim"}
+                        onClick={() => persist({ ...t, config: { ...t.config, maxRounds: n } })}
+                        className="px-3 py-2 rounded-xl text-sm font-bold cursor-pointer transition-colors"
+                        style={{
+                          background: (t.config.maxRounds ?? null) === n ? COLOR : "#374151",
+                          color:      (t.config.maxRounds ?? null) === n ? "#fff" : "#94a3b8",
+                        }}
+                      >{n === null ? "Ilimitadas" : n}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Botón iniciar ── */}
+        {isAdmin && (
+          <button
+            onClick={onStart}
+            disabled={!ok}
+            className="w-full mt-8 py-4 rounded-2xl font-black text-lg transition-colors"
+            style={{
+              background: ok ? COLOR : "#374151",
+              color:      ok ? "#fff" : "#64748b",
+              cursor:     ok ? "pointer" : "not-allowed",
+              opacity:    ok ? 1 : 0.5,
+            }}
+          >
+            🎾 Iniciar Torneo
+          </button>
+        )}
+
       </div>
     </div>
   );

@@ -6,11 +6,11 @@ import { onAuthStateChanged } from "firebase/auth";
 import { db, auth } from "./firebase";
 import { TOURNAMENT_TYPES, B } from "./logic/constants";
 
-function statusLabel(status) {
-  if (status === "setup") return { text: "Configurando", color: "#f59e0b" };
-  if (status === "playing") return { text: "En curso", color: "#22c55e" };
-  return { text: "Finalizado", color: "#64748b" };
-}
+const STATUS = {
+  setup:    { label: "Configurando", color: "#eab308", bg: "#eab30815", border: "#eab30830" },
+  playing:  { label: "En curso",     color: "#22c55e", bg: "#22c55e15", border: "#22c55e30" },
+  finished: { label: "Finalizado",   color: "#64748b", bg: "#64748b15", border: "#64748b30" },
+};
 
 export default function Panel() {
   const navigate = useNavigate();
@@ -102,7 +102,7 @@ export default function Panel() {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {torneos.map((t) => {
             const typeInfo = TOURNAMENT_TYPES.find((x) => x.id === t.type);
-            const { text: statusText, color: statusColor } = statusLabel(t.status);
+            const s = STATUS[t.status] ?? STATUS.finished;
             return (
               <div
                 key={t.code}
@@ -148,18 +148,27 @@ export default function Panel() {
                   </div>
                   <span
                     style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
                       fontSize: 11,
                       fontWeight: 700,
-                      color: statusColor,
-                      background: `${statusColor}18`,
-                      border: `1px solid ${statusColor}44`,
+                      color: s.color,
+                      background: s.bg,
+                      border: `1px solid ${s.border}`,
                       borderRadius: 99,
-                      padding: "3px 8px",
+                      padding: "3px 10px",
                       flexShrink: 0,
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {statusText}
+                    {t.status === "playing" && (
+                      <span className="animate-pulse" style={{
+                        width: 6, height: 6, borderRadius: "50%",
+                        background: "#22c55e", flexShrink: 0,
+                      }} />
+                    )}
+                    {s.label}
                   </span>
                 </div>
 

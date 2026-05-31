@@ -2,13 +2,22 @@ import { useState } from "react";
 import { B } from "../../logic/constants";
 import { pk } from "../../logic/utils";
 import { buildRoundAmericano } from "../../logic/americano";
-import { THeader, Tabs, PName, PTag } from "../shared/Components";
+import { THeader, Tabs, PTag } from "../shared/Components";
 import History from "../shared/History";
 import { TOURNAMENT_RULES } from "../../logic/constants";
+
+const LEVELS = [
+  { id: 0, label: "Sin definir",  short: "-", color: "#64748b" },
+  { id: 1, label: "Principiante", short: "P", color: "#94a3b8" },
+  { id: 2, label: "Intermedio",   short: "M", color: "#38bdf8" },
+  { id: 3, label: "Avanzado",     short: "A", color: "#84cc16" },
+];
 
 export default function PlayAmericano({ t, code, isAdmin, persist, copyCode }) {
   const [tab, setTab] = useState("courts");
   const [ls, setLs] = useState({});
+  const [viewingRound, setViewingRound] = useState(null); // null = ronda actual
+  const [search, setSearch] = useState(null); // null = todos, playerID/pairID = filtrado
 
   async function onSave(ci, isCancel = false) {
     const court = t.currentRound[ci];
@@ -34,6 +43,12 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode }) {
   }
 
   async function onEdit(ci) {
+    const court = t.currentRound[ci];
+    setLs((prev) => ({
+      ...prev,
+      [`${ci}_A`]: court.scoreA,
+      [`${ci}_B`]: court.scoreB,
+    }));
     const cr = t.currentRound.map((c, i) =>
       i === ci ? { ...c, saved: false } : c,
     );
@@ -110,6 +125,20 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode }) {
   );
   const allSaved = t.currentRound?.every((c) => c.saved);
 
+  const allPlayers = isPairs
+    ? [...(t.pairs || [])].sort((a, b) => `${a.p1} ${a.p2}`.localeCompare(`${b.p1} ${b.p2}`))
+        .map((p) => ({ id: p.id, label: `${p.p1} / ${p.p2}` }))
+    : [...(t.players || [])].sort((a, b) => a.name.localeCompare(b.name))
+        .map((p) => ({ id: p.id, label: p.name }));
+
+  function matchesSearch(court) {
+    if (!search) return true;
+    const ids = isPairs
+      ? [court.pairA?.id, court.pairB?.id]
+      : [...(court.pairA || []).map((p) => p.id), ...(court.pairB || []).map((p) => p.id)];
+    return ids.includes(search);
+  }
+
   return (
     <div style={{ paddingBottom: 80 }}>
       <THeader
@@ -133,21 +162,106 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode }) {
       </div>
       <div style={{ padding: "0 16px" }}>
         {tab === "courts" && (
-          <CourtsAmericano
-            t={t}
-            isAdmin={isAdmin}
-            ls={ls}
-            setLs={setLs}
-            allSaved={allSaved}
-            onSave={onSave}
-            onNext={onNext}
-            onEdit={onEdit}
-          />
+          <>
+            {/* ── Filtro por jugador ── */}
+            <div className="w-full sm:max-w-xs mb-4">
+              <label className="text-xs text-gray-500 font-semibold block mb-1.5">🔍 Filtrar por jugador</label>
+              <select
+                value={search ?? ""}
+                onChange={(e) => setSearch(e.target.value === "" ? null : Number(e.target.value))}
+                className="w-full bg-[#1f2937] border border-gray-700 rounded-xl text-gray-50 px-4 py-2.5 text-sm outline-none"
+              >
+                <option value="">👥 Todos los jugadores</option>
+                {allPlayers.map((p) => (
+                  <option key={p.id} value={p.id}>{p.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* ── Tabs de rondas ── */}
+            {(t.rounds?.length > 0) && (
+              <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, marginBottom: 16 }}>
+                {t.rounds.map((r, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setViewingRound(i)}
+                    style={{
+                      flexShrink: 0,
+                      padding: "6px 12px",
+                      borderRadius: 8,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      border: "none",
+                      cursor: "pointer",
+                      background: viewingRound === i ? "#0284c7" : "#1f2937",
+                      color: viewingRound === i ? "#fff" : "#64748b",
+                    }}
+                  >
+                    R{r.num || i + 1}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setViewingRound(null)}
+                  style={{
+                    flexShrink: 0,
+                    padding: "6px 12px",
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    border: "none",
+                    cursor: "pointer",
+                    background: viewingRound === null ? "#0284c7" : "#1f2937",
+                    color: viewingRound === null ? "#fff" : "#94a3b8",
+                  }}
+                >
+                  R{t.roundNum} ●
+                </button>
+              </div>
+            )}
+
+            {viewingRound !== null ? (
+              <HistoryRound
+                round={t.rounds[viewingRound]}
+                matchesSearch={matchesSearch}
+                isAdmin={isAdmin}
+                useLevels={!!t.config.useLevels}
+              />
+            ) : (
+              <CourtsAmericano
+                t={t}
+                isAdmin={isAdmin}
+                ls={ls}
+                setLs={setLs}
+                allSaved={allSaved}
+                onSave={onSave}
+                onNext={onNext}
+                onEdit={onEdit}
+                matchesSearch={matchesSearch}
+              />
+            )}
+          </>
         )}
         {tab === "standings" && (
-          <StandingsAmericano rows={standings} roundNum={t.roundNum} />
+          <StandingsAmericano rows={standings} roundNum={t.roundNum} useLevels={!!t.config.useLevels} />
         )}
-        {tab === "history" && <History rounds={t.rounds} />}
+        {tab === "history" && (
+          <>
+            <div className="w-full sm:max-w-xs mb-4">
+              <label className="text-xs text-gray-500 font-semibold block mb-1.5">🔍 Filtrar por jugador</label>
+              <select
+                value={search ?? ""}
+                onChange={(e) => setSearch(e.target.value === "" ? null : Number(e.target.value))}
+                className="w-full bg-[#1f2937] border border-gray-700 rounded-xl text-gray-50 px-4 py-2.5 text-sm outline-none"
+              >
+                <option value="">👥 Todos los jugadores</option>
+                {allPlayers.map((p) => (
+                  <option key={p.id} value={p.id}>{p.label}</option>
+                ))}
+              </select>
+            </div>
+            <History rounds={t.rounds} matchesSearch={matchesSearch} />
+          </>
+        )}
         {tab === "rules" && (
           <div style={{ background: "#1e293b", padding: 20, borderRadius: 12 }}>
             <h3
@@ -182,304 +296,148 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode }) {
   );
 }
 
-function CourtsAmericano({
-  t,
-  isAdmin,
-  ls,
-  setLs,
-  allSaved,
-  onSave,
-  onNext,
-  onEdit,
-}) {
-  const renderPairName = (pair) =>
-    Array.isArray(pair) ? <PName pair={pair} /> : `${pair?.p1} / ${pair?.p2}`;
+function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEdit, matchesSearch }) {
+  const showLevel = t.config.useLevels && isAdmin;
+
+  function renderNames(pair) {
+    if (!pair) return [];
+    if (Array.isArray(pair)) return pair.map((p) => p.name || "");
+    return [`${pair.p1} / ${pair.p2}`];
+  }
+
+  function getLevels(pair) {
+    if (!Array.isArray(pair)) return [];
+    return pair.map((p) => LEVELS[p.level || 0]);
+  }
+
+  function hasValidScore(ci) {
+    const a = ls[`${ci}_A`];
+    const b = ls[`${ci}_B`];
+    return a !== undefined && b !== undefined && a !== "" && b !== "" && Number(a) !== Number(b);
+  }
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <div className="max-w-lg mx-auto">
       {t.sittingOut?.length > 0 && (
-        <div
-          style={{
-            background: "#fbbf2422",
-            border: "1px solid #fbbf2455",
-            color: "#fbbf24",
-            padding: 12,
-            borderRadius: 8,
-            fontSize: 14,
-          }}
-        >
-          <span style={{ fontWeight: 700 }}>⏳ Descansan: </span>
-          <span style={{ fontWeight: 500 }}>
-            {t.sittingOut.map((p) => p.name || `${p.p1}/${p.p2}`).join(", ")}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2.5 bg-yellow-400/10 border border-yellow-400/20 rounded-xl text-sm mb-3">
+          <span>⏳</span>
+          <span className="text-yellow-400 font-semibold shrink-0">Descansan:</span>
+          <span className="text-gray-400">
+            {t.sittingOut.map((p) => p.name || `${p.p1}/${p.p2}`).join(" · ")}
           </span>
         </div>
       )}
+
       {(t.currentRound || []).map((court, ci) => {
-        const sA = ls[`${ci}_A`] ?? court.scoreA;
-        const sB = ls[`${ci}_B`] ?? court.scoreB;
-        const a = parseInt(sA),
-          b = parseInt(sB);
-        const valid = !isNaN(a) && !isNaN(b) && a >= 0 && b >= 0 && a !== b;
-        const isTie = !isNaN(a) && !isNaN(b) && a === b;
-        const iStyle = (hi) => ({
-          width: 52,
-          textAlign: "center",
-          fontSize: 22,
-          fontWeight: 900,
-          background: "#0f172a",
-          border: `2px solid ${hi ? "#4ade80" : "#334155"}`,
-          borderRadius: 8,
-          color: "#f1f5f9",
-          padding: "6px 0",
-        });
+        if (!matchesSearch(court)) return null;
+        const scoreA = parseInt(court.scoreA);
+        const scoreB = parseInt(court.scoreB);
+        const namesA = renderNames(court.pairA);
+        const namesB = renderNames(court.pairB);
+        const levelsA = getLevels(court.pairA);
+        const levelsB = getLevels(court.pairB);
+
         return (
-          <div
-            key={ci}
-            style={{
-              background: "#1e293b",
-              borderRadius: 12,
-              padding: 16,
-              borderLeft: "4px solid #38bdf8",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: 12,
-                fontSize: 13,
-                color: "#94a3b8",
-                fontWeight: 700,
-              }}
-            >
-              <span>
-                Pista {ci + 1}
-                {ci === 0 && (
-                  <span
-                    style={{
-                      marginLeft: 8,
-                      background: "#f59e0b22",
-                      color: "#fbbf24",
-                      padding: "2px 6px",
-                      borderRadius: 4,
-                      fontSize: 10,
-                    }}
-                  >
-                    👑 Principal
-                  </span>
-                )}
-                {ci === t.config.courts - 1 && t.config.courts > 1 && (
-                  <span
-                    style={{
-                      marginLeft: 8,
-                      background: "#334155",
-                      color: "#94a3b8",
-                      padding: "2px 6px",
-                      borderRadius: 4,
-                      fontSize: 10,
-                    }}
-                  >
-                    📉 Auxiliar
-                  </span>
-                )}
-              </span>
-
-              {court.saved && (
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: "12px" }}
-                >
-                  <span style={{ color: "#4ade80" }}>✅ Guardado</span>
-                  {isAdmin && (
-                    <button
-                      onClick={() => onEdit(ci)}
-                      style={{
-                        fontSize: 12,
-                        color: "#f87171",
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        textDecoration: "underline",
-                        fontWeight: 700,
-                      }}
-                    >
-                      Editar
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-              }}
-            >
-              <div style={{ flex: 1, textAlign: "right" }}>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: "#64748b",
-                    marginBottom: 4,
-                    textTransform: "uppercase",
-                    fontWeight: 700,
-                  }}
-                >
-                  Pareja A
-                </div>
-                <div
-                  style={{ fontWeight: 700, color: "#f1f5f9", fontSize: 14 }}
-                >
-                  {renderPairName(court.pairA)}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  background: "#0f172a",
-                  padding: "8px 12px",
-                  borderRadius: 8,
-                }}
-              >
-                {isAdmin && !court.saved ? (
-                  <>
-                    <input
-                      type="number"
-                      min="0"
-                      onKeyDown={(e) =>
-                        ["-", "e", ".", ","].includes(e.key) &&
-                        e.preventDefault()
-                      }
-                      value={sA}
-                      onChange={(e) =>
-                        setLs((p) => ({ ...p, [`${ci}_A`]: e.target.value }))
-                      }
-                      style={iStyle(!isNaN(a) && !isNaN(b) && a > b)}
-                    />
-                    <span style={{ color: "#64748b", fontWeight: 700 }}>-</span>
-                    <input
-                      type="number"
-                      min="0"
-                      onKeyDown={(e) =>
-                        ["-", "e", ".", ","].includes(e.key) &&
-                        e.preventDefault()
-                      }
-                      value={sB}
-                      onChange={(e) =>
-                        setLs((p) => ({ ...p, [`${ci}_B`]: e.target.value }))
-                      }
-                      style={iStyle(!isNaN(a) && !isNaN(b) && b > a)}
-                    />
-                  </>
-                ) : (
-                  <div
-                    style={{
-                      fontSize: 24,
-                      fontWeight: 900,
-                      color: court.saved ? "#f1f5f9" : "#64748b",
-                    }}
-                  >
-                    {court.scoreA || "-"}-{court.scoreB || "-"}
-                  </div>
-                )}
-              </div>
-
-              <div style={{ flex: 1, textAlign: "left" }}>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: "#64748b",
-                    marginBottom: 4,
-                    textTransform: "uppercase",
-                    fontWeight: 700,
-                  }}
-                >
-                  Pareja B
-                </div>
-                <div
-                  style={{ fontWeight: 700, color: "#f1f5f9", fontSize: 14 }}
-                >
-                  {renderPairName(court.pairB)}
-                </div>
-              </div>
-            </div>
-
-            {isTie && !court.saved && (
-              <div
-                style={{
-                  textAlign: "center",
-                  marginTop: 12,
-                  fontSize: 13,
-                  color: "#fbbf24",
-                  fontWeight: 700,
-                }}
-              >
-                ⚡ Empate - definir a punto de oro
-              </div>
-            )}
-            {valid && !court.saved && (
-              <div
-                style={{
-                  textAlign: "center",
-                  marginTop: 12,
-                  fontSize: 13,
-                  color: "#4ade80",
-                  fontWeight: 700,
-                }}
-              >
-                ✓ Ganan {renderPairName(a > b ? court.pairA : court.pairB)}
-              </div>
-            )}
-            {isAdmin && !court.saved && (
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  width: "100%",
-                  marginTop: 10,
-                }}
-              >
-                {court.scoreA !== undefined && court.scoreA !== "" && (
+          <div key={ci} className="bg-[#1f2937] rounded-2xl border border-gray-700 overflow-hidden mb-3">
+            {/* Header */}
+            <div className="flex justify-between items-center px-4 py-2.5 border-b border-gray-700">
+              <span className="text-xs font-bold text-gray-500 tracking-widest">PISTA {ci + 1}</span>
+              <div className="flex items-center gap-2">
+                {court.saved && isAdmin && (
                   <button
-                    onClick={() => {
-                      setLs((p) => {
-                        const n = { ...p };
-                        delete n[`${ci}_A`];
-                        delete n[`${ci}_B`];
-                        return n;
-                      });
-                      onSave(ci, true);
-                    }}
-                    style={B("#dc2626", {
-                      flex: 1,
-                      borderRadius: 8,
-                      padding: 10,
-                    })}
+                    onClick={() => onEdit(ci)}
+                    className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-sky-400 bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
                   >
-                    ✕ Cancelar
+                    ✏️ Editar
                   </button>
                 )}
+              </div>
+            </div>
+
+            {/* Body — 3 columnas */}
+            <div className="grid px-4 py-4" style={{ gridTemplateColumns: "1fr auto 1fr", gap: "10px" }}>
+              {/* Equipo A */}
+              <div className="flex flex-col items-end self-center">
+                {namesA.map((name, i) => (
+                  <div key={i} className="leading-snug flex items-center gap-1">
+                    {showLevel && levelsA[i] && (
+                      <span style={{ fontSize: 10, fontWeight: 700, background: levelsA[i].color + "20", color: levelsA[i].color, borderRadius: 4, padding: "1px 4px" }}>
+                        {levelsA[i].short}
+                      </span>
+                    )}
+                    <span className="text-sm font-bold text-gray-50">{name}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Score */}
+              <div className="flex items-center gap-1.5 self-center">
+                {court.saved ? (
+                  <>
+                    <div
+                      onClick={() => isAdmin && onEdit(ci)}
+                      title={isAdmin ? "Click para editar" : undefined}
+                      className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl font-black ${scoreA > scoreB ? "bg-green-500/10 border border-green-500/40 text-green-400" : "bg-gray-800 border border-gray-600 text-gray-400"} ${isAdmin ? "cursor-pointer" : ""}`}
+                    >
+                      {court.scoreA}
+                    </div>
+                    <span className="text-gray-600 font-black text-lg">-</span>
+                    <div
+                      onClick={() => isAdmin && onEdit(ci)}
+                      title={isAdmin ? "Click para editar" : undefined}
+                      className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl font-black ${scoreB > scoreA ? "bg-green-500/10 border border-green-500/40 text-green-400" : "bg-gray-800 border border-gray-600 text-gray-400"} ${isAdmin ? "cursor-pointer" : ""}`}
+                    >
+                      {court.scoreB}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <input
+                      type="number" min="0"
+                      value={ls[`${ci}_A`] ?? ""}
+                      onChange={(e) => setLs((prev) => ({ ...prev, [`${ci}_A`]: e.target.value }))}
+                      onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
+                      className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-700 text-center text-xl font-black text-sky-400 outline-none focus:border-sky-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <span className="text-gray-600 font-black text-lg">-</span>
+                    <input
+                      type="number" min="0"
+                      value={ls[`${ci}_B`] ?? ""}
+                      onChange={(e) => setLs((prev) => ({ ...prev, [`${ci}_B`]: e.target.value }))}
+                      onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
+                      className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-700 text-center text-xl font-black text-sky-400 outline-none focus:border-sky-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                  </>
+                )}
+              </div>
+
+              {/* Equipo B */}
+              <div className="flex flex-col items-start self-center">
+                {namesB.map((name, i) => (
+                  <div key={i} className="leading-snug flex items-center gap-1">
+                    <span className="text-sm font-bold text-gray-50">{name}</span>
+                    {showLevel && levelsB[i] && (
+                      <span style={{ fontSize: 10, fontWeight: 700, background: levelsB[i].color + "20", color: levelsB[i].color, borderRadius: 4, padding: "1px 4px" }}>
+                        {levelsB[i].short}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {court.saved && isAdmin && (
+              <div className="text-xs text-gray-600 text-center pb-2 -mt-1 whitespace-nowrap">
+                ✓ guardado · toca para editar
+              </div>
+            )}
+
+            {/* Footer */}
+            {isAdmin && !court.saved && hasValidScore(ci) && (
+              <div className="px-4 pb-3">
                 <button
                   onClick={() => onSave(ci)}
-                  disabled={!valid}
-                  style={B(valid ? "#0284c7" : "#334155", {
-                    flex:
-                      court.scoreA !== undefined && court.scoreA !== ""
-                        ? 1
-                        : "auto",
-                    width:
-                      court.scoreA !== undefined && court.scoreA !== ""
-                        ? "auto"
-                        : "100%",
-                    borderRadius: 8,
-                    padding: 10,
-                    opacity: valid ? 1 : 0.5,
-                    cursor: valid ? "pointer" : "not-allowed",
-                  })}
+                  className="w-full py-2.5 rounded-xl text-sm font-bold bg-sky-600 hover:bg-sky-500 text-white cursor-pointer transition-colors"
                 >
                   Guardar resultado
                 </button>
@@ -488,23 +446,17 @@ function CourtsAmericano({
           </div>
         );
       })}
+
       {allSaved && isAdmin && (
         <button
           onClick={onNext}
-          style={B("#10b981", { width: "100%", padding: 16, fontSize: 16 })}
+          className="w-full py-4 rounded-2xl font-black text-base text-white bg-emerald-600 hover:bg-emerald-500 transition-colors cursor-pointer mt-2"
         >
           Siguiente Ronda ➔
         </button>
       )}
       {!isAdmin && !allSaved && (
-        <div
-          style={{
-            textAlign: "center",
-            color: "#64748b",
-            padding: 20,
-            fontSize: 14,
-          }}
-        >
+        <div className="text-center text-gray-600 py-5 text-sm">
           👀 Modo vista · Esperando resultados
         </div>
       )}
@@ -512,7 +464,83 @@ function CourtsAmericano({
   );
 }
 
-function StandingsAmericano({ rows, roundNum }) {
+function HistoryRound({ round, matchesSearch, isAdmin, useLevels }) {
+  if (!round) return null;
+  const showLevel = useLevels && isAdmin;
+  const renderPairName = (pair) => {
+    if (Array.isArray(pair)) {
+      return pair.map((p, i) => {
+        const lvl = LEVELS[p.level || 0];
+        return (
+          <span key={p.id}>
+            {i > 0 && <span style={{ color: "#94a3b8" }}> & </span>}
+            {p.name}
+            {showLevel && (
+              <span style={{ display: "inline-block", fontSize: 10, fontWeight: 700, background: lvl.color + "20", color: lvl.color, borderRadius: 4, padding: "1px 4px", marginLeft: 4 }}>
+                {lvl.short}
+              </span>
+            )}
+          </span>
+        );
+      });
+    }
+    return `${pair?.p1} / ${pair?.p2}`;
+  };
+  const visibleCourts = (round.courts || []).filter(matchesSearch);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div>
+        <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", background: "#1e293b", border: "1px solid #334155", borderRadius: 6, padding: "2px 8px" }}>
+          👁 Solo lectura — Ronda {round.num}
+        </span>
+      </div>
+
+      {round.sittingOut?.length > 0 && (
+        <div style={{ background: "#fbbf2422", border: "1px solid #fbbf2455", color: "#fbbf24", padding: 12, borderRadius: 8, fontSize: 14 }}>
+          <span style={{ fontWeight: 700 }}>⏳ Descansaron: </span>
+          <span style={{ fontWeight: 500 }}>
+            {round.sittingOut.map((p) => p.name || `${p.p1}/${p.p2}`).join(", ")}
+          </span>
+        </div>
+      )}
+
+      {visibleCourts.map((court, ci) => {
+        const a = parseInt(court.scoreA), b = parseInt(court.scoreB);
+        const wonA = !isNaN(a) && !isNaN(b) && a > b;
+        const wonB = !isNaN(a) && !isNaN(b) && b > a;
+        return (
+          <div key={ci} style={{ background: "#1e293b", borderRadius: 12, padding: 16, borderLeft: "4px solid #334155" }}>
+            <div style={{ fontSize: 13, color: "#94a3b8", fontWeight: 700, marginBottom: 12 }}>
+              Pista {ci + 1}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <div style={{ flex: 1, textAlign: "right" }}>
+                <div style={{ fontSize: 11, color: "#64748b", marginBottom: 4, textTransform: "uppercase", fontWeight: 700 }}>Pareja A</div>
+                <div style={{ fontWeight: 700, color: wonA ? "#4ade80" : "#f1f5f9", fontSize: 14 }}>
+                  {renderPairName(court.pairA)}
+                  {wonA && <span style={{ marginLeft: 6 }}>🏆</span>}
+                </div>
+              </div>
+              <div style={{ background: "#0f172a", padding: "8px 14px", borderRadius: 8, fontSize: 24, fontWeight: 900, color: "#f1f5f9" }}>
+                {court.scoreA}-{court.scoreB}
+              </div>
+              <div style={{ flex: 1, textAlign: "left" }}>
+                <div style={{ fontSize: 11, color: "#64748b", marginBottom: 4, textTransform: "uppercase", fontWeight: 700 }}>Pareja B</div>
+                <div style={{ fontWeight: 700, color: wonB ? "#4ade80" : "#f1f5f9", fontSize: 14 }}>
+                  {wonB && <span style={{ marginRight: 6 }}>🏆</span>}
+                  {renderPairName(court.pairB)}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function StandingsAmericano({ rows, roundNum, useLevels }) {
   return (
     <div style={{ background: "#1e293b", borderRadius: 12, padding: 16 }}>
       <div
@@ -565,7 +593,7 @@ function StandingsAmericano({ rows, roundNum }) {
                   }}
                 >
                   {p.name || `${p.p1} / ${p.p2}`}
-                  {p.name && <PTag p={p} />}
+                  {p.name && useLevels && <PTag p={p} />}
                 </div>
                 <div style={{ fontSize: 12, color: "#64748b" }}>
                   GF {p.gf} · GC {p.gc} · Dif {d >= 0 ? "+" : ""}
