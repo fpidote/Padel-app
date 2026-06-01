@@ -45,14 +45,14 @@ export function buildFirstRoundAmericano(
 ) {
   const isPairs = mode === "pairs";
   const units = isPairs ? 2 : 4;
-  const all = shuffle(entities),
-    act = all.slice(0, courts * units),
-    sit = all.slice(courts * units);
+  const all = shuffle(entities);
+  const activeCourts = Math.min(courts, Math.floor(all.length / units));
+  const act = all.slice(0, activeCourts * units);
+  const sit = all.slice(activeCourts * units);
   const cs = [];
 
   if (isPairs) {
-    for (let c = 0; c < courts; c++) {
-      if (c * 2 + 1 >= act.length) break;
+    for (let c = 0; c < activeCourts; c++) {
       cs.push({
         pairA: act[c * 2],
         pairB: act[c * 2 + 1],
@@ -62,12 +62,10 @@ export function buildFirstRoundAmericano(
       });
     }
   } else {
-    for (let c = 0; c < courts; c++) {
+    for (let c = 0; c < activeCourts; c++) {
       const g = act.slice(c * 4, c * 4 + 4);
-      if (g.length === 4) {
-        const [pA, pB] = bestSplit(g, {});
-        cs.push({ pairA: pA, pairB: pB, scoreA: "", scoreB: "", saved: false });
-      }
+      const [pA, pB] = bestSplit(g, {});
+      cs.push({ pairA: pA, pairB: pB, scoreA: "", scoreB: "", saved: false });
     }
   }
   return { courts: cs, sittingOut: sit };
@@ -79,10 +77,10 @@ export function buildRoundAmericano(entities, n, ph, soh, mode = "individual") {
   const sorted = [...entities].sort((a, b) =>
     b.pts !== a.pts ? b.pts - a.pts : b.gf - b.gc - (a.gf - a.gc),
   );
-  let active = sorted,
-    sittingOut = [];
-  if (sorted.length > n * units) {
-    const cnt = sorted.length - n * units;
+  const activeCourts = Math.min(n, Math.floor(sorted.length / units));
+  const cnt = sorted.length - activeCourts * units;
+  let active = sorted, sittingOut = [];
+  if (cnt > 0) {
     const pool = sorted
       .slice(-Math.max(cnt * 2, cnt + 2))
       .map((p) => ({ ...p, ss: soh[p.id] || 0 }))
@@ -93,8 +91,7 @@ export function buildRoundAmericano(entities, n, ph, soh, mode = "individual") {
   }
   const cs = [];
   if (isPairs) {
-    for (let c = 0; c < n; c++) {
-      if (c * 2 + 1 >= active.length) break;
+    for (let c = 0; c < activeCourts; c++) {
       cs.push({
         pairA: active[c * 2],
         pairB: active[c * 2 + 1],
@@ -104,8 +101,7 @@ export function buildRoundAmericano(entities, n, ph, soh, mode = "individual") {
       });
     }
   } else {
-    for (let c = 0; c < n; c++) {
-      if (c * 4 + 3 >= active.length) break;
+    for (let c = 0; c < activeCourts; c++) {
       const [pA, pB] = bestSplit(active.slice(c * 4, c * 4 + 4), ph);
       cs.push({ pairA: pA, pairB: pB, scoreA: "", scoreB: "", saved: false });
     }
