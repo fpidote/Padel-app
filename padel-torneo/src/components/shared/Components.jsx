@@ -1,7 +1,7 @@
 // src/components/shared/Components.jsx
 import { TOURNAMENT_TYPES, B } from '../../logic/constants';
 
-export function THeader({ t, code, isAdmin, copyCode, subtitle }) {
+export function THeader({ t, code, isAdmin, copyCode, subtitle, onEdit }) {
   const typeInfo = TOURNAMENT_TYPES.find((x) => x.id === t.type) || TOURNAMENT_TYPES[0];
   return (
     <div style={{ background: "linear-gradient(135deg,#1e3a5f,#0f4c75)", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "0 4px 12px rgba(0,0,0,.4)" }}>
@@ -10,6 +10,11 @@ export function THeader({ t, code, isAdmin, copyCode, subtitle }) {
           {typeInfo.icon} {t.config.name}
         </div>
         <div style={{ fontSize: 11, color: "#94a3b8" }}>{subtitle}</div>
+        {onEdit && (
+          <button onClick={onEdit} style={{ fontSize: 11, color: "#64748b", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0, marginTop: 4 }}>
+            ✏️ Editar torneo
+          </button>
+        )}
       </div>
       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
         {isAdmin && <span style={{ background: "#f59e0b22", color: "#fbbf24", border: "1px solid #f59e0b55", borderRadius: 99, padding: "3px 8px", fontSize: 11, fontWeight: 700 }}>👑 Admin</span>}

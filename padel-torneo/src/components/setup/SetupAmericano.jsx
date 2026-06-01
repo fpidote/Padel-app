@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { buildFirstRoundAmericano } from "../../logic/americano";
+import { buildFirstRoundAmericano, precomputeAllRounds } from "../../logic/americano";
 import { buildShareMessage } from "../../logic/utils";
 
 const COLOR = "#0284c7";
@@ -28,7 +28,7 @@ function SectionHeader({ children }) {
   );
 }
 
-export default function SetupAmericano({ t, code, isAdmin, persist, copyCode }) {
+export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, onExitEdit }) {
   const isPairs = t.config.mode === "pairs";
 
   const [localName,     setLocalName]     = useState(t.config.name      || "");
@@ -138,6 +138,9 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode }) 
       entities = t.playerInputs.map((p, i) => ({ id: i, name: p.name.trim(), level: p.level, pts: 0, gf: 0, gc: 0 }));
     }
     const { courts, sittingOut } = buildFirstRoundAmericano(entities, t.config.courts, t.config.mode);
+    const precomputedRounds = (t.config.matchmaking || "americano") === "americano"
+      ? precomputeAllRounds(entities, t.config)
+      : null;
     await persist({
       ...t,
       [isPairs ? "pairs" : "players"]: entities,
@@ -148,7 +151,9 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode }) 
       rounds: [],
       partnerHistory: {},
       sitOutHistory: {},
+      precomputedRounds,
     });
+    onExitEdit?.();
   }
 
   function startEdit(i) {
@@ -194,6 +199,17 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode }) 
   return (
     <div className="min-h-screen bg-[#111827] text-gray-50" style={{ fontFamily: "system-ui" }}>
       <div className="max-w-lg mx-auto px-4 pb-16 pt-6">
+
+        {/* ── Volver (solo en modo edición post-inicio) ── */}
+        {onExitEdit && (
+          <button
+            onClick={onExitEdit}
+            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 font-semibold mb-5 cursor-pointer transition-colors"
+            style={{ background: "none", border: "none", padding: 0 }}
+          >
+            ← Volver al torneo
+          </button>
+        )}
 
         {/* ── Header ── */}
         <div className="flex items-start justify-between mb-6">
@@ -445,7 +461,18 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode }) 
         )}
 
         {/* Lista */}
-        <div className="space-y-2">
+        {!isAdmin && (
+          <div className="mt-4 flex flex-col items-center gap-2 py-8 text-center">
+            <div className="text-3xl">⏳</div>
+            <div className="text-sm font-semibold text-gray-400">
+              El torneo está siendo configurado
+            </div>
+            <div className="text-xs text-gray-600">
+              El organizador está preparando la lista de jugadores
+            </div>
+          </div>
+        )}
+        {isAdmin && <div className="space-y-2">
           {isPairs
             ? (t.pairInputs || []).map((p, i) => (
                 <div key={i} className="flex items-center gap-3 px-3 py-2.5 bg-[#1f2937] rounded-xl">
@@ -540,7 +567,7 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode }) 
                 </div>
               ))
           }
-        </div>
+        </div>}
 
         {/* Formulario de agregar */}
         {isAdmin && (

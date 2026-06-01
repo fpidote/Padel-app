@@ -21,7 +21,7 @@ function SectionHeader({ children }) {
   );
 }
 
-export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeInfo }) {
+export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeInfo, onExitEdit }) {
   const color = typeInfo?.color || "#10b981";
 
   const [localName,     setLocalName]     = useState(t.config.name       || "");
@@ -133,6 +133,7 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
         timerStartedAt: null,
       });
     }
+    onExitEdit?.();
   }
 
   function startEdit(i) {
@@ -167,6 +168,17 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
   return (
     <div className="min-h-screen bg-[#111827] text-gray-50" style={{ fontFamily: "system-ui" }}>
       <div className="max-w-lg mx-auto px-4 pb-16 pt-6">
+
+        {/* ── Volver (solo en modo edición post-inicio) ── */}
+        {onExitEdit && (
+          <button
+            onClick={onExitEdit}
+            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 font-semibold mb-5 cursor-pointer transition-colors"
+            style={{ background: "none", border: "none", padding: 0 }}
+          >
+            ← Volver al torneo
+          </button>
+        )}
 
         {/* ── Header ── */}
         <div className="flex items-start justify-between mb-6">
@@ -422,7 +434,18 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
         {/* ── Parejas ── */}
         <SectionHeader>👥 Parejas</SectionHeader>
 
-        <div className="space-y-2">
+        {!isAdmin && (
+          <div className="mt-4 flex flex-col items-center gap-2 py-8 text-center">
+            <div className="text-3xl">⏳</div>
+            <div className="text-sm font-semibold text-gray-400">
+              El torneo está siendo configurado
+            </div>
+            <div className="text-xs text-gray-600">
+              El organizador está preparando la lista de jugadores
+            </div>
+          </div>
+        )}
+        {isAdmin && <div className="space-y-2">
           {pairs.map((p, i) => (
             <div key={i} className="flex items-center gap-3 px-3 py-2.5 bg-[#1f2937] rounded-xl">
               <span className="w-6 h-6 rounded-md bg-gray-700 text-gray-400 text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
@@ -466,7 +489,7 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
               )}
             </div>
           ))}
-        </div>
+        </div>}
 
         {/* Formulario agregar pareja */}
         {isAdmin && (

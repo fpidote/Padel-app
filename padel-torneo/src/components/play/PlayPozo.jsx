@@ -4,7 +4,7 @@ import { buildPozoRound } from "../../logic/pozo";
 import { THeader, Tabs } from "../shared/Components";
 import PairStandings from "../shared/PairStandings";
 
-export default function PlayPozo({ t, code, isAdmin, persist, copyCode }) {
+export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTournament }) {
   const [tab, setTab] = useState("courts");
   const [ls, setLs] = useState({});
   const [localTimer, setLocalTimer] = useState(0);
@@ -145,6 +145,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode }) {
         isAdmin={isAdmin}
         copyCode={copyCode}
         subtitle={`Ronda ${t.roundNum}`}
+        onEdit={isAdmin ? onEditTournament : undefined}
       />
       <div style={{ padding: 16 }}>
         <Tabs

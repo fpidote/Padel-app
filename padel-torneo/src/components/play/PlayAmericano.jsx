@@ -13,7 +13,7 @@ const LEVELS = [
   { id: 3, label: "Avanzado",     short: "A", color: "#84cc16" },
 ];
 
-export default function PlayAmericano({ t, code, isAdmin, persist, copyCode }) {
+export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onEditTournament }) {
   const [tab, setTab] = useState("courts");
   const [ls, setLs] = useState({});
   const [viewingRound, setViewingRound] = useState(null); // null = ronda actual
@@ -146,7 +146,8 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode }) {
         code={code}
         isAdmin={isAdmin}
         copyCode={copyCode}
-        subtitle={`Ronda ${t.roundNum} de ${t.config.rounds || "∞"}`}
+        subtitle={`Ronda ${t.roundNum} de ${t.precomputedRounds ? t.precomputedRounds.length : (t.config.maxRounds || "∞")}`}
+        onEdit={isAdmin ? onEditTournament : undefined}
       />
       <div style={{ padding: 16 }}>
         <Tabs
@@ -179,53 +180,89 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode }) {
             </div>
 
             {/* ── Tabs de rondas ── */}
-            {(t.rounds?.length > 0) && (
+            {(t.precomputedRounds || t.rounds?.length > 0) && (
               <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, marginBottom: 16 }}>
-                {t.rounds.map((r, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setViewingRound(i)}
-                    style={{
-                      flexShrink: 0,
-                      padding: "6px 12px",
-                      borderRadius: 8,
-                      fontSize: 13,
-                      fontWeight: 700,
-                      border: "none",
-                      cursor: "pointer",
-                      background: viewingRound === i ? "#0284c7" : "#1f2937",
-                      color: viewingRound === i ? "#fff" : "#64748b",
-                    }}
-                  >
-                    R{r.num || i + 1}
-                  </button>
-                ))}
-                <button
-                  onClick={() => setViewingRound(null)}
-                  style={{
-                    flexShrink: 0,
-                    padding: "6px 12px",
-                    borderRadius: 8,
-                    fontSize: 13,
-                    fontWeight: 700,
-                    border: "none",
-                    cursor: "pointer",
-                    background: viewingRound === null ? "#0284c7" : "#1f2937",
-                    color: viewingRound === null ? "#fff" : "#94a3b8",
-                  }}
-                >
-                  R{t.roundNum} ●
-                </button>
+                {t.precomputedRounds
+                  ? t.precomputedRounds.map((_, i) => {
+                      const rNum = i + 1;
+                      const isCurrent = rNum === t.roundNum;
+                      const isFuture = rNum > t.roundNum;
+                      const isActive = isCurrent ? viewingRound === null : viewingRound === rNum;
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => setViewingRound(isCurrent ? null : rNum)}
+                          style={{
+                            flexShrink: 0,
+                            padding: "6px 12px",
+                            borderRadius: 8,
+                            fontSize: 13,
+                            fontWeight: 700,
+                            border: "none",
+                            cursor: "pointer",
+                            background: isActive ? "#0284c7" : isFuture ? "#111827" : "#1f2937",
+                            color: isActive ? "#fff" : isFuture ? "#334155" : "#64748b",
+                          }}
+                        >
+                          R{rNum}{isCurrent ? " ●" : ""}
+                        </button>
+                      );
+                    })
+                  : <>
+                      {t.rounds.map((r, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setViewingRound(i + 1)}
+                          style={{
+                            flexShrink: 0,
+                            padding: "6px 12px",
+                            borderRadius: 8,
+                            fontSize: 13,
+                            fontWeight: 700,
+                            border: "none",
+                            cursor: "pointer",
+                            background: viewingRound === i + 1 ? "#0284c7" : "#1f2937",
+                            color: viewingRound === i + 1 ? "#fff" : "#64748b",
+                          }}
+                        >
+                          R{r.num || i + 1}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setViewingRound(null)}
+                        style={{
+                          flexShrink: 0,
+                          padding: "6px 12px",
+                          borderRadius: 8,
+                          fontSize: 13,
+                          fontWeight: 700,
+                          border: "none",
+                          cursor: "pointer",
+                          background: viewingRound === null ? "#0284c7" : "#1f2937",
+                          color: viewingRound === null ? "#fff" : "#94a3b8",
+                        }}
+                      >
+                        R{t.roundNum} ●
+                      </button>
+                    </>
+                }
               </div>
             )}
 
             {viewingRound !== null ? (
-              <HistoryRound
-                round={t.rounds[viewingRound]}
-                matchesSearch={matchesSearch}
-                isAdmin={isAdmin}
-                useLevels={!!t.config.useLevels}
-              />
+              (t.precomputedRounds && viewingRound > t.roundNum) ? (
+                <FutureRound
+                  round={t.precomputedRounds[viewingRound - 1]}
+                  matchesSearch={matchesSearch}
+                />
+              ) : (
+                <HistoryRound
+                  round={t.rounds[viewingRound - 1]}
+                  matchesSearch={matchesSearch}
+                  isAdmin={isAdmin}
+                  useLevels={!!t.config.useLevels}
+                />
+              )
             ) : (
               <CourtsAmericano
                 t={t}
@@ -390,7 +427,7 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEd
                       {court.scoreB}
                     </div>
                   </>
-                ) : (
+                ) : isAdmin ? (
                   <>
                     <input
                       type="number" min="0"
@@ -408,6 +445,8 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEd
                       className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-700 text-center text-xl font-black text-sky-400 outline-none focus:border-sky-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </>
+                ) : (
+                  <span className="text-gray-600 font-black text-lg">–</span>
                 )}
               </div>
 
@@ -540,87 +579,125 @@ function HistoryRound({ round, matchesSearch, isAdmin, useLevels }) {
   );
 }
 
-function StandingsAmericano({ rows, roundNum, useLevels }) {
+function FutureRound({ round, matchesSearch }) {
+  if (!round) return null;
+
+  function renderNames(pair) {
+    if (!pair) return [];
+    if (Array.isArray(pair)) return pair.map((p) => p.name || "");
+    return [`${pair.p1} / ${pair.p2}`];
+  }
+
+  const visibleCourts = (round.courts || []).filter(matchesSearch);
+
   return (
-    <div style={{ background: "#1e293b", borderRadius: 12, padding: 16 }}>
-      <div
-        style={{
-          fontWeight: 800,
-          fontSize: 16,
-          color: "#f1f5f9",
-          marginBottom: 4,
-        }}
-      >
-        🏆 Tabla - Ronda {roundNum}
+    <div className="max-w-lg mx-auto">
+      {round.sittingOut?.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2.5 bg-yellow-400/10 border border-yellow-400/20 rounded-xl text-sm mb-3">
+          <span>⏳</span>
+          <span className="text-yellow-400 font-semibold shrink-0">Descansarán:</span>
+          <span className="text-gray-400">
+            {round.sittingOut.map((p) => p.name || `${p.p1}/${p.p2}`).join(" · ")}
+          </span>
+        </div>
+      )}
+
+      <div className="mb-3">
+        <span className="text-xs font-bold text-gray-600 bg-[#1e293b] border border-gray-800 rounded-md px-2 py-0.5">
+          📅 Emparejamientos tentativos
+        </span>
       </div>
-      <div style={{ fontSize: 12, color: "#64748b", marginBottom: 16 }}>
-        1º Puntos · 2º Diferencia de games
-      </div>
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        {rows.map((p, i) => {
-          const d = p.gf - p.gc;
-          const m = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
-          return (
-            <div
-              key={p.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                padding: "10px 0",
-                borderBottom:
-                  i === rows.length - 1 ? "none" : "1px solid #334155",
-              }}
-            >
-              <div
-                style={{
-                  width: 28,
-                  textAlign: "center",
-                  fontSize: m ? 20 : 16,
-                  fontWeight: 800,
-                  color: "#94a3b8",
-                }}
-              >
-                {m || i + 1}
+
+      {visibleCourts.map((court, ci) => {
+        const namesA = renderNames(court.pairA);
+        const namesB = renderNames(court.pairB);
+        return (
+          <div key={ci} className="bg-[#1f2937] rounded-2xl border border-gray-700 overflow-hidden mb-3 opacity-70">
+            <div className="flex items-center px-4 py-2.5 border-b border-gray-700">
+              <span className="text-xs font-bold text-gray-600 tracking-widest">PISTA {ci + 1}</span>
+            </div>
+
+            <div className="grid px-4 py-4" style={{ gridTemplateColumns: "1fr auto 1fr", gap: "10px" }}>
+              <div className="flex flex-col items-end self-center">
+                {namesA.map((name, i) => (
+                  <span key={i} className="text-sm font-bold text-gray-50 leading-snug">{name}</span>
+                ))}
               </div>
-              <div style={{ flex: 1 }}>
-                <div
-                  style={{
-                    fontWeight: 700,
-                    color: "#f1f5f9",
-                    fontSize: 15,
-                    marginBottom: 2,
-                  }}
-                >
-                  {p.name || `${p.p1} / ${p.p2}`}
-                  {p.name && useLevels && <PTag p={p} />}
-                </div>
-                <div style={{ fontSize: 12, color: "#64748b" }}>
-                  GF {p.gf} · GC {p.gc} · Dif {d >= 0 ? "+" : ""}
-                  {d}
-                </div>
+
+              <div className="flex items-center gap-1.5 self-center">
+                <input
+                  type="text"
+                  value="–"
+                  readOnly
+                  className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-800 text-center text-xl font-black text-gray-700 outline-none cursor-default select-none"
+                />
+                <span className="text-gray-700 font-black text-lg">-</span>
+                <input
+                  type="text"
+                  value="–"
+                  readOnly
+                  className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-800 text-center text-xl font-black text-gray-700 outline-none cursor-default select-none"
+                />
               </div>
-              <div style={{ textAlign: "right" }}>
-                <div
-                  style={{ fontSize: 20, fontWeight: 900, color: "#38bdf8" }}
-                >
-                  {p.pts}
-                </div>
-                <div
-                  style={{
-                    fontSize: 10,
-                    color: "#64748b",
-                    textTransform: "uppercase",
-                    fontWeight: 700,
-                  }}
-                >
-                  pts
-                </div>
+
+              <div className="flex flex-col items-start self-center">
+                {namesB.map((name, i) => (
+                  <span key={i} className="text-sm font-bold text-gray-50 leading-snug">{name}</span>
+                ))}
               </div>
             </div>
-          );
-        })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+const thStyleS = { padding: "8px 10px", fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "center" };
+const tdCenterS = { padding: "10px 10px", textAlign: "center" };
+
+function StandingsAmericano({ rows, roundNum, useLevels }) {
+  return (
+    <div style={{ background: "#0f172a", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+      <div style={{ padding: "14px 16px 4px", fontWeight: 800, fontSize: 15, color: "#f1f5f9" }}>
+        🏆 Tabla - Ronda {roundNum}
       </div>
+      <div style={{ fontSize: 11, color: "#475569", padding: "0 16px 10px" }}>
+        1º Puntos · 2º Diferencia de games
+      </div>
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead>
+          <tr style={{ background: "#0a1120" }}>
+            <th style={thStyleS}>#</th>
+            <th style={{ ...thStyleS, textAlign: "left" }}>Jugador</th>
+            <th style={thStyleS}>PTS</th>
+            <th style={thStyleS}>GF</th>
+            <th style={thStyleS}>GC</th>
+            <th style={thStyleS}>DIF</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((p, i) => {
+            const d = p.gf - p.gc;
+            const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
+            return (
+              <tr key={p.id} style={{ background: i % 2 === 0 ? "#1e293b" : "#172033", borderBottom: "1px solid #1e293b" }}>
+                <td style={tdCenterS}>{medal || <span style={{ color: "#64748b", fontSize: 13 }}>{i + 1}</span>}</td>
+                <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>
+                  {p.name || `${p.p1} / ${p.p2}`}
+                  {p.name && useLevels && <PTag p={p} />}
+                </td>
+                <td style={{ ...tdCenterS, color: "#38bdf8", fontWeight: 800, fontSize: 14 }}>{p.pts}</td>
+                <td style={{ ...tdCenterS, color: "#94a3b8", fontSize: 13 }}>{p.gf}</td>
+                <td style={{ ...tdCenterS, color: "#94a3b8", fontSize: 13 }}>{p.gc}</td>
+                <td style={{ ...tdCenterS, fontSize: 13, fontWeight: 700, color: d > 0 ? "#4ade80" : d < 0 ? "#f87171" : "#64748b" }}>
+                  {d > 0 ? `+${d}` : d}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

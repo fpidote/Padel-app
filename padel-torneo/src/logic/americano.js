@@ -1,6 +1,38 @@
 // ── Americano Logic ──────────────────────────────────────────
 import { shuffle, pk } from "./utils";
 
+export function precomputeAllRounds(entities, config) {
+  const { courts, mode = "individual", maxRounds } = config;
+  const isPairs = mode === "pairs";
+  const totalRounds = maxRounds ?? Math.min(entities.length - 1, 12);
+
+  const rounds = [];
+  let ph = {};
+  let soh = {};
+
+  const first = buildFirstRoundAmericano(entities, courts, mode);
+  rounds.push({ courts: first.courts, sittingOut: first.sittingOut });
+
+  for (let r = 1; r < totalRounds; r++) {
+    const prev = rounds[r - 1];
+    prev.sittingOut.forEach((p) => {
+      soh[p.id] = (soh[p.id] || 0) + 1;
+    });
+    if (!isPairs) {
+      prev.courts.forEach((court) => {
+        const kA = pk(court.pairA[0].id, court.pairA[1].id);
+        const kB = pk(court.pairB[0].id, court.pairB[1].id);
+        ph[kA] = (ph[kA] || 0) + 1;
+        ph[kB] = (ph[kB] || 0) + 1;
+      });
+    }
+    const round = buildRoundAmericano(entities, courts, ph, soh, mode);
+    rounds.push({ courts: round.courts, sittingOut: round.sittingOut });
+  }
+
+  return rounds;
+}
+
 function levelPenalty(pair) {
   return Math.abs((pair[0].level || 0) - (pair[1].level || 0));
 }

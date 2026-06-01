@@ -13,6 +13,7 @@ export default function PlayMundialito({
   isAdmin,
   persist,
   copyCode,
+  onEditTournament,
 }) {
   const [tab, setTab] = useState("groups");
   const [ls, setLs] = useState({});
@@ -264,6 +265,7 @@ export default function PlayMundialito({
         isAdmin={isAdmin}
         copyCode={copyCode}
         subtitle="Fase de Grupos y Eliminatoria"
+        onEdit={isAdmin ? onEditTournament : undefined}
       />
       <div style={{ padding: 16 }}>
         <Tabs

@@ -6,7 +6,15 @@ export function buildBracket(pairs) {
   while (size < n) size *= 2;
 
   const BYE = { id: "bye", p1: "BYE", p2: "BYE" };
-  const seeds = [...pairs, ...Array(size - n).fill(BYE)];
+  // Intercalar BYEs para que nunca dos BYEs se enfrenten entre sí
+  const distributed = Array(size).fill(null).map((_, i) => (i < n ? pairs[i] : BYE));
+  const interleaved = [];
+  let lo = 0, hi = size - 1;
+  while (lo <= hi) {
+    interleaved.push(distributed[lo++]);
+    if (lo <= hi) interleaved.push(distributed[hi--]);
+  }
+  const seeds = interleaved;
   const matches = [];
 
   // 1. Winners R1

@@ -1,22 +1,257 @@
 // src/components/play/PlayRelampago.jsx
-import { useState } from "react";
-import { B, TOURNAMENT_RULES } from "../../logic/constants";
+import { useState, Fragment } from "react";
+import { TOURNAMENT_RULES } from "../../logic/constants";
 import { advanceBracket } from "../../logic/relampago";
 import { THeader, Tabs } from "../shared/Components";
-import MatchCard from "../shared/MatchCard";
 import PairStandings from "../shared/PairStandings";
 
-export default function PlayRelampago({ t, code, isAdmin, persist, copyCode }) {
+const SLOT_HEIGHT = 110;
+
+function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentColor }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const isByeA = match.pairA?.id === "bye";
+  const isByeB = match.pairB?.id === "bye";
+  const nameA = isByeA ? "BYE" : (match.pairA ? `${match.pairA.p1} / ${match.pairA.p2}` : "TBD");
+  const nameB = isByeB ? "BYE" : (match.pairB ? `${match.pairB.p1} / ${match.pairB.p2}` : "TBD");
+  const isTBD = !match.pairA || !match.pairB;
+  const isBye = isByeA || isByeB;
+
+  const aVal = ls[`${match.id}_A`] ?? "";
+  const bVal = ls[`${match.id}_B`] ?? "";
+  const canSave =
+    aVal !== "" && bVal !== "" &&
+    Number(aVal) >= 0 && Number(bVal) >= 0 &&
+    Number(aVal) !== Number(bVal);
+
+  const wonA = match.saved && match.winner?.id === match.pairA?.id;
+  const wonB = match.saved && match.winner?.id === match.pairB?.id;
+
+  function handleCardClick() {
+    if (!isAdmin || isTBD || isBye || match.saved) return;
+    setExpanded((e) => !e);
+  }
+
+  function nameColor(isByePair, wonPair, hasPair) {
+    if (isByePair) return "#334155";
+    if (match.saved) return wonPair ? "#f1f5f9" : "#475569";
+    return hasPair ? "#f1f5f9" : "#475569";
+  }
+
+  return (
+    <div
+      onClick={handleCardClick}
+      style={{
+        background: "#1e293b",
+        borderRadius: 10,
+        borderLeft: `3px solid ${accentColor}`,
+        padding: "12px 14px",
+        cursor: !isAdmin || isTBD || isBye || match.saved ? "default" : "pointer",
+        position: "relative",
+        userSelect: "none",
+      }}
+    >
+      {match.saved && (
+        <div style={{ position: "absolute", top: 5, right: 8, fontSize: 10, color: "#4ade80", fontWeight: 700 }}>
+          ✓
+        </div>
+      )}
+
+      {/* Fila A */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+        <span style={{
+          fontSize: 14,
+          fontWeight: 700,
+          fontStyle: isByeA ? "italic" : "normal",
+          color: nameColor(isByeA, wonA, !!match.pairA),
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          flex: 1, marginRight: 6,
+        }}>
+          {nameA}
+        </span>
+        {expanded ? (
+          <input
+            type="number" min="0"
+            value={aVal}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => setLs((prev) => ({ ...prev, [`${match.id}_A`]: e.target.value }))}
+            onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
+            style={{ width: 36, height: 28, borderRadius: 6, background: "#0f172a", border: "1px solid #334155", textAlign: "center", color: "#38bdf8", fontWeight: 700, fontSize: 14, outline: "none" }}
+          />
+        ) : (
+          <span style={{ fontSize: 16, fontWeight: 800, color: match.saved ? (wonA ? "#4ade80" : "#475569") : "#334155", minWidth: 28, textAlign: "right" }}>
+            {match.saved ? match.scoreA : "–"}
+          </span>
+        )}
+      </div>
+
+      {/* Fila B */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{
+          fontSize: 14,
+          fontWeight: 700,
+          fontStyle: isByeB ? "italic" : "normal",
+          color: nameColor(isByeB, wonB, !!match.pairB),
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          flex: 1, marginRight: 6,
+        }}>
+          {nameB}
+        </span>
+        {expanded ? (
+          <input
+            type="number" min="0"
+            value={bVal}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => setLs((prev) => ({ ...prev, [`${match.id}_B`]: e.target.value }))}
+            onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
+            style={{ width: 36, height: 28, borderRadius: 6, background: "#0f172a", border: "1px solid #334155", textAlign: "center", color: "#38bdf8", fontWeight: 700, fontSize: 14, outline: "none" }}
+          />
+        ) : (
+          <span style={{ fontSize: 16, fontWeight: 800, color: match.saved ? (wonB ? "#4ade80" : "#475569") : "#334155", minWidth: 28, textAlign: "right" }}>
+            {match.saved ? match.scoreB : "–"}
+          </span>
+        )}
+      </div>
+
+      {expanded && canSave && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onSave(match.id, parseInt(aVal), parseInt(bVal));
+            setExpanded(false);
+          }}
+          style={{ marginTop: 8, width: "100%", padding: "5px 0", borderRadius: 6, background: accentColor, color: "#fff", fontWeight: 700, fontSize: 12, border: "none", cursor: "pointer" }}
+        >
+          ✓ Guardar
+        </button>
+      )}
+
+      {match.saved && isAdmin && !isBye && (
+        <div
+          onClick={(e) => { e.stopPropagation(); onEdit(match.id); }}
+          style={{ marginTop: 5, textAlign: "center", fontSize: 10, color: "#334155", cursor: "pointer" }}
+        >
+          ✏️ editar
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, accentColor }) {
+  const rounds = [...new Set(matches.map((m) => m.round))].sort((a, b) => a - b);
+  if (rounds.length === 0) return null;
+
+  const maxRound = rounds[rounds.length - 1];
+  const matchesByRound = {};
+  rounds.forEach((r) => {
+    matchesByRound[r] = matches
+      .filter((m) => m.round === r)
+      .sort((a, b) => a.matchIndex - b.matchIndex);
+  });
+
+  const r1Count = matchesByRound[rounds[0]].length;
+  const containerHeight = Math.max(r1Count * SLOT_HEIGHT, 100);
+  const LABEL_H = 26;
+
+  function matchCenterY(total, idx) {
+    return containerHeight * (2 * idx + 1) / (2 * total);
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "row", overflowX: "auto", alignItems: "flex-start", paddingBottom: 16, padding: "16px 8px", minHeight: 300 }}>
+      {rounds.map((round, ri) => {
+        const roundMatches = matchesByRound[round];
+        const isLastRound = round === maxRound;
+        const label = isLastRound ? "Final" : `Ronda ${round}`;
+        const nextRound = ri < rounds.length - 1 ? rounds[ri + 1] : null;
+        const nextRoundMatches = nextRound ? matchesByRound[nextRound] : null;
+
+        let connectorEl = null;
+        if (nextRoundMatches) {
+          const groups = {};
+          roundMatches.forEach((m, mi) => {
+            if (!m.nextMatchId) return;
+            const dstIdx = nextRoundMatches.findIndex((nm) => nm.id === m.nextMatchId);
+            if (dstIdx < 0) return;
+            if (!groups[m.nextMatchId]) groups[m.nextMatchId] = { dstIdx, srcIdxs: [] };
+            groups[m.nextMatchId].srcIdxs.push(mi);
+          });
+
+          const lines = [];
+          Object.entries(groups).forEach(([, { dstIdx, srcIdxs }]) => {
+            const dstY = matchCenterY(nextRoundMatches.length, dstIdx);
+            const srcYs = srcIdxs.map((si) => matchCenterY(roundMatches.length, si));
+            const minSrcY = Math.min(...srcYs);
+            const maxSrcY = Math.max(...srcYs);
+            const midY = (minSrcY + maxSrcY) / 2;
+
+            srcYs.forEach((sy, i) => {
+              lines.push(<line key={`h${dstIdx}-${i}`} x1="0" y1={sy} x2="16" y2={sy} stroke="#334155" strokeWidth="1.5" />);
+            });
+            if (srcYs.length > 1) {
+              lines.push(<line key={`v${dstIdx}`} x1="16" y1={minSrcY} x2="16" y2={maxSrcY} stroke="#334155" strokeWidth="1.5" />);
+            }
+            lines.push(<line key={`hd${dstIdx}`} x1="16" y1={midY} x2="32" y2={dstY} stroke="#334155" strokeWidth="1.5" />);
+          });
+
+          connectorEl = (
+            <div style={{ width: 32, flexShrink: 0, marginTop: LABEL_H }}>
+              <svg width="32" height={containerHeight} style={{ display: "block" }}>
+                {lines}
+              </svg>
+            </div>
+          );
+        }
+
+        return (
+          <Fragment key={round}>
+            <div style={{ display: "flex", flexDirection: "column", width: 240, flexShrink: 0 }}>
+              <div style={{ height: LABEL_H, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                  {label}
+                </span>
+              </div>
+              <div style={{ height: containerHeight, position: "relative" }}>
+                {roundMatches.map((match, mi) => {
+                  if (match.pairA?.id === "bye" && match.pairB?.id === "bye") return null;
+                  const centerY = matchCenterY(roundMatches.length, mi);
+                  return (
+                    <div
+                      key={match.id}
+                      style={{ position: "absolute", top: centerY, left: 0, right: 0, transform: "translateY(-50%)" }}
+                    >
+                      <BracketMatchCard
+                        match={match}
+                        isAdmin={isAdmin}
+                        ls={ls}
+                        setLs={setLs}
+                        onSave={onSave}
+                        onEdit={onEdit}
+                        accentColor={accentColor}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            {connectorEl}
+          </Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onEditTournament }) {
   const [tab, setTab] = useState("bracket");
   const [ls, setLs] = useState({});
 
-  // 👇 AHORA RECIBE EL PARÁMETRO 'sets'
   async function onSaveMatch(matchId, a, b, sets) {
     const match = t.bracket.find((m) => m.id === matchId);
     if (!match || match.saved) return;
     if (isNaN(a) || isNaN(b) || a < 0 || b < 0 || a === b) return;
 
-    // Al avanzar el cuadro, inyectamos el array con los resultados individuales de los sets
     const updated = advanceBracket(t.bracket, matchId, a, b).map((m) =>
       m.id === matchId ? { ...m, sets: sets || null } : m,
     );
@@ -88,16 +323,8 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode }) {
     await persist({ ...t, bracket: updatedBracket, pairs });
   }
 
-  const winnerRounds = [
-    ...new Set(
-      t.bracket.filter((m) => m.bracket === "winners").map((m) => m.round),
-    ),
-  ].sort((a, b) => a - b);
-
   const consolRounds = [
-    ...new Set(
-      t.bracket.filter((m) => m.bracket === "consolation").map((m) => m.round),
-    ),
+    ...new Set(t.bracket.filter((m) => m.bracket === "consolation").map((m) => m.round)),
   ].sort((a, b) => a - b);
 
   const champion = t.bracket.find(
@@ -116,6 +343,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode }) {
         isAdmin={isAdmin}
         copyCode={copyCode}
         subtitle="Cuadro de eliminación"
+        onEdit={isAdmin ? onEditTournament : undefined}
       />
       <div style={{ padding: 16 }}>
         <Tabs
@@ -132,150 +360,57 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode }) {
 
       <div style={{ padding: "0 16px" }}>
         {tab === "bracket" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {champion && (
-              <div
-                style={{
-                  background: "#1e293b",
-                  padding: 16,
-                  borderRadius: 12,
-                  textAlign: "center",
-                  border: "2px solid #f59e0b",
-                }}
-              >
+              <div style={{ background: "#1e293b", padding: 16, borderRadius: 12, textAlign: "center", border: "2px solid #f59e0b" }}>
                 <div style={{ fontSize: 24 }}>🏆</div>
-                <div
-                  style={{
-                    color: "#f59e0b",
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    fontSize: 12,
-                    marginBottom: 4,
-                  }}
-                >
+                <div style={{ color: "#f59e0b", fontWeight: 700, textTransform: "uppercase", fontSize: 12, marginBottom: 4 }}>
                   Campeón
                 </div>
-                <div
-                  style={{ color: "#f1f5f9", fontWeight: 800, fontSize: 18 }}
-                >
+                <div style={{ color: "#f1f5f9", fontWeight: 800, fontSize: 18 }}>
                   {champion.p1} / {champion.p2}
                 </div>
               </div>
             )}
-            {winnerRounds.map((round) => (
-              <div key={round}>
-                <div
-                  style={{
-                    color: "#94a3b8",
-                    fontWeight: 700,
-                    marginBottom: 8,
-                    textTransform: "uppercase",
-                    fontSize: 13,
-                  }}
-                >
-                  {round === Math.max(...winnerRounds)
-                    ? "Final"
-                    : `Ronda ${round}`}
-                </div>
-                {t.bracket
-                  .filter((m) => m.bracket === "winners" && m.round === round)
-                  .map((match) => (
-                    <MatchCard
-                      key={match.id}
-                      match={match}
-                      isAdmin={isAdmin}
-                      ls={ls}
-                      setLs={setLs}
-                      onSave={onSaveMatch}
-                      onEdit={onEditMatch}
-                      accentColor="#7c3aed"
-                      scoringFormat={t.config?.scoringFormat || "games"} // 👈 ENVIAMOS EL FORMATO
-                    />
-                  ))}
-              </div>
-            ))}
+            <BracketView
+              matches={t.bracket.filter((m) => m.bracket === "winners")}
+              isAdmin={isAdmin}
+              ls={ls}
+              setLs={setLs}
+              onSave={onSaveMatch}
+              onEdit={onEditMatch}
+              accentColor="#7c3aed"
+            />
           </div>
         )}
 
         {tab === "consolation" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {consolChampion && (
-              <div
-                style={{
-                  background: "#1e293b",
-                  padding: 16,
-                  borderRadius: 12,
-                  textAlign: "center",
-                  border: "2px solid #94a3b8",
-                }}
-              >
+              <div style={{ background: "#1e293b", padding: 16, borderRadius: 12, textAlign: "center", border: "2px solid #94a3b8" }}>
                 <div style={{ fontSize: 24 }}>🥈</div>
-                <div
-                  style={{
-                    color: "#94a3b8",
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    fontSize: 12,
-                    marginBottom: 4,
-                  }}
-                >
+                <div style={{ color: "#94a3b8", fontWeight: 700, textTransform: "uppercase", fontSize: 12, marginBottom: 4 }}>
                   Campeón Revancha
                 </div>
-                <div
-                  style={{ color: "#f1f5f9", fontWeight: 800, fontSize: 18 }}
-                >
+                <div style={{ color: "#f1f5f9", fontWeight: 800, fontSize: 18 }}>
                   {consolChampion.p1} / {consolChampion.p2}
                 </div>
               </div>
             )}
             {consolRounds.length === 0 && (
-              <div
-                style={{
-                  padding: 20,
-                  textAlign: "center",
-                  color: "#94a3b8",
-                  background: "#1e293b",
-                  borderRadius: 8,
-                }}
-              >
-                El cuadro de Revancha se activa cuando hay primeras rondas
-                jugadas.
+              <div style={{ padding: 20, textAlign: "center", color: "#94a3b8", background: "#1e293b", borderRadius: 8 }}>
+                El cuadro de Revancha se activa cuando hay primeras rondas jugadas.
               </div>
             )}
-            {consolRounds.map((round) => (
-              <div key={round}>
-                <div
-                  style={{
-                    color: "#94a3b8",
-                    fontWeight: 700,
-                    marginBottom: 8,
-                    textTransform: "uppercase",
-                    fontSize: 13,
-                  }}
-                >
-                  {round === Math.max(...consolRounds, 0)
-                    ? "Final Revancha"
-                    : `Revancha Ronda ${round}`}
-                </div>
-                {t.bracket
-                  .filter(
-                    (m) => m.bracket === "consolation" && m.round === round,
-                  )
-                  .map((match) => (
-                    <MatchCard
-                      key={match.id}
-                      match={match}
-                      isAdmin={isAdmin}
-                      ls={ls}
-                      setLs={setLs}
-                      onSave={onSaveMatch}
-                      onEdit={onEditMatch}
-                      accentColor="#0284c7"
-                      scoringFormat={t.config?.scoringFormat || "games"} // 👈 ENVIAMOS EL FORMATO
-                    />
-                  ))}
-              </div>
-            ))}
+            <BracketView
+              matches={t.bracket.filter((m) => m.bracket === "consolation")}
+              isAdmin={isAdmin}
+              ls={ls}
+              setLs={setLs}
+              onSave={onSaveMatch}
+              onEdit={onEditMatch}
+              accentColor="#0284c7"
+            />
           </div>
         )}
 
@@ -285,29 +420,12 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode }) {
 
         {tab === "rules" && (
           <div style={{ background: "#1e293b", padding: 20, borderRadius: 12 }}>
-            <h3
-              style={{
-                fontSize: 18,
-                fontWeight: 800,
-                color: "#38bdf8",
-                marginBottom: 16,
-              }}
-            >
+            <h3 style={{ fontSize: 18, fontWeight: 800, color: "#38bdf8", marginBottom: 16 }}>
               Reglas del Torneo Relámpago
             </h3>
-            <ul
-              style={{
-                color: "#cbd5e1",
-                fontSize: 14,
-                lineHeight: "1.6",
-                paddingLeft: 20,
-                listStyleType: "disc",
-              }}
-            >
+            <ul style={{ color: "#cbd5e1", fontSize: 14, lineHeight: "1.6", paddingLeft: 20, listStyleType: "disc" }}>
               {TOURNAMENT_RULES.relampago.map((rule, i) => (
-                <li key={i} style={{ marginBottom: 10 }}>
-                  {rule}
-                </li>
+                <li key={i} style={{ marginBottom: 10 }}>{rule}</li>
               ))}
             </ul>
           </div>
