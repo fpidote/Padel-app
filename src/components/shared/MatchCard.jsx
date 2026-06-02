@@ -74,8 +74,7 @@ export default function MatchCard({
             {isAdmin && onEdit && (
               <button
                 onClick={() => onEdit(match.id)}
-                className="text-xs font-bold text-red-400 hover:text-red-300 cursor-pointer underline transition-colors"
-                style={{ background: "none", border: "none" }}
+                className="text-xs font-bold text-red-400 hover:text-red-300 cursor-pointer underline transition-colors bg-transparent border-0"
               >
                 Editar
               </button>
@@ -215,6 +214,7 @@ export default function MatchCard({
         <div className="flex gap-2 px-4 pb-4">
           {isEditing && (
             <button
+              type="button"
               onClick={() => {
                 setLs((p) => {
                   const n = { ...p };
@@ -234,6 +234,7 @@ export default function MatchCard({
             </button>
           )}
           <button
+            type="button"
             onClick={() => {
               if (isSetFormat) {
                 onSave(match.id, finalScoreA, finalScoreB, live.setList);
