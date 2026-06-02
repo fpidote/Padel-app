@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { B } from "../../logic/constants";
 import { pk } from "../../logic/utils";
 import { buildRoundAmericano } from "../../logic/americano";
-import { THeader, Tabs, PTag } from "../shared/Components";
+import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import History from "../shared/History";
 import { TOURNAMENT_RULES } from "../../logic/constants";
 
@@ -13,11 +13,28 @@ const LEVELS = [
   { id: 3, label: "Avanzado",     short: "A", color: "#84cc16" },
 ];
 
+function PTag({ p }) {
+  const lvl = LEVELS[p.level ?? 0];
+  if (!lvl || p.level === 0) return null;
+  return (
+    <span style={{
+      display: "inline-block", fontSize: 10, fontWeight: 700,
+      background: lvl.color + "22", color: lvl.color,
+      borderRadius: 4, padding: "1px 5px", marginLeft: 5,
+      verticalAlign: "middle", letterSpacing: "0.03em"
+    }}>
+      {lvl.label}
+    </span>
+  );
+}
+
 export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onEditTournament }) {
   const [tab, setTab] = useState("courts");
   const [ls, setLs] = useState({});
   const [viewingRound, setViewingRound] = useState(null); // null = ronda actual
   const [search, setSearch] = useState(null); // null = todos, playerID/pairID = filtrado
+  const [modalMsg, setModalMsg] = useState(null);
+  const [showLevelsToggle, setShowLevelsToggle] = useState(true);
 
   async function onSave(ci, isCancel = false) {
     const court = t.currentRound[ci];
@@ -56,6 +73,10 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
   }
 
   async function onNext() {
+    if (t.config.maxRounds && t.roundNum >= t.config.maxRounds) {
+      setModalMsg("¡Torneo finalizado! Se han completado todas las rondas.");
+      return;
+    }
     if (!t.currentRound.every((c) => c.saved)) return;
     const isPairs = t.config.mode === "pairs";
     const entityKey = isPairs ? "pairs" : "players";
@@ -124,6 +145,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
     b.pts !== a.pts ? b.pts - a.pts : b.gf - b.gc - (a.gf - a.gc),
   );
   const allSaved = t.currentRound?.every((c) => c.saved);
+  const isFinished = !!(t.config.maxRounds && t.roundNum >= t.config.maxRounds);
 
   const allPlayers = isPairs
     ? [...(t.pairs || [])].sort((a, b) => `${a.p1} ${a.p2}`.localeCompare(`${b.p1} ${b.p2}`))
@@ -178,6 +200,24 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                 ))}
               </select>
             </div>
+
+            {/* ── Toggle niveles ── */}
+            {isAdmin && t.config.useLevels && (
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+                <button
+                  onClick={() => setShowLevelsToggle(v => !v)}
+                  style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    display: "flex", alignItems: "center", gap: 6,
+                    fontSize: 12, fontWeight: 600,
+                    color: showLevelsToggle ? "#38bdf8" : "#475569"
+                  }}
+                >
+                  <span style={{ fontSize: 16 }}>{showLevelsToggle ? "👁️" : "🙈"}</span>
+                  {showLevelsToggle ? "Ocultar niveles" : "Mostrar niveles"}
+                </button>
+              </div>
+            )}
 
             {/* ── Tabs de rondas ── */}
             {(t.precomputedRounds || t.rounds?.length > 0) && (
@@ -254,6 +294,9 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                 <FutureRound
                   round={t.precomputedRounds[viewingRound - 1]}
                   matchesSearch={matchesSearch}
+                  isAdmin={isAdmin}
+                  useLevels={!!t.config.useLevels}
+                  showLevelsToggle={showLevelsToggle}
                 />
               ) : (
                 <HistoryRound
@@ -261,6 +304,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                   matchesSearch={matchesSearch}
                   isAdmin={isAdmin}
                   useLevels={!!t.config.useLevels}
+                  showLevelsToggle={showLevelsToggle}
                 />
               )
             ) : (
@@ -274,12 +318,15 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                 onNext={onNext}
                 onEdit={onEdit}
                 matchesSearch={matchesSearch}
+                persist={persist}
+                isFinished={isFinished}
+                showLevelsToggle={showLevelsToggle}
               />
             )}
           </>
         )}
         {tab === "standings" && (
-          <StandingsAmericano rows={standings} roundNum={t.roundNum} useLevels={!!t.config.useLevels} />
+          <StandingsAmericano rows={standings} roundNum={t.roundNum} useLevels={!!t.config.useLevels} isAdmin={isAdmin} showLevelsToggle={showLevelsToggle} setShowLevelsToggle={setShowLevelsToggle} />
         )}
         {tab === "history" && (
           <>
@@ -329,12 +376,16 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
           </div>
         )}
       </div>
+      {modalMsg && <SimpleModal message={modalMsg} onClose={() => setModalMsg(null)} />}
     </div>
   );
 }
 
-function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEdit, matchesSearch }) {
-  const showLevel = t.config.useLevels && isAdmin;
+function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEdit, matchesSearch, persist, isFinished, showLevelsToggle }) {
+  const [editingName, setEditingName] = useState(null);
+  const debName = useRef(null);
+  const showLevel = t.config.useLevels && isAdmin && showLevelsToggle;
+  const isPairs = t.config.mode === "pairs";
 
   function renderNames(pair) {
     if (!pair) return [];
@@ -351,6 +402,71 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEd
     const a = ls[`${ci}_A`];
     const b = ls[`${ci}_B`];
     return a !== undefined && b !== undefined && a !== "" && b !== "" && Number(a) !== Number(b);
+  }
+
+  function handleNameChange(type, id, field, val) {
+    setEditingName(prev => prev ? { ...prev, value: val } : null);
+    clearTimeout(debName.current);
+    debName.current = setTimeout(() => {
+      if (type === "player") {
+        const updatedPlayers = (t.players || []).map(p => p.id === id ? { ...p, name: val } : p);
+        const updatedRound = (t.currentRound || []).map(c => ({
+          ...c,
+          pairA: Array.isArray(c.pairA) ? c.pairA.map(p => p.id === id ? { ...p, name: val } : p) : c.pairA,
+          pairB: Array.isArray(c.pairB) ? c.pairB.map(p => p.id === id ? { ...p, name: val } : p) : c.pairB,
+        }));
+        persist({ ...t, players: updatedPlayers, currentRound: updatedRound });
+      } else {
+        const updatedPairs = (t.pairs || []).map(p => p.id === id ? { ...p, [field]: val } : p);
+        const updatedRound = (t.currentRound || []).map(c => ({
+          ...c,
+          pairA: c.pairA?.id === id ? { ...c.pairA, [field]: val } : c.pairA,
+          pairB: c.pairB?.id === id ? { ...c.pairB, [field]: val } : c.pairB,
+        }));
+        persist({ ...t, pairs: updatedPairs, currentRound: updatedRound });
+      }
+    }, 800);
+  }
+
+  function getCurrentName(type, id, field) {
+    if (type === "player") return (t.players || []).find(p => p.id === id)?.[field] ?? "";
+    return (t.pairs || []).find(p => p.id === id)?.[field] ?? "";
+  }
+
+  function renderEditableName(type, id, field, displayName, lvl, levelPosition) {
+    const isEditingThis = editingName?.type === type && editingName?.id === id && editingName?.field === field;
+    return (
+      <div key={`${type}-${id}-${field}`} className="leading-snug flex items-center gap-1">
+        {levelPosition === "before" && showLevel && lvl && (
+          <span style={{ fontSize: 10, fontWeight: 700, background: lvl.color + "20", color: lvl.color, borderRadius: 4, padding: "1px 4px" }}>
+            {lvl.short}
+          </span>
+        )}
+        {isAdmin && isEditingThis ? (
+          <input
+            autoFocus
+            value={editingName.value}
+            onChange={e => handleNameChange(type, id, field, e.target.value)}
+            onBlur={() => setEditingName(null)}
+            onKeyDown={e => e.key === "Enter" && setEditingName(null)}
+            style={{ background: "transparent", border: "none", borderBottom: "1px solid #0284c7", fontSize: 14, fontWeight: 700, color: "#f1f5f9", outline: "none", width: 90 }}
+          />
+        ) : (
+          <span
+            className="text-sm font-bold text-gray-50"
+            onClick={() => isAdmin && setEditingName({ type, id, field, value: getCurrentName(type, id, field) })}
+            style={isAdmin ? { cursor: "pointer" } : undefined}
+          >
+            {displayName}
+          </span>
+        )}
+        {levelPosition === "after" && showLevel && lvl && (
+          <span style={{ fontSize: 10, fontWeight: 700, background: lvl.color + "20", color: lvl.color, borderRadius: 4, padding: "1px 4px" }}>
+            {lvl.short}
+          </span>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -395,16 +511,12 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEd
             <div className="grid px-4 py-4" style={{ gridTemplateColumns: "1fr auto 1fr", gap: "10px" }}>
               {/* Equipo A */}
               <div className="flex flex-col items-end self-center">
-                {namesA.map((name, i) => (
-                  <div key={i} className="leading-snug flex items-center gap-1">
-                    {showLevel && levelsA[i] && (
-                      <span style={{ fontSize: 10, fontWeight: 700, background: levelsA[i].color + "20", color: levelsA[i].color, borderRadius: 4, padding: "1px 4px" }}>
-                        {levelsA[i].short}
-                      </span>
-                    )}
-                    <span className="text-sm font-bold text-gray-50">{name}</span>
-                  </div>
-                ))}
+                {!isPairs
+                  ? (court.pairA || []).map((player, i) => renderEditableName("player", player.id, "name", player.name, levelsA[i], "before"))
+                  : isAdmin
+                    ? ["p1", "p2"].map(f => renderEditableName("pair", court.pairA.id, f, court.pairA[f], null, "before"))
+                    : <span className="text-sm font-bold text-gray-50 leading-snug">{namesA[0]}</span>
+                }
               </div>
 
               {/* Score */}
@@ -452,16 +564,12 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEd
 
               {/* Equipo B */}
               <div className="flex flex-col items-start self-center">
-                {namesB.map((name, i) => (
-                  <div key={i} className="leading-snug flex items-center gap-1">
-                    <span className="text-sm font-bold text-gray-50">{name}</span>
-                    {showLevel && levelsB[i] && (
-                      <span style={{ fontSize: 10, fontWeight: 700, background: levelsB[i].color + "20", color: levelsB[i].color, borderRadius: 4, padding: "1px 4px" }}>
-                        {levelsB[i].short}
-                      </span>
-                    )}
-                  </div>
-                ))}
+                {!isPairs
+                  ? (court.pairB || []).map((player, i) => renderEditableName("player", player.id, "name", player.name, levelsB[i], "after"))
+                  : isAdmin
+                    ? ["p1", "p2"].map(f => renderEditableName("pair", court.pairB.id, f, court.pairB[f], null, "after"))
+                    : <span className="text-sm font-bold text-gray-50 leading-snug">{namesB[0]}</span>
+                }
               </div>
             </div>
 
@@ -488,10 +596,12 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEd
 
       {allSaved && isAdmin && (
         <button
-          onClick={onNext}
-          className="w-full py-4 rounded-2xl font-black text-base text-white bg-emerald-600 hover:bg-emerald-500 transition-colors cursor-pointer mt-2"
+          onClick={isFinished ? undefined : onNext}
+          disabled={isFinished}
+          className="w-full py-4 rounded-2xl font-black text-base text-white mt-2"
+          style={{ background: isFinished ? "#374151" : "#059669", cursor: isFinished ? "not-allowed" : "pointer" }}
         >
-          Siguiente Ronda ➔
+          {isFinished ? "🏁 Torneo Finalizado" : "Siguiente Ronda ➔"}
         </button>
       )}
       {!isAdmin && !allSaved && (
@@ -503,9 +613,9 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEd
   );
 }
 
-function HistoryRound({ round, matchesSearch, isAdmin, useLevels }) {
+function HistoryRound({ round, matchesSearch, isAdmin, useLevels, showLevelsToggle }) {
   if (!round) return null;
-  const showLevel = useLevels && isAdmin;
+  const showLevel = useLevels && isAdmin && showLevelsToggle;
   const renderPairName = (pair) => {
     if (Array.isArray(pair)) {
       return pair.map((p, i) => {
@@ -579,7 +689,7 @@ function HistoryRound({ round, matchesSearch, isAdmin, useLevels }) {
   );
 }
 
-function FutureRound({ round, matchesSearch }) {
+function FutureRound({ round, matchesSearch, isAdmin, useLevels, showLevelsToggle }) {
   if (!round) return null;
 
   function renderNames(pair) {
@@ -656,11 +766,25 @@ function FutureRound({ round, matchesSearch }) {
 const thStyleS = { padding: "8px 10px", fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "center" };
 const tdCenterS = { padding: "10px 10px", textAlign: "center" };
 
-function StandingsAmericano({ rows, roundNum, useLevels }) {
+function StandingsAmericano({ rows, roundNum, useLevels, isAdmin, showLevelsToggle, setShowLevelsToggle }) {
   return (
     <div style={{ background: "#0f172a", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
-      <div style={{ padding: "14px 16px 4px", fontWeight: 800, fontSize: 15, color: "#f1f5f9" }}>
-        🏆 Tabla - Ronda {roundNum}
+      <div style={{ padding: "14px 16px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ fontWeight: 800, fontSize: 15, color: "#f1f5f9" }}>🏆 Tabla - Ronda {roundNum}</div>
+        {isAdmin && useLevels && (
+          <button
+            onClick={() => setShowLevelsToggle(v => !v)}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              display: "flex", alignItems: "center", gap: 6,
+              fontSize: 12, fontWeight: 600,
+              color: showLevelsToggle ? "#38bdf8" : "#475569"
+            }}
+          >
+            <span style={{ fontSize: 16 }}>{showLevelsToggle ? "👁️" : "🙈"}</span>
+            {showLevelsToggle ? "Ocultar niveles" : "Mostrar niveles"}
+          </button>
+        )}
       </div>
       <div style={{ fontSize: 11, color: "#475569", padding: "0 16px 10px" }}>
         1º Puntos · 2º Diferencia de games
@@ -685,7 +809,7 @@ function StandingsAmericano({ rows, roundNum, useLevels }) {
                 <td style={tdCenterS}>{medal || <span style={{ color: "#64748b", fontSize: 13 }}>{i + 1}</span>}</td>
                 <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>
                   {p.name || `${p.p1} / ${p.p2}`}
-                  {p.name && useLevels && <PTag p={p} />}
+                  {p.name && useLevels && isAdmin && showLevelsToggle && <PTag p={p} />}
                 </td>
                 <td style={{ ...tdCenterS, color: "#38bdf8", fontWeight: 800, fontSize: 14 }}>{p.pts}</td>
                 <td style={{ ...tdCenterS, color: "#94a3b8", fontSize: 13 }}>{p.gf}</td>

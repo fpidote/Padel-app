@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { shuffle, buildShareMessage } from "../../logic/utils";
 import { buildBracket } from "../../logic/relampago";
 import { buildGroups } from "../../logic/mundialito";
@@ -34,6 +35,8 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
   const [copied,        setCopied]        = useState(false);
   const [rallyCustom,   setRallyCustom]   = useState("");
   const [gamesCustom,   setGamesCustom]   = useState("");
+  const [minutesCustom, setMinutesCustom] = useState("");
+  const [saved,         setSaved]         = useState(false);
   const [editingIdx,    setEditingIdx]    = useState(null);
   const [editP1,        setEditP1]        = useState("");
   const [editP2,        setEditP2]        = useState("");
@@ -44,6 +47,8 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
   const debDatetime = useRef(null);
   const debRally    = useRef(null);
   const debGames    = useRef(null);
+  const debMinutes  = useRef(null);
+  const navigate    = useNavigate();
   const p1InputRef  = useRef(null);
   const p2InputRef  = useRef(null);
 
@@ -95,6 +100,14 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
     const num = parseInt(val);
     if (!isNaN(num) && num > 0) {
       debGames.current = setTimeout(() => persist({ ...t, config: { ...t.config, targetGames: num } }), 600);
+    }
+  }
+  function handleMinutesCustom(val) {
+    setMinutesCustom(val);
+    clearTimeout(debMinutes.current);
+    const num = parseInt(val);
+    if (!isNaN(num) && num >= 1) {
+      debMinutes.current = setTimeout(() => persist({ ...t, config: { ...t.config, matchMinutes: num } }), 600);
     }
   }
 
@@ -212,6 +225,24 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
 
         {isAdmin && (
           <>
+            {/* ── Nav borrador ── */}
+            <div className="flex items-center justify-between mb-5">
+              <button
+                onClick={() => navigate("/")}
+                className="text-sm text-gray-500 hover:text-gray-300 transition-colors cursor-pointer"
+                style={{ background: "none", border: "none", padding: 0 }}
+              >
+                ← Inicio
+              </button>
+              <button
+                onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 2000); }}
+                className="text-sm text-gray-500 hover:text-gray-300 transition-colors cursor-pointer"
+                style={{ background: "none", border: "none", padding: 0 }}
+              >
+                {saved ? "✓ Guardado" : "💾 Guardar borrador"}
+              </button>
+            </div>
+
             {/* ── Información ── */}
             <SectionHeader>📋 Información</SectionHeader>
             <div className="space-y-3">
@@ -348,11 +379,20 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
                       <div className="flex gap-2">
                         {[8,10,12,15,20].map(n => (
                           <button key={n}
-                            onClick={() => persist({ ...t, config: { ...t.config, matchMinutes: n } })}
+                            onClick={() => { setMinutesCustom(""); persist({ ...t, config: { ...t.config, matchMinutes: n } }); }}
                             className="flex-1 py-2 rounded-lg font-bold text-sm cursor-pointer transition-colors"
                             style={{ background: (t.config.matchMinutes ?? 10) === n ? color : "#374151", color: (t.config.matchMinutes ?? 10) === n ? "#fff" : "#94a3b8" }}
                           >{n}</button>
                         ))}
+                        <input
+                          type="number"
+                          value={minutesCustom}
+                          onChange={e => handleMinutesCustom(e.target.value)}
+                          placeholder="Otro"
+                          min={1}
+                          max={90}
+                          className="w-16 py-2 rounded-lg text-sm text-center font-bold outline-none transition-colors bg-[#374151] text-gray-300 placeholder:text-gray-600 shrink-0"
+                        />
                       </div>
                     </div>
                     <div>

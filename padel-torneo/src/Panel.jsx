@@ -5,6 +5,7 @@ import { collection, query, where, orderBy, onSnapshot, deleteDoc, doc } from "f
 import { onAuthStateChanged } from "firebase/auth";
 import { db, auth } from "./firebase";
 import { TOURNAMENT_TYPES, B } from "./logic/constants";
+import { SimpleModal } from "./components/shared/Components";
 
 const STATUS = {
   setup:    { label: "Configurando", color: "#eab308", bg: "#eab30815", border: "#eab30830" },
@@ -17,6 +18,7 @@ export default function Panel() {
   const [user, setUser] = useState(undefined); // undefined = todavía cargando
   const [torneos, setTorneos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [modalMsg, setModalMsg] = useState(null);
 
   // Protección de ruta
   useEffect(() => {
@@ -52,13 +54,19 @@ export default function Panel() {
   }, [user]);
 
   async function onDelete(code) {
-    if (!window.confirm("¿Eliminar este torneo? Esta acción no se puede deshacer.")) return;
-    await deleteDoc(doc(db, "torneos", code));
+    setModalMsg({
+      message: "¿Eliminar este torneo? Esta acción no se puede deshacer.",
+      onConfirm: async () => {
+        setModalMsg(null);
+        await deleteDoc(doc(db, "torneos", code));
+      },
+    });
   }
 
   if (user === undefined) return null; // espera auth
 
   return (
+    <>
     <div
       style={{
         minHeight: "100vh",
@@ -198,5 +206,14 @@ export default function Panel() {
         </div>
       </div>
     </div>
+
+    {modalMsg && (
+      <SimpleModal
+        message={modalMsg.message}
+        onClose={() => setModalMsg(null)}
+        onConfirm={modalMsg.onConfirm}
+      />
+    )}
+    </>
   );
 }

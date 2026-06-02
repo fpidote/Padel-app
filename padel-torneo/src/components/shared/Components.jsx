@@ -63,3 +63,41 @@ export function PairName({ pair, showNames = true }) {
   if (!pair) return <span style={{ color: "#64748b" }}>TBD</span>;
   return <span style={{ fontWeight: 700, color: "#fbbf24" }}>{showNames ? `${pair.p1} / ${pair.p2}` : `Par ${pair.id + 1}`}</span>;
 }
+
+export function SimpleModal({ message, onClose, onConfirm }) {
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 9999,
+      background: "rgba(0,0,0,0.6)", display: "flex",
+      alignItems: "center", justifyContent: "center", padding: 24
+    }}>
+      <div style={{
+        background: "#1e293b", borderRadius: 16, padding: 24,
+        maxWidth: 320, width: "100%", textAlign: "center",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.5)"
+      }}>
+        <div style={{ fontSize: 14, color: "#f1f5f9", marginBottom: 20, lineHeight: 1.6 }}>
+          {message}
+        </div>
+        <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+          {onConfirm && (
+            <button onClick={onClose} style={{
+              background: "#374151", color: "#f1f5f9", border: "none",
+              borderRadius: 8, padding: "8px 20px", fontWeight: 700,
+              fontSize: 14, cursor: "pointer"
+            }}>
+              Cancelar
+            </button>
+          )}
+          <button onClick={onConfirm || onClose} style={{
+            background: onConfirm ? "#ef4444" : "#0284c7", color: "#fff", border: "none",
+            borderRadius: 8, padding: "8px 20px", fontWeight: 700,
+            fontSize: 14, cursor: "pointer"
+          }}>
+            {onConfirm ? "Eliminar" : "Aceptar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

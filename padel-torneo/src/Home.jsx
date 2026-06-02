@@ -6,6 +6,7 @@ import { auth, db, googleProvider } from "./firebase";
 import { TOURNAMENT_TYPES } from "./logic/constants.js";
 import { genCode } from "./logic/utils.js";
 import { buildInitialTournament } from "./logic/initTournament.js";
+import { SimpleModal } from "./components/shared/Components";
 
 const BENEFITS = [
   {
@@ -30,6 +31,7 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [joinVal, setJoinVal] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [modalMsg, setModalMsg] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const modalRef = useRef(null);
@@ -57,7 +59,7 @@ export default function Home() {
     } catch (err) {
       if (err.code !== "auth/popup-closed-by-user") {
         console.error("Error al iniciar sesión:", err);
-        alert("No se pudo iniciar sesión con Google.");
+        setModalMsg("No se pudo iniciar sesión con Google.");
       }
     }
   }
@@ -75,7 +77,7 @@ export default function Home() {
       navigate(`/torneo/${code}`);
     } catch (err) {
       console.error("Error al crear:", err);
-      alert("Error al crear el torneo. Verificá Firebase.");
+      setModalMsg("Error al crear el torneo. Verificá Firebase.");
     }
   }
 
@@ -85,13 +87,13 @@ export default function Home() {
       if (!code) return;
       const snap = await getDoc(doc(db, "torneos", code));
       if (!snap.exists()) {
-        alert("Código no encontrado");
+        setModalMsg("Código no encontrado");
         return;
       }
       navigate(`/torneo/${code}`);
     } catch (err) {
       console.error("Error al unirse:", err);
-      alert("Error de conexión con Firebase.");
+      setModalMsg("Error de conexión con Firebase.");
     }
   }
 
@@ -342,6 +344,7 @@ export default function Home() {
         </footer>
 
       </main>
+      {modalMsg && <SimpleModal message={modalMsg} onClose={() => setModalMsg(null)} />}
     </div>
   );
 }
