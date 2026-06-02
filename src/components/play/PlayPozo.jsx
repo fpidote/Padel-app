@@ -11,7 +11,19 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
   const [tab, setTab] = useState("courts");
   const [ls, setLs] = useState({});
   const [localTimer, setLocalTimer] = useState(0);
+  const [matches, setMatches] = useState(null); // null = no cargado aún
   const timerRef = useRef(null);
+
+  async function loadStats() {
+    if (matches !== null) return;
+    try {
+      const snap = await getDocs(collection(db, "torneos", code, "matches"));
+      setMatches(snap.docs.map((d) => d.data()));
+    } catch (err) {
+      console.error("Error al cargar historial de matches:", err);
+      setMatches([]);
+    }
+  }
 
   useEffect(() => {
     if (t.timerRunning && t.timerStartedAt) {
@@ -27,6 +39,10 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
     }
     return () => clearInterval(timerRef.current);
   }, [t.timerRunning, t.timerStartedAt, t.timerElapsed, t.timerSeconds]);
+
+  useEffect(() => {
+    if (tab === "stats") loadStats();
+  }, [tab]);
 
   const remaining = Math.max(0, t.timerSeconds - localTimer);
   const pct = (localTimer / t.timerSeconds) * 100;
@@ -165,10 +181,11 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
       <div style={{ padding: 16 }}>
         <Tabs
           tabs={[
-            ["courts", "⚔️ Pistas"],
+            ["courts",    "⚔️ Pistas"],
             ["standings", "🏆 Clasificación"],
-            ["history", "📜 Historial"],
-            ["rules", "📖 Reglas"], // 👇 AÑADIMOS LA PESTAÑA REGLAS AQUÍ
+            ["history",   "📜 Historial"],
+            ["stats",     "📊 Stats"],
+            ["rules",     "📖 Reglas"],
           ]}
           active={tab}
           setActive={setTab}
@@ -688,6 +705,45 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
                 </div>
               ))
             )}
+          </div>
+        )}
+
+        {tab === "stats" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {matches === null && (
+              <div style={{ textAlign: "center", color: "#64748b", padding: 20 }}>
+                Cargando stats...
+              </div>
+            )}
+            {matches !== null && matches.length === 0 && (
+              <div style={{ textAlign: "center", color: "#64748b", padding: 20 }}>
+                Aún no hay matches completados.
+              </div>
+            )}
+            {matches !== null && matches.length > 0 &&
+              Object.entries(calculateStats(matches))
+                .sort(([, a], [, b]) => b.winRate - a.winRate || b.gamesWon - a.gamesWon)
+                .map(([id, s]) => (
+                  <div
+                    key={id}
+                    style={{
+                      background:   "#1e293b",
+                      borderRadius: 12,
+                      padding:      16,
+                    }}
+                  >
+                    <div style={{ fontWeight: 700, color: "#f1f5f9", marginBottom: 8 }}>
+                      {id}
+                    </div>
+                    <div style={{ display: "flex", gap: 16, fontSize: 13, color: "#94a3b8" }}>
+                      <span>🏆 {s.gamesWon}V / {s.gamesLost}D</span>
+                      <span>⚡ {(s.winRate * 100).toFixed(0)}%</span>
+                      <span>🎯 {s.pointsDiff > 0 ? "+" : ""}{s.pointsDiff}</span>
+                      <span>🎾 {s.matchesPlayed} partidos</span>
+                    </div>
+                  </div>
+                ))
+            }
           </div>
         )}
 
