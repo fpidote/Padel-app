@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "test": "vitest run",
-    "test:rules": "firebase emulators:exec --only firestore -- vitest run firestore.rules.test.js",
+    "test:rules": "firebase emulators:exec --only firestore \"npx vitest run firestore.rules.test.js\"",
     "lint": "eslint .",
     "preview": "vite preview"
   },
