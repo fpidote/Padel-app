@@ -415,7 +415,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
                       {court.saved && isAdmin && (
                         <button
                           onClick={() => onEditCourt(ci)}
-                          className="text-xs font-semibold text-gray-500 hover:text-sky-400 bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded-lg cursor-pointer"
+                          className="text-xs font-semibold text-gray-500 hover:text-sky-400 bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded-lg cursor-pointer transition-colors"
                         >
                           ✏️ Editar
                         </button>
