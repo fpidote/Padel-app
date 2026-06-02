@@ -99,3 +99,51 @@ export function isProposedRoundValid(proposedRound) {
   }
   return true;
 }
+
+// updatedTempPairs: resultado de applyPozoRoundResults sobre temp pairs.
+// Cada temp pair debe tener _playerIds: [string, string].
+// currentRound: array de canchas en formato { pairA, pairB, scoreA, scoreB }.
+export function distributePairLevelToPlayers(updatedTempPairs, players, currentRound) {
+  const updated = players.map((p) => ({ ...p }));
+
+  for (const court of currentRound) {
+    const a = parseInt(court.scoreA);
+    const b = parseInt(court.scoreB);
+    const winnerTempId = a > b ? court.pairA.id : court.pairB.id;
+    const loserTempId  = a > b ? court.pairB.id : court.pairA.id;
+    const winScore  = Math.max(a, b);
+    const loseScore = Math.min(a, b);
+
+    const winner = updatedTempPairs.find((p) => p.id === winnerTempId);
+    const loser  = updatedTempPairs.find((p) => p.id === loserTempId);
+
+    if (winner) {
+      for (const playerId of winner._playerIds) {
+        const idx = updated.findIndex((p) => p.id === playerId);
+        if (idx < 0) continue;
+        updated[idx] = {
+          ...updated[idx],
+          pts:        updated[idx].pts + 1,
+          gf:         updated[idx].gf + winScore,
+          gc:         updated[idx].gc + loseScore,
+          courtLevel: winner.courtLevel,
+        };
+      }
+    }
+
+    if (loser) {
+      for (const playerId of loser._playerIds) {
+        const idx = updated.findIndex((p) => p.id === playerId);
+        if (idx < 0) continue;
+        updated[idx] = {
+          ...updated[idx],
+          gf:         updated[idx].gf + loseScore,
+          gc:         updated[idx].gc + winScore,
+          courtLevel: loser.courtLevel,
+        };
+      }
+    }
+  }
+
+  return updated;
+}

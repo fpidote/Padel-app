@@ -1,5 +1,9 @@
 import { describe, test, expect } from "vitest";
-import { buildPozoRound, applyPozoRoundResults, isProposedRoundValid, shufflePlayers } from "./pozo.js";
+import {
+  buildPozoRound, applyPozoRoundResults,
+  isProposedRoundValid, shufflePlayers,
+  distributePairLevelToPlayers,
+} from "./pozo.js";
 
 // ── Helpers ──────────────────────────────────────────────────
 const pair = (id, pts = 0, courtLevel = 0, gf = 0, gc = 0) => ({
@@ -393,5 +397,100 @@ describe("shufflePlayers", () => {
       teamA: { playerIds: expect.any(Array) },
       teamB: { playerIds: expect.any(Array) },
     });
+  });
+});
+
+// ── Helper ────────────────────────────────────────────────────
+const playerD = (id, pts = 0, cl = 0, gf = 0, gc = 0) => ({
+  id, name: `P${id}`, pts, gf, gc, courtLevel: cl,
+});
+
+const tempPair = (pAId, pBId, cl, pts = 0, gf = 0, gc = 0) => ({
+  id: `tmp_${pAId}_${pBId}`,
+  _playerIds: [pAId, pBId],
+  p1: pAId, p2: pBId,
+  pts, gf, gc, courtLevel: cl,
+});
+
+const savedCourt = (num, pairA, pairB, scoreA, scoreB) => ({
+  courtNum: num,
+  pairA,
+  pairB,
+  scoreA: String(scoreA),
+  scoreB: String(scoreB),
+  saved: true,
+});
+
+// ═══════════════════════════════════════════════════════════════
+// distributePairLevelToPlayers
+// ═══════════════════════════════════════════════════════════════
+describe("distributePairLevelToPlayers", () => {
+  test("ambos jugadores del equipo ganador reciben el courtLevel del temp pair ganador", () => {
+    const players = [playerD("p1",0,0), playerD("p2",0,0), playerD("p3",0,0), playerD("p4",0,0)];
+    const tpWinner = tempPair("p1","p2", 3, 1, 6, 3);
+    const tpLoser  = tempPair("p3","p4", 1, 0, 3, 6);
+    const round    = [savedCourt(1, tpWinner, tpLoser, 6, 3)];
+
+    const updated = distributePairLevelToPlayers([tpWinner, tpLoser], players, round);
+
+    expect(updated.find((p) => p.id === "p1").courtLevel).toBe(3);
+    expect(updated.find((p) => p.id === "p2").courtLevel).toBe(3);
+    expect(updated.find((p) => p.id === "p3").courtLevel).toBe(1);
+    expect(updated.find((p) => p.id === "p4").courtLevel).toBe(1);
+  });
+
+  test("el equipo ganador recibe +1 punto por jugador", () => {
+    const players = [playerD("p1"), playerD("p2"), playerD("p3"), playerD("p4")];
+    const tpWinner = tempPair("p1","p2", 3, 1, 6, 3);
+    const tpLoser  = tempPair("p3","p4", 1, 0, 3, 6);
+    const round    = [savedCourt(1, tpWinner, tpLoser, 6, 3)];
+
+    const updated = distributePairLevelToPlayers([tpWinner, tpLoser], players, round);
+
+    expect(updated.find((p) => p.id === "p1").pts).toBe(1);
+    expect(updated.find((p) => p.id === "p2").pts).toBe(1);
+    expect(updated.find((p) => p.id === "p3").pts).toBe(0);
+    expect(updated.find((p) => p.id === "p4").pts).toBe(0);
+  });
+
+  test("gf y gc se acumulan sobre valores existentes", () => {
+    const players = [playerD("p1",1,0,3,2), playerD("p2",1,0,3,2), playerD("p3",0,0,2,3), playerD("p4",0,0,2,3)];
+    const tpWinner = tempPair("p1","p2", 3, 2, 9, 5);
+    const tpLoser  = tempPair("p3","p4", 1, 0, 5, 9);
+    const round    = [savedCourt(1, tpWinner, tpLoser, 6, 3)];
+
+    const updated = distributePairLevelToPlayers([tpWinner, tpLoser], players, round);
+
+    expect(updated.find((p) => p.id === "p1").pts).toBe(2);
+    expect(updated.find((p) => p.id === "p1").gf).toBe(9);
+    expect(updated.find((p) => p.id === "p1").gc).toBe(5);
+  });
+
+  test("no muta el array original de jugadores", () => {
+    const players = [playerD("p1"), playerD("p2"), playerD("p3"), playerD("p4")];
+    const snap = players.map((p) => ({ ...p }));
+    const tpWinner = tempPair("p1","p2", 3, 1, 6, 3);
+    const tpLoser  = tempPair("p3","p4", 1, 0, 3, 6);
+    const round    = [savedCourt(1, tpWinner, tpLoser, 6, 3)];
+
+    distributePairLevelToPlayers([tpWinner, tpLoser], players, round);
+
+    expect(players).toEqual(snap);
+  });
+
+  test("jugadores que no jugaron conservan sus stats intactas", () => {
+    const players = [
+      playerD("p1"), playerD("p2"), playerD("p3"), playerD("p4"),
+      playerD("p5", 2, 1),
+    ];
+    const tpWinner = tempPair("p1","p2", 3, 1, 6, 3);
+    const tpLoser  = tempPair("p3","p4", 1, 0, 3, 6);
+    const round    = [savedCourt(1, tpWinner, tpLoser, 6, 3)];
+
+    const updated = distributePairLevelToPlayers([tpWinner, tpLoser], players, round);
+
+    const p5 = updated.find((p) => p.id === "p5");
+    expect(p5.pts).toBe(2);
+    expect(p5.courtLevel).toBe(1);
   });
 });
