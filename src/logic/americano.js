@@ -77,13 +77,13 @@ export function buildFirstRoundAmericano(
 ) {
   const isPairs = mode === "pairs";
   const units = isPairs ? 2 : 4;
-  const all = shuffle(entities);
-  const activeCourts = Math.min(courts, Math.floor(all.length / units));
-  const act = all.slice(0, activeCourts * units);
-  const sit = all.slice(activeCourts * units);
+  const activeCourts = Math.min(courts, Math.floor(entities.length / units));
   const cs = [];
 
   if (isPairs) {
+    const all = shuffle(entities);
+    const act = all.slice(0, activeCourts * units);
+    const sit = all.slice(activeCourts * units);
     for (let c = 0; c < activeCourts; c++) {
       cs.push({
         pairA: act[c * 2],
@@ -93,12 +93,16 @@ export function buildFirstRoundAmericano(
         saved: false,
       });
     }
-  } else {
-    for (let c = 0; c < activeCourts; c++) {
-      const g = act.slice(c * 4, c * 4 + 4);
-      const [pA, pB] = bestSplit(g, {});
-      cs.push({ pairA: pA, pairB: pB, scoreA: "", scoreB: "", saved: false });
-    }
+    return { courts: cs, sittingOut: sit };
+  }
+
+  // Individual: sort by level desc, then pair 1st+4th vs 2nd+3rd per court
+  const sorted = [...entities].sort((a, b) => (b.level || 0) - (a.level || 0));
+  const act = sorted.slice(0, activeCourts * units);
+  const sit = sorted.slice(activeCourts * units);
+  for (let c = 0; c < activeCourts; c++) {
+    const g = act.slice(c * 4, c * 4 + 4);
+    cs.push({ pairA: [g[0], g[3]], pairB: [g[1], g[2]], scoreA: "", scoreB: "", saved: false });
   }
   return { courts: cs, sittingOut: sit };
 }

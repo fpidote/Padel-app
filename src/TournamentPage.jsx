@@ -1,20 +1,40 @@
 // src/TournamentPage.jsx
-import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useState, lazy, Suspense } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { useTournament } from "./hooks/useTournament";
 import { TOURNAMENT_TYPES } from "./logic/constants";
 
 import SetupAmericano from "./components/setup/SetupAmericano";
 import SetupPairs from "./components/setup/SetupPairs";
-import PlayAmericano from "./components/play/PlayAmericano";
-import PlayRelampago from "./components/play/PlayRelampago";
-import PlayMundialito from "./components/play/PlayMundialito";
-import PlayPozo from "./components/play/PlayPozo";
+const PlayAmericano = lazy(() => import('./components/play/PlayAmericano'));
+const PlayRelampago = lazy(() => import('./components/play/PlayRelampago'));
+const PlayMundialito = lazy(() => import('./components/play/PlayMundialito'));
+const PlayPozo = lazy(() => import('./components/play/PlayPozo'));
 
 export default function TournamentPage() {
   const { code } = useParams();
-  const { t, isAdmin, persist, copyCode } = useTournament(code);
+  const navigate = useNavigate();
+  const { t, notFound, isAdmin, persist, copyCode } = useTournament(code);
   const [editMode, setEditMode] = useState(false);
+
+  if (notFound)
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 px-6 text-center">
+        <div className="text-5xl">🏸</div>
+        <div className="bg-[#1e293b] border border-[#334155] rounded-2xl px-8 py-8 max-w-sm w-full flex flex-col items-center gap-4">
+          <h2 className="text-lg font-black text-gray-50">Torneo no encontrado</h2>
+          <p className="text-sm text-gray-400 leading-relaxed">
+            El torneo al que intentas acceder no existe o ha sido eliminado.
+          </p>
+          <button
+            onClick={() => navigate("/")}
+            className="mt-2 w-full py-3 rounded-xl font-bold text-sm bg-[#0284c7] hover:bg-sky-500 text-white cursor-pointer transition-colors"
+          >
+            Volver al inicio
+          </button>
+        </div>
+      </div>
+    );
 
   if (!t)
     return (
@@ -33,10 +53,12 @@ export default function TournamentPage() {
 
   const onEditTournament = () => setEditMode(true);
 
-  if (t.type === "americano") return <PlayAmericano {...props} onEditTournament={onEditTournament} />;
-  if (t.type === "relampago") return <PlayRelampago {...props} onEditTournament={onEditTournament} />;
-  if (t.type === "mundialito") return <PlayMundialito {...props} onEditTournament={onEditTournament} />;
-  if (t.type === "pozo") return <PlayPozo {...props} onEditTournament={onEditTournament} />;
-
-  return null;
+  return (
+    <Suspense fallback={<div className="p-4 text-center">Cargando torneo...</div>}>
+      {t.type === "americano" && <PlayAmericano {...props} onEditTournament={onEditTournament} />}
+      {t.type === "relampago" && <PlayRelampago {...props} onEditTournament={onEditTournament} />}
+      {t.type === "mundialito" && <PlayMundialito {...props} onEditTournament={onEditTournament} />}
+      {t.type === "pozo" && <PlayPozo {...props} onEditTournament={onEditTournament} />}
+    </Suspense>
+  );
 }

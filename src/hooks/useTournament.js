@@ -7,6 +7,7 @@ import { db, auth } from "../firebase";
 export function useTournament(code) {
   const [authUser, setAuthUser] = useState(null);
   const [t, setT] = useState(null);
+  const [notFound, setNotFound] = useState(false);
 
   const isAdmin = !!(authUser?.uid && t?.ownerUid && authUser.uid === t.ownerUid);
 
@@ -26,10 +27,14 @@ export function useTournament(code) {
     if (!code) return;
     verRef.current = null;
     setT(null);
+    setNotFound(false);
     const unsub = onSnapshot(
       doc(db, "torneos", code),
       (snap) => {
-        if (!snap.exists()) return;
+        if (!snap.exists()) {
+          setNotFound(true);
+          return;
+        }
         const data = JSON.parse(snap.data().data);
         if (!data || data.ver <= verRef.current) return;
         verRef.current = data.ver;
@@ -67,5 +72,5 @@ export function useTournament(code) {
     }
   }
 
-  return { t, isAdmin, persist, copyCode };
+  return { t, notFound, isAdmin, persist, copyCode };
 }

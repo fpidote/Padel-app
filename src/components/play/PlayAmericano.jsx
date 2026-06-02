@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { B } from "../../logic/constants";
 import { pk } from "../../logic/utils";
 import { buildRoundAmericano } from "../../logic/americano";
@@ -19,11 +19,11 @@ function PTag({ p }) {
   return (
     <span style={{
       display: "inline-block", fontSize: 10, fontWeight: 700,
-      background: lvl.color + "22", color: lvl.color,
-      borderRadius: 4, padding: "1px 5px", marginLeft: 5,
-      verticalAlign: "middle", letterSpacing: "0.03em"
+      background: lvl.color + "20", color: lvl.color,
+      borderRadius: 4, padding: "1px 4px", marginLeft: 5,
+      verticalAlign: "middle"
     }}>
-      {lvl.label}
+      {lvl.short}
     </span>
   );
 }
@@ -73,10 +73,6 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
   }
 
   async function onNext() {
-    if (t.config.maxRounds && t.roundNum >= t.config.maxRounds) {
-      setModalMsg("¡Torneo finalizado! Se han completado todas las rondas.");
-      return;
-    }
     if (!t.currentRound.every((c) => c.saved)) return;
     const isPairs = t.config.mode === "pairs";
     const entityKey = isPairs ? "pairs" : "players";
@@ -297,6 +293,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                   isAdmin={isAdmin}
                   useLevels={!!t.config.useLevels}
                   showLevelsToggle={showLevelsToggle}
+                  players={t.players}
                 />
               ) : (
                 <HistoryRound
@@ -305,6 +302,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                   isAdmin={isAdmin}
                   useLevels={!!t.config.useLevels}
                   showLevelsToggle={showLevelsToggle}
+                  players={t.players}
                 />
               )
             ) : (
@@ -613,13 +611,19 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEd
   );
 }
 
-function HistoryRound({ round, matchesSearch, isAdmin, useLevels, showLevelsToggle }) {
+function HistoryRound({ round, matchesSearch, isAdmin, useLevels, showLevelsToggle, players }) {
   if (!round) return null;
   const showLevel = useLevels && isAdmin && showLevelsToggle;
+  const playersDict = useMemo(() => {
+    const dict = {};
+    players?.forEach(p => { dict[p.id] = p; });
+    return dict;
+  }, [players]);
   const renderPairName = (pair) => {
     if (Array.isArray(pair)) {
       return pair.map((p, i) => {
-        const lvl = LEVELS[p.level || 0];
+        const currentPlayer = playersDict[p.id] || p;
+        const lvl = LEVELS[currentPlayer.level || 0];
         return (
           <span key={p.id}>
             {i > 0 && <span style={{ color: "#94a3b8" }}> & </span>}
@@ -689,13 +693,34 @@ function HistoryRound({ round, matchesSearch, isAdmin, useLevels, showLevelsTogg
   );
 }
 
-function FutureRound({ round, matchesSearch, isAdmin, useLevels, showLevelsToggle }) {
+function FutureRound({ round, matchesSearch, isAdmin, useLevels, showLevelsToggle, players }) {
   if (!round) return null;
+  const showLevel = useLevels && isAdmin && showLevelsToggle;
+  const playersDict = useMemo(() => {
+    const dict = {};
+    players?.forEach(p => { dict[p.id] = p; });
+    return dict;
+  }, [players]);
 
-  function renderNames(pair) {
-    if (!pair) return [];
-    if (Array.isArray(pair)) return pair.map((p) => p.name || "");
-    return [`${pair.p1} / ${pair.p2}`];
+  function renderPair(pair) {
+    if (!pair) return null;
+    if (Array.isArray(pair)) {
+      return pair.map((p) => {
+        const currentPlayer = playersDict[p.id] || p;
+        const lvl = LEVELS[currentPlayer.level || 0];
+        return (
+          <span key={p.id} className="flex items-center gap-1 leading-snug">
+            <span className="text-sm font-bold text-gray-50">{p.name}</span>
+            {showLevel && currentPlayer.level > 0 && lvl && (
+              <span style={{ fontSize: 10, fontWeight: 700, background: lvl.color + "20", color: lvl.color, borderRadius: 4, padding: "1px 4px" }}>
+                {lvl.short}
+              </span>
+            )}
+          </span>
+        );
+      });
+    }
+    return <span className="text-sm font-bold text-gray-50">{`${pair.p1} / ${pair.p2}`}</span>;
   }
 
   const visibleCourts = (round.courts || []).filter(matchesSearch);
@@ -718,47 +743,39 @@ function FutureRound({ round, matchesSearch, isAdmin, useLevels, showLevelsToggl
         </span>
       </div>
 
-      {visibleCourts.map((court, ci) => {
-        const namesA = renderNames(court.pairA);
-        const namesB = renderNames(court.pairB);
-        return (
-          <div key={ci} className="bg-[#1f2937] rounded-2xl border border-gray-700 overflow-hidden mb-3 opacity-70">
-            <div className="flex items-center px-4 py-2.5 border-b border-gray-700">
-              <span className="text-xs font-bold text-gray-600 tracking-widest">PISTA {ci + 1}</span>
+      {visibleCourts.map((court, ci) => (
+        <div key={ci} className="bg-[#1f2937] rounded-2xl border border-gray-700 overflow-hidden mb-3 opacity-70">
+          <div className="flex items-center px-4 py-2.5 border-b border-gray-700">
+            <span className="text-xs font-bold text-gray-600 tracking-widest">PISTA {ci + 1}</span>
+          </div>
+
+          <div className="grid px-4 py-4" style={{ gridTemplateColumns: "1fr auto 1fr", gap: "10px" }}>
+            <div className="flex flex-col items-end self-center">
+              {renderPair(court.pairA)}
             </div>
 
-            <div className="grid px-4 py-4" style={{ gridTemplateColumns: "1fr auto 1fr", gap: "10px" }}>
-              <div className="flex flex-col items-end self-center">
-                {namesA.map((name, i) => (
-                  <span key={i} className="text-sm font-bold text-gray-50 leading-snug">{name}</span>
-                ))}
-              </div>
+            <div className="flex items-center gap-1.5 self-center">
+              <input
+                type="text"
+                value="–"
+                readOnly
+                className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-800 text-center text-xl font-black text-gray-700 outline-none cursor-default select-none"
+              />
+              <span className="text-gray-700 font-black text-lg">-</span>
+              <input
+                type="text"
+                value="–"
+                readOnly
+                className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-800 text-center text-xl font-black text-gray-700 outline-none cursor-default select-none"
+              />
+            </div>
 
-              <div className="flex items-center gap-1.5 self-center">
-                <input
-                  type="text"
-                  value="–"
-                  readOnly
-                  className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-800 text-center text-xl font-black text-gray-700 outline-none cursor-default select-none"
-                />
-                <span className="text-gray-700 font-black text-lg">-</span>
-                <input
-                  type="text"
-                  value="–"
-                  readOnly
-                  className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-800 text-center text-xl font-black text-gray-700 outline-none cursor-default select-none"
-                />
-              </div>
-
-              <div className="flex flex-col items-start self-center">
-                {namesB.map((name, i) => (
-                  <span key={i} className="text-sm font-bold text-gray-50 leading-snug">{name}</span>
-                ))}
-              </div>
+            <div className="flex flex-col items-start self-center">
+              {renderPair(court.pairB)}
             </div>
           </div>
-        );
-      })}
+        </div>
+      ))}
     </div>
   );
 }
