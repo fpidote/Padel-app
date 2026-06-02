@@ -68,15 +68,22 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
 
   const statusBg  = need > 0 ? "bg-red-400/10 border-red-400/20"    : sit > 0 ? "bg-yellow-400/10 border-yellow-400/20"    : "bg-green-400/10 border-green-400/20";
   const statusTxt = need > 0 ? "text-red-400"                       : sit > 0 ? "text-yellow-400"                          : "text-green-400";
-  const statusMsg = isMixer
-    ? `${tot} jugadores · ${t.config.courts} pistas` +
-      (need > 0 ? ` · ⚠️ faltan ${need}` : ` · ✓ listo`)
+  const isPozo = t.type === "pozo";
+
+  const statusMsg = isPozo
+    ? need > 0
+      ? `⚠️ Faltan ${need} ${isMixer ? "jugadores" : "parejas"}`
+      : sit === 0
+        ? `✅ Canchas completas (Nadie descansa)`
+        : `⏳ Descansan ${sit} ${isMixer ? "jugadores" : "parejas"} por ronda`
     : `${tot} parejas · ${t.config.courts} pistas · ${Math.min(tot, act)} juegan` +
       (sit > 0 ? ` · ⏳ ${sit} descansan` : need > 0 ? ` · ⚠️ faltan ${need}` : " · ✓ listo");
 
   const ok = isMixer
-    ? players.length >= 4 && players.every(p => p.name.trim())
-    : tot >= 2 && pairs.every(p => p.p1.trim() && p.p2.trim());
+    ? players.length >= act && players.every(p => p.name.trim())
+    : isPozo
+      ? pairs.length >= act && pairs.every(p => p.p1.trim() && p.p2.trim())
+      : tot >= 2 && pairs.every(p => p.p1.trim() && p.p2.trim());
   const scoring = t.config.scoringSystem || "timed";
 
   function handleName(val) {
@@ -358,21 +365,13 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
               <div>
                 <label className="text-xs text-gray-400 font-semibold block mb-2">Pistas</label>
                 <div className="flex gap-2">
-                  {[1,2,3,4,5,6].map(n => {
-                    const disabled = t.type === "pozo" && n === 1;
-                    return (
-                      <button key={n}
-                        onClick={() => !disabled && persist({ ...t, config: { ...t.config, courts: n } })}
-                        className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors"
-                        style={{
-                          background: t.config.courts === n ? color : "#1f2937",
-                          color:      disabled ? "#374151" : t.config.courts === n ? "#fff" : "#94a3b8",
-                          cursor:     disabled ? "not-allowed" : "pointer",
-                          opacity:    disabled ? 0.4 : 1,
-                        }}
-                      >{n}</button>
-                    );
-                  })}
+                  {(t.type === "pozo" ? [2,3,4,5,6] : [1,2,3,4,5,6]).map(n => (
+                    <button key={n}
+                      onClick={() => persist({ ...t, config: { ...t.config, courts: n } })}
+                      className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer"
+                      style={{ background: t.config.courts === n ? color : "#1f2937", color: t.config.courts === n ? "#fff" : "#94a3b8" }}
+                    >{n}</button>
+                  ))}
                 </div>
               </div>
 
