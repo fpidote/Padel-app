@@ -266,12 +266,14 @@ describe("buildRoundAmericano — historial de parejas (ph)", () => {
     expect(pairIds).not.toContain("1_2");
   });
 
-  // T27: penalización por diferencia de nivel — elige la pareja que minimiza diferencia
-  test("T27: sin historial de parejas, empareja minimizando diferencia de nivel", () => {
-    // Los 4 players: A(lv4), B(lv3), C(lv2), D(lv1) — mismos pts
-    // Split 1°+4° vs 2°+3° tiene menor penalty de nivel (|4-1|=3, |3-2|=1 → score=12)
-    // Split 1°+2° vs 3°+4° tiene mayor penalty (|4-3|=1, |2-1|=1 → score=6)
-    // Espera que bestSplit elija el split con menor score total
+  // T27: sin historial, bestSplit equilibra la suma de niveles de los equipos
+  test("T27: sin historial de parejas, empareja equilibrando la suma de niveles de los equipos", () => {
+    // Players: A(lv4,pts3) B(lv3,pts2) C(lv2,pts1) D(lv1,pts0)
+    // Sort by pts desc: [A,B,C,D]
+    // Opciones:
+    //   [A+B] vs [C+D]: clash(lv4,lv3)=15 + balance=|7-3|*2=8 = 23
+    //   [A+C] vs [B+D]: clash=0 + balance=|6-4|*2=4 = 4
+    //   [A+D] vs [B+C]: clash=0 + balance=|5-5|*2=0 = 0  ← gana
     const players = [
       p("A", 4, 3), p("B", 3, 2), p("C", 2, 1), p("D", 1, 0),
     ];
@@ -280,11 +282,9 @@ describe("buildRoundAmericano — historial de parejas (ph)", () => {
     const pairIds = [courts[0].pairA, courts[0].pairB].map(
       (pair) => pair.map((x) => x.id).sort().join("+")
     );
-    // El split con menor penalización de nivel: A+B vs C+D (diff 1 y 1) o A+C vs B+D (diff 2 y 2)
-    // NO debe ser A+D vs B+C (diff 3 y 1 = score 12) cuando hay alternativas mejores
-    // Mejor opción: A+B (diff=1) vs C+D (diff=1) → score total de nivel = 6 (1*3 + 1*3)
-    expect(pairIds).toContain("A+B");
-    expect(pairIds).toContain("C+D");
+    // La opción más equilibrada es A+D vs B+C (suma 5 vs 5)
+    expect(pairIds).toContain("A+D");
+    expect(pairIds).toContain("B+C");
   });
 });
 
@@ -401,5 +401,59 @@ describe("precomputeAllRounds", () => {
     for (const id of sitR1) {
       expect(sitR2).not.toContain(id);
     }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// bestSplit — separación de avanzados y equilibrio de equipos
+// ═══════════════════════════════════════════════════════════════
+describe("bestSplit — separación de avanzados (level >= 3)", () => {
+  // T28: 2 avanzados → equipos distintos
+  test("T28: con 2 avanzados y 2 no-avanzados, los avanzados quedan en equipos distintos", () => {
+    // Todos pts distintos para que el sort sea [1,2,3,4]
+    const players = [p(1, 3, 3), p(2, 3, 2), p(3, 2, 1), p(4, 1, 0)];
+    const { courts } = buildRoundAmericano(players, 1, {}, {}, "individual");
+
+    const pairA = courts[0].pairA.map((x) => x.id);
+    const pairB = courts[0].pairB.map((x) => x.id);
+    // Jugadores 1 y 2 son avanzados (lv 3) — deben estar en equipos distintos
+    expect(
+      (pairA.includes(1) && pairB.includes(2)) ||
+      (pairA.includes(2) && pairB.includes(1))
+    ).toBe(true);
+  });
+
+  // T29: posibilidades limpias agotadas → acepta avanzados juntos
+  test("T29: cuando todas las combinaciones sin clash ya fueron usadas, acepta avanzados en el mismo equipo", () => {
+    const players = [p(1, 3, 3), p(2, 3, 2), p(3, 2, 1), p(4, 1, 0)];
+    // ph cubre todas las opciones limpias: 1+3, 2+4, 1+4, 2+3 (usado 1 vez cada una)
+    // [1+3] vs [2+4]: 12+12+0+2=26  [1+4] vs [2+3]: 12+12+0+2=26
+    // [1+2] vs [3+4]: 0+0+15+6=21  ← gana el clash
+    const ph = { "1_3": 1, "2_4": 1, "1_4": 1, "2_3": 1 };
+    const { courts } = buildRoundAmericano(players, 1, ph, {}, "individual");
+
+    const pairA = courts[0].pairA.map((x) => x.id);
+    const pairB = courts[0].pairB.map((x) => x.id);
+    // Ahora 1 y 2 deben estar en el mismo equipo (clash aceptado)
+    const hasClash =
+      (pairA.includes(1) && pairA.includes(2)) ||
+      (pairB.includes(1) && pairB.includes(2));
+    expect(hasClash).toBe(true);
+  });
+
+  // T30: equilibrio de equipos — suma de niveles lo más pareja posible
+  test("T30: sin historial, elige la distribución que equilibra la suma de niveles de los equipos", () => {
+    // [1(lv3), 2(lv2), 3(lv2), 4(lv1)] — pts distintos para sort [1,2,3,4]
+    // [1+4] vs [2+3]: sumas = 4 vs 4 = balance 0  ← gana
+    // [1+3] vs [2+4]: sumas = 5 vs 3 = balance 2
+    // [1+2] vs [3+4]: sumas = 5 vs 3 = balance 2
+    const players = [p(1, 3, 3), p(2, 2, 2), p(3, 2, 1), p(4, 1, 0)];
+    const { courts } = buildRoundAmericano(players, 1, {}, {}, "individual");
+
+    const sumTeam = (pair) => pair.reduce((s, pl) => s + (pl.level || 0), 0);
+    const diff = Math.abs(
+      sumTeam(courts[0].pairA) - sumTeam(courts[0].pairB)
+    );
+    expect(diff).toBeLessThanOrEqual(1);
   });
 });
