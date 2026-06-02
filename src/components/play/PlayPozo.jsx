@@ -146,6 +146,21 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
     await persist({ ...t, currentPozoRound: updated });
   }
 
+  async function finishTournament() {
+    await persist({
+      ...t,
+      status:        "finished",
+      timerRunning:  false,
+      timerElapsed:  0,
+      timerStartedAt: null,
+    });
+  }
+
+  async function onForceEnd() {
+    if (!window.confirm("¿Finalizar el torneo ahora? Esta acción no se puede deshacer.")) return;
+    await finishTournament();
+  }
+
   async function onConfirmMixerRound() {
     if (!isProposedRoundValid(proposedRound)) return;
     const tempPairs = buildTempPairs(proposedRound);
@@ -214,16 +229,18 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
       ...(t.pozoRounds || []),
       { num: t.roundNum, courts: t.currentPozoRound },
     ];
+    const isLastRound = t.config.targetRounds && t.roundNum >= t.config.targetRounds;
     setLs({});
     await persist({
       ...t,
       pairs:            updatedPairs,
-      currentPozoRound: newRound,
+      currentPozoRound: isLastRound ? null : newRound,
       pozoRounds:       savedRounds,
       roundNum:         t.roundNum + 1,
       timerRunning:     false,
       timerElapsed:     0,
       timerStartedAt:   null,
+      status:           isLastRound ? "finished" : t.status,
     });
   }
 
@@ -273,22 +290,28 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
       ...(t.pozoRounds || []),
       { num: t.roundNum, courts: t.currentPozoRound },
     ];
+    const isLastRound = t.config.targetRounds && t.roundNum >= t.config.targetRounds;
     setLs({});
-    setProposedRound(nextProposed);
+    if (!isLastRound) setProposedRound(nextProposed);
     await persist({
       ...t,
       players:          updatedPlayers,
       currentPozoRound: null,
-      proposedRound:    nextProposed,
+      proposedRound:    isLastRound ? null : nextProposed,
       pozoRounds:       savedRounds,
       roundNum:         t.roundNum + 1,
       timerRunning:     false,
       timerElapsed:     0,
       timerStartedAt:   null,
+      status:           isLastRound ? "finished" : t.status,
     });
   }
 
-  const allSaved = t.currentPozoRound?.every((c) => c.saved);
+  const allSaved    = t.currentPozoRound?.every((c) => c.saved);
+  const isFinished  = t.status === "finished";
+  const roundLabel  = t.config.targetRounds
+    ? `Ronda ${isFinished ? t.roundNum - 1 : t.roundNum} / ${t.config.targetRounds}`
+    : `Ronda ${isFinished ? t.roundNum - 1 : t.roundNum}`;
 
   // A PARTIR DE AQUÍ EMPIEZA EL "JSX" (Lo visual de la pantalla)
   return (
@@ -298,19 +321,50 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
         code={code}
         isAdmin={isAdmin}
         copyCode={copyCode}
-        subtitle={`Ronda ${t.roundNum}`}
-        onEdit={isAdmin ? onEditTournament : undefined}
+        subtitle={isFinished ? "🏆 Torneo Finalizado" : roundLabel}
+        onEdit={isAdmin && !isFinished ? onEditTournament : undefined}
       />
+
+      {/* Banner de torneo finalizado */}
+      {isFinished && (
+        <div style={{ padding: "16px 16px 0" }}>
+          <div style={{
+            background:   "#1e293b",
+            border:       "2px solid #f59e0b",
+            borderRadius: 16,
+            padding:      24,
+            textAlign:    "center",
+          }}>
+            <div style={{ fontSize: 48 }}>🏆</div>
+            <div style={{ color: "#fbbf24", fontWeight: 900, fontSize: 20, marginTop: 8 }}>
+              ¡Torneo Finalizado!
+            </div>
+            <div style={{ color: "#94a3b8", fontSize: 13, marginTop: 6 }}>
+              {t.config.targetRounds
+                ? `${t.config.targetRounds} rondas completadas`
+                : `${(t.roundNum || 1) - 1} rondas jugadas`}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ padding: 16 }}>
         <Tabs
-          tabs={[
-            ["courts",    "⚔️ Pistas"],
-            ["standings", "🏆 Clasificación"],
-            ["history",   "📜 Historial"],
-            ["stats",     "📊 Stats"],
-            ["rules",     "📖 Reglas"],
-          ]}
-          active={tab}
+          tabs={isFinished
+            ? [
+                ["standings", "🏆 Clasificación"],
+                ["stats",     "📊 Stats"],
+                ["history",   "📜 Historial"],
+              ]
+            : [
+                ["courts",    "⚔️ Pistas"],
+                ["standings", "🏆 Clasificación"],
+                ["history",   "📜 Historial"],
+                ["stats",     "📊 Stats"],
+                ["rules",     "📖 Reglas"],
+              ]
+          }
+          active={isFinished && tab === "courts" ? "standings" : tab}
           setActive={setTab}
         />
       </div>
@@ -777,6 +831,14 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
                 style={B("#10b981", { width: "100%", padding: 16, fontSize: 16 })}
               >
                 Rotar Pistas - Siguiente Ronda ➔
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                onClick={onForceEnd}
+                style={B("#334155", { width: "100%", padding: 12, fontSize: 13, marginTop: 4 })}
+              >
+                🏁 Finalizar Torneo
               </button>
             )}
             {!isAdmin && !allSaved && (

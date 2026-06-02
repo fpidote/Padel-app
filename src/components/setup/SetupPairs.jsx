@@ -42,13 +42,18 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
   const [editP1,        setEditP1]        = useState("");
   const [editP2,        setEditP2]        = useState("");
 
-  const debName     = useRef(null);
-  const debDesc     = useRef(null);
-  const debLocation = useRef(null);
-  const debDatetime = useRef(null);
-  const debRally    = useRef(null);
-  const debGames    = useRef(null);
-  const debMinutes  = useRef(null);
+  const [localTargetRounds, setLocalTargetRounds] = useState(
+    t.config.targetRounds != null ? String(t.config.targetRounds) : ""
+  );
+
+  const debName         = useRef(null);
+  const debDesc         = useRef(null);
+  const debLocation     = useRef(null);
+  const debDatetime     = useRef(null);
+  const debRally        = useRef(null);
+  const debGames        = useRef(null);
+  const debMinutes      = useRef(null);
+  const debTargetRounds = useRef(null);
   const navigate    = useNavigate();
   const p1InputRef  = useRef(null);
   const p2InputRef  = useRef(null);
@@ -373,20 +378,47 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
                 </>
               )}
 
-              {/* Pozo: duración de ronda */}
+              {/* Pozo: duración de ronda y número de rondas */}
               {t.type === "pozo" && (
-                <div>
-                  <label className="text-xs text-gray-400 font-semibold block mb-2">Duración de ronda</label>
-                  <div className="flex gap-2">
-                    {[5,10,15,20,30].map(n => (
-                      <button key={n}
-                        onClick={() => persist({ ...t, timerSeconds: n * 60 })}
-                        className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer"
-                        style={{ background: t.timerSeconds === n * 60 ? color : "#1f2937", color: t.timerSeconds === n * 60 ? "#fff" : "#94a3b8" }}
-                      >{n}m</button>
-                    ))}
+                <>
+                  <div>
+                    <label className="text-xs text-gray-400 font-semibold block mb-2">Duración de ronda</label>
+                    <div className="flex gap-2">
+                      {[5,10,15,20,30].map(n => (
+                        <button key={n}
+                          onClick={() => persist({ ...t, timerSeconds: n * 60 })}
+                          className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer"
+                          style={{ background: t.timerSeconds === n * 60 ? color : "#1f2937", color: t.timerSeconds === n * 60 ? "#fff" : "#94a3b8" }}
+                        >{n}m</button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                  <div>
+                    <label className="text-xs text-gray-400 font-semibold block mb-2">
+                      Número de rondas <span className="font-normal text-gray-500">(opcional — vacío = sin límite)</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      onKeyDown={(e) => ["-","e","."].includes(e.key) && e.preventDefault()}
+                      placeholder="∞  Sin límite"
+                      value={localTargetRounds}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setLocalTargetRounds(val);
+                        clearTimeout(debTargetRounds.current);
+                        debTargetRounds.current = setTimeout(() => {
+                          const n = parseInt(val);
+                          persist({
+                            ...t,
+                            config: { ...t.config, targetRounds: (!val.trim() || isNaN(n) || n < 1) ? null : n },
+                          });
+                        }, 600);
+                      }}
+                      className="w-full bg-[#0f172a] border border-[#334155] rounded-xl px-4 py-3 text-gray-50 text-sm placeholder-gray-500 focus:outline-none focus:border-[#38bdf8]"
+                    />
+                  </div>
+                </>
               )}
             </div>
 
