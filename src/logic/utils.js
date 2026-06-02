@@ -42,7 +42,7 @@ export const shuffle = (arr) => {
   }
   return a;
 };
-export const pk = (a, b) => `${Math.min(a, b)}_${Math.max(a, b)}`;
+export const pk = (a, b) => String(a) <= String(b) ? `${a}_${b}` : `${b}_${a}`;
 export const genCode = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 
 

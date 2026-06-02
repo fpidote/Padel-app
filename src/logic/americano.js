@@ -33,8 +33,14 @@ export function precomputeAllRounds(entities, config) {
   return rounds;
 }
 
-function levelPenalty(pair) {
-  return Math.abs((pair[0].level || 0) - (pair[1].level || 0));
+function highLevelClash(pair) {
+  return pair.every((p) => (p.level || 0) >= 3) ? 1 : 0;
+}
+
+function matchBalance(pA, pB) {
+  const sumA = pA.reduce((s, p) => s + (p.level || 0), 0);
+  const sumB = pB.reduce((s, p) => s + (p.level || 0), 0);
+  return Math.abs(sumA - sumB);
 }
 
 function bestSplit(g, ph) {
@@ -54,17 +60,16 @@ function bestSplit(g, ph) {
   ];
   let best = opts[0],
     bs = Infinity;
-  opts.forEach((s) => {
-    const sc = s.reduce(
-      (acc, pair) =>
-        acc +
-        (ph[pk(pair[0].id, pair[1].id)] || 0) * 10 +
-        levelPenalty(pair) * 3,
-      0,
-    );
+  opts.forEach(([pA, pB]) => {
+    const sc =
+      (ph[pk(pA[0].id, pA[1].id)] || 0) * 12 +
+      (ph[pk(pB[0].id, pB[1].id)] || 0) * 12 +
+      highLevelClash(pA) * 15 +
+      highLevelClash(pB) * 15 +
+      matchBalance(pA, pB) * 2;
     if (sc < bs) {
       bs = sc;
-      best = s;
+      best = [pA, pB];
     }
   });
   return best;
@@ -102,7 +107,8 @@ export function buildFirstRoundAmericano(
   const sit = sorted.slice(activeCourts * units);
   for (let c = 0; c < activeCourts; c++) {
     const g = act.slice(c * 4, c * 4 + 4);
-    cs.push({ pairA: [g[0], g[3]], pairB: [g[1], g[2]], scoreA: "", scoreB: "", saved: false });
+    const [pA, pB] = bestSplit(g, {});
+    cs.push({ pairA: pA, pairB: pB, scoreA: "", scoreB: "", saved: false });
   }
   return { courts: cs, sittingOut: sit };
 }
