@@ -12,6 +12,20 @@ import { calculateStats } from "../../logic/stats";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import PairStandings from "../shared/PairStandings";
 
+function resultBadge(won, isTop, isBottom, hasSittingOut) {
+  if (won) {
+    return isTop
+      ? { text: "👑 REY",      cls: "text-yellow-400" }
+      : { text: "↑ SUBE",     cls: "text-green-400"  };
+  }
+  if (isBottom) {
+    return hasSittingOut
+      ? { text: "↓ SALE",     cls: "text-red-400"    }
+      : { text: "↓ SE QUEDA", cls: "text-orange-400" };
+  }
+  return { text: "↓ BAJA", cls: "text-red-400" };
+}
+
 export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTournament }) {
   const [tab, setTab] = useState("courts");
   const [ls, setLs] = useState({});
@@ -71,22 +85,6 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
     const sec = Math.floor(s % 60);
     return `${m}:${sec.toString().padStart(2, "0")}`;
   };
-
-  const iStyle = (winning) => ({
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    border: `1px solid ${winning ? "#16a34a55" : "#334155"}`,
-    background: "#111827",
-    textAlign: "center",
-    fontSize: 20,
-    fontWeight: 900,
-    color: winning ? "#4ade80" : "#38bdf8",
-    outline: "none",
-    appearance: "textfield",
-    MozAppearance: "textfield",
-    WebkitAppearance: "none",
-  });
 
   async function toggleTimer() {
     if (t.timerRunning) {
@@ -395,7 +393,9 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
               const a     = parseInt(sA);
               const b     = parseInt(sB);
               const valid = !isNaN(a) && !isNaN(b) && a >= 0 && b >= 0 && a !== b;
-              const isTop = court.courtNum === 1;
+              const isTop         = court.courtNum === 1;
+              const isBottom      = court.courtNum === t.config.courts;
+              const hasSittingOut = (t.sittingOut?.length ?? 0) > 0;
 
               return (
                 <div
@@ -424,66 +424,80 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
                   </div>
 
                   {/* Body — grid 3 columnas */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 8, alignItems: "center", padding: "12px 16px" }}>
+                  <div className="grid px-4 py-4" style={{ gridTemplateColumns: "1fr auto 1fr", gap: "10px" }}>
                     {/* Pareja A — derecha */}
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 3 }}>
-                        Pareja A
-                      </div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>
+                    <div className="flex flex-col items-end self-center">
+                      <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Pareja A</div>
+                      <div className="text-sm font-bold text-gray-50 text-right">
                         {court.pairA ? `${court.pairA.p1} / ${court.pairA.p2}` : "TBD"}
                       </div>
-                      {court.saved && parseInt(court.scoreA) > parseInt(court.scoreB) && (
-                        <div style={{ fontSize: 10, color: "#4ade80", fontWeight: 700, marginTop: 2 }}>↑ SUBE</div>
-                      )}
+                      {court.saved && (() => {
+                        const { text, cls } = resultBadge(
+                          parseInt(court.scoreA) > parseInt(court.scoreB),
+                          isTop, isBottom, hasSittingOut
+                        );
+                        return <div className={`text-xs font-bold mt-0.5 ${cls}`}>{text}</div>;
+                      })()}
                     </div>
 
                     {/* Score centro */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#0f172a", padding: "8px 10px", borderRadius: 8 }}>
-                      {isAdmin && !court.saved ? (
+                    <div className="flex items-center gap-1.5 self-center">
+                      {court.saved ? (
+                        <>
+                          <div
+                            onClick={() => isAdmin && onEditCourt(ci)}
+                            title={isAdmin ? "Click para editar" : undefined}
+                            className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl font-black ${parseInt(court.scoreA) > parseInt(court.scoreB) ? "bg-green-500/10 border border-green-500/40 text-green-400" : "bg-gray-800 border border-gray-600 text-gray-400"} ${isAdmin ? "cursor-pointer" : ""}`}
+                          >
+                            {court.scoreA}
+                          </div>
+                          <span className="text-gray-600 font-black text-lg">-</span>
+                          <div
+                            onClick={() => isAdmin && onEditCourt(ci)}
+                            title={isAdmin ? "Click para editar" : undefined}
+                            className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl font-black ${parseInt(court.scoreB) > parseInt(court.scoreA) ? "bg-green-500/10 border border-green-500/40 text-green-400" : "bg-gray-800 border border-gray-600 text-gray-400"} ${isAdmin ? "cursor-pointer" : ""}`}
+                          >
+                            {court.scoreB}
+                          </div>
+                        </>
+                      ) : isAdmin ? (
                         <>
                           <input
                             type="number" min="0"
                             value={sA}
                             onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
                             onChange={(e) => setLs((p) => ({ ...p, [`${ci}_A`]: e.target.value }))}
-                            style={iStyle(!isNaN(a) && !isNaN(b) && a > b)}
+                            className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-700 text-center text-xl font-black text-sky-400 outline-none focus:border-sky-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
-                          <span style={{ color: "#64748b", fontWeight: 700 }}>-</span>
+                          <span className="text-gray-600 font-black text-lg">-</span>
                           <input
                             type="number" min="0"
                             value={sB}
                             onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
                             onChange={(e) => setLs((p) => ({ ...p, [`${ci}_B`]: e.target.value }))}
-                            style={iStyle(!isNaN(a) && !isNaN(b) && b > a)}
+                            className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-700 text-center text-xl font-black text-sky-400 outline-none focus:border-sky-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                         </>
                       ) : (
-                        <div style={{ fontSize: 22, fontWeight: 900, color: court.saved ? "#f1f5f9" : "#334155", minWidth: 60, textAlign: "center" }}>
-                          {court.saved ? `${court.scoreA} - ${court.scoreB}` : "–"}
-                        </div>
+                        <span className="text-gray-600 font-black text-lg">–</span>
                       )}
                     </div>
 
                     {/* Pareja B — izquierda */}
-                    <div style={{ textAlign: "left" }}>
-                      <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 3 }}>
-                        Pareja B
-                      </div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>
+                    <div className="flex flex-col items-start self-center">
+                      <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Pareja B</div>
+                      <div className="text-sm font-bold text-gray-50">
                         {court.pairB ? `${court.pairB.p1} / ${court.pairB.p2}` : "TBD"}
                       </div>
-                      {court.saved && parseInt(court.scoreB) > parseInt(court.scoreA) && (
-                        <div style={{ fontSize: 10, color: "#4ade80", fontWeight: 700, marginTop: 2 }}>↑ SUBE</div>
-                      )}
+                      {court.saved && (() => {
+                        const { text, cls } = resultBadge(
+                          parseInt(court.scoreB) > parseInt(court.scoreA),
+                          isTop, isBottom, hasSittingOut
+                        );
+                        return <div className={`text-xs font-bold mt-0.5 ${cls}`}>{text}</div>;
+                      })()}
                     </div>
                   </div>
-
-                  {court.saved && isAdmin && (
-                    <div className="text-xs text-gray-600 text-center pb-2 -mt-1">
-                      ✓ guardado · toca para editar
-                    </div>
-                  )}
 
                   {isAdmin && !court.saved && valid && (
                     <div className="px-4 pb-3">
