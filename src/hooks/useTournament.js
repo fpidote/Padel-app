@@ -8,15 +8,12 @@ export function useTournament(code) {
   const [authUser, setAuthUser] = useState(null);
   const [t, setT] = useState(null);
   const [notFound, setNotFound] = useState(false);
+  const [error, setError] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   const isAdmin = !!(authUser?.uid && t?.ownerUid && authUser.uid === t.ownerUid);
 
   const verRef = useRef(null);
-  const codeRef = useRef(code);
-
-  useEffect(() => {
-    codeRef.current = code;
-  }, [code]);
 
   useEffect(() => {
     return onAuthStateChanged(auth, (user) => setAuthUser(user));
@@ -28,6 +25,7 @@ export function useTournament(code) {
     verRef.current = null;
     setT(null);
     setNotFound(false);
+    setError(null);
     const unsub = onSnapshot(
       doc(db, "torneos", code),
       (snap) => {
@@ -35,28 +33,49 @@ export function useTournament(code) {
           setNotFound(true);
           return;
         }
-        const data = JSON.parse(snap.data().data);
+        // Hallazgo 2: JSON.parse con guard — datos corruptos en Firestore no rompen el listener
+        let data;
+        try {
+          data = JSON.parse(snap.data().data);
+        } catch {
+          setNotFound(true);
+          return;
+        }
         if (!data || data.ver <= verRef.current) return;
         verRef.current = data.ver;
         setT(data);
       },
-      (err) => console.error("Firebase listener:", err),
+      // Hallazgo 4: errores del listener expuestos como estado, no solo console.error
+      (err) => {
+        console.error("Firebase listener:", err);
+        setError(err);
+      },
     );
     return () => unsub();
   }, [code]);
 
   // ── persist ─────────────────────────────────────────────────
+  // Hallazgo 1: rollback completo si setDoc falla
+  // Hallazgo 3: guard anti-concurrencia para evitar race condition de doble-click
   async function persist(newT) {
+    if (saving) return;
+    const prevT = t;
+    const prevVer = verRef.current;
+    const updated = { ...newT, ver: (newT.ver || 0) + 1 };
+    setSaving(true);
     try {
-      newT.ver = (newT.ver || 0) + 1;
-      verRef.current = newT.ver;
-      setT(newT);
-      await setDoc(doc(db, "torneos", codeRef.current), {
-        data: JSON.stringify(newT),
+      verRef.current = updated.ver;
+      setT(updated);
+      await setDoc(doc(db, "torneos", code), {
+        data: JSON.stringify(updated),
       }, { merge: true });
     } catch (err) {
+      verRef.current = prevVer;
+      setT(prevT);
       console.error("Error al guardar:", err);
       alert("No se pudieron guardar los cambios.");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -72,5 +91,5 @@ export function useTournament(code) {
     }
   }
 
-  return { t, notFound, isAdmin, persist, copyCode };
+  return { t, notFound, isAdmin, error, saving, persist, copyCode };
 }

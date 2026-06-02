@@ -120,7 +120,7 @@ export function buildRoundAmericano(entities, n, ph, soh, mode = "individual") {
     const pool = sorted
       .slice(-Math.max(cnt * 2, cnt + 2))
       .map((p) => ({ ...p, ss: soh[p.id] || 0 }))
-      .sort((a, b) => a.ss - b.ss);
+      .sort((a, b) => a.ss !== b.ss ? a.ss - b.ss : a.pts - b.pts);
     const ids = new Set(pool.slice(0, cnt).map((p) => p.id));
     sittingOut = sorted.filter((p) => ids.has(p.id));
     active = sorted.filter((p) => !ids.has(p.id));

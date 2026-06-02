@@ -14,7 +14,7 @@ const PlayPozo = lazy(() => import('./components/play/PlayPozo'));
 export default function TournamentPage() {
   const { code } = useParams();
   const navigate = useNavigate();
-  const { t, notFound, isAdmin, persist, copyCode } = useTournament(code);
+  const { t, notFound, isAdmin, error, persist, copyCode } = useTournament(code);
   const [editMode, setEditMode] = useState(false);
 
   if (notFound)
@@ -31,6 +31,25 @@ export default function TournamentPage() {
             className="mt-2 w-full py-3 rounded-xl font-bold text-sm bg-[#0284c7] hover:bg-sky-500 text-white cursor-pointer transition-colors"
           >
             Volver al inicio
+          </button>
+        </div>
+      </div>
+    );
+
+  if (error && !t)
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 px-6 text-center">
+        <div className="text-5xl">⚠️</div>
+        <div className="bg-[#1e293b] border border-[#334155] rounded-2xl px-8 py-8 max-w-sm w-full flex flex-col items-center gap-4">
+          <h2 className="text-lg font-black text-gray-50">Error de conexión</h2>
+          <p className="text-sm text-gray-400 leading-relaxed">
+            No se pudo cargar el torneo. Revisá tu conexión e intentá de nuevo.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-2 w-full py-3 rounded-xl font-bold text-sm bg-[#0284c7] hover:bg-sky-500 text-white cursor-pointer transition-colors"
+          >
+            Reintentar
           </button>
         </div>
       </div>
