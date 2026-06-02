@@ -1,5 +1,5 @@
 import { describe, test, expect } from "vitest";
-import { buildPozoRound, applyPozoRoundResults, isProposedRoundValid } from "./pozo.js";
+import { buildPozoRound, applyPozoRoundResults, isProposedRoundValid, shufflePlayers } from "./pozo.js";
 
 // ── Helpers ──────────────────────────────────────────────────
 const pair = (id, pts = 0, courtLevel = 0, gf = 0, gc = 0) => ({
@@ -330,5 +330,68 @@ describe("isProposedRoundValid", () => {
       mkProposedCourt(2, ["p5","p6"], ["p7","p8"]),
     ]);
     expect(isProposedRoundValid(round)).toBe(true);
+  });
+});
+
+// ── Helper ────────────────────────────────────────────────────
+const playerM = (id, pts = 0, courtLevel = 0) => ({
+  id, name: `P${id}`, pts, gf: 0, gc: 0, courtLevel,
+});
+
+// ═══════════════════════════════════════════════════════════════
+// shufflePlayers
+// ═══════════════════════════════════════════════════════════════
+describe("shufflePlayers", () => {
+  test("genera 1 cancha con 4 jugadores exactos", () => {
+    const players = [playerM("A",0,3), playerM("B",0,2), playerM("C",0,1), playerM("D",0,0)];
+    const result = shufflePlayers(players, 1);
+    expect(result.courts).toHaveLength(1);
+    expect(result.unassigned).toHaveLength(0);
+  });
+
+  test("teamA recibe los 2 jugadores de mayor courtLevel del grupo", () => {
+    const players = [playerM("A",0,3), playerM("B",0,2), playerM("C",0,1), playerM("D",0,0)];
+    const result = shufflePlayers(players, 1);
+    expect(result.courts[0].teamA.playerIds).toEqual(["A", "B"]);
+    expect(result.courts[0].teamB.playerIds).toEqual(["C", "D"]);
+  });
+
+  test("con 5 jugadores y 1 cancha, el de menor courtLevel queda en unassigned", () => {
+    const players = [playerM("A",0,4), playerM("B",0,3), playerM("C",0,2), playerM("D",0,1), playerM("E",0,0)];
+    const result = shufflePlayers(players, 1);
+    expect(result.courts).toHaveLength(1);
+    expect(result.unassigned).toEqual(["E"]);
+  });
+
+  test("con 8 jugadores y 2 canchas, llena ambas canchas sin unassigned", () => {
+    const players = Array.from({ length: 8 }, (_, i) => playerM(String(i), 0, 7 - i));
+    const result = shufflePlayers(players, 2);
+    expect(result.courts).toHaveLength(2);
+    expect(result.unassigned).toHaveLength(0);
+  });
+
+  test("la cancha 1 contiene los jugadores de mayor courtLevel", () => {
+    const players = Array.from({ length: 8 }, (_, i) => playerM(String(i), 0, 7 - i));
+    const result = shufflePlayers(players, 2);
+    const c1Ids = [...result.courts[0].teamA.playerIds, ...result.courts[0].teamB.playerIds];
+    expect(c1Ids).toContain("0");
+    expect(c1Ids).toContain("1");
+  });
+
+  test("con menos de 4 jugadores no genera canchas", () => {
+    const players = [playerM("A"), playerM("B"), playerM("C")];
+    const result = shufflePlayers(players, 1);
+    expect(result.courts).toHaveLength(0);
+    expect(result.unassigned).toHaveLength(3);
+  });
+
+  test("el output tiene la forma correcta de ProposedRound", () => {
+    const players = [playerM("A",0,3), playerM("B",0,2), playerM("C",0,1), playerM("D",0,0)];
+    const result = shufflePlayers(players, 1);
+    expect(result.courts[0]).toMatchObject({
+      courtNum: 1,
+      teamA: { playerIds: expect.any(Array) },
+      teamB: { playerIds: expect.any(Array) },
+    });
   });
 });

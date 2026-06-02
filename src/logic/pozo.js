@@ -65,6 +65,27 @@ export function applyPozoRoundResults(pairs, currentRound, courts) {
   return updated;
 }
 
+export function shufflePlayers(players, numCourts) {
+  const sorted = [...players].sort(
+    (a, b) => b.pts - a.pts || b.courtLevel - a.courtLevel,
+  );
+  const activeCourts = Math.min(numCourts, Math.floor(sorted.length / 4));
+  const active       = sorted.slice(0, activeCourts * 4);
+  const unassigned   = sorted.slice(activeCourts * 4).map((p) => p.id);
+
+  const courts = [];
+  for (let c = 0; c < activeCourts; c++) {
+    const group = active.slice(c * 4, c * 4 + 4);
+    courts.push({
+      courtNum: c + 1,
+      teamA: { playerIds: [group[0].id, group[1].id] },
+      teamB: { playerIds: [group[2].id, group[3].id] },
+    });
+  }
+
+  return { courts, unassigned };
+}
+
 export function isProposedRoundValid(proposedRound) {
   if (proposedRound.unassigned.length > 0) return false;
   const seen = new Set();
