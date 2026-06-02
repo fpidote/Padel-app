@@ -64,7 +64,7 @@ export function PairName({ pair, showNames = true }) {
   return <span style={{ fontWeight: 700, color: "#fbbf24" }}>{showNames ? `${pair.p1} / ${pair.p2}` : `Par ${pair.id + 1}`}</span>;
 }
 
-export function SimpleModal({ message, onClose, onConfirm }) {
+export function SimpleModal({ message, onClose, onConfirm, confirmLabel }) {
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 9999,
@@ -94,7 +94,7 @@ export function SimpleModal({ message, onClose, onConfirm }) {
             borderRadius: 8, padding: "8px 20px", fontWeight: 700,
             fontSize: 14, cursor: "pointer"
           }}>
-            {onConfirm ? "Eliminar" : "Aceptar"}
+            {onConfirm ? (confirmLabel || "Eliminar") : "Aceptar"}
           </button>
         </div>
       </div>

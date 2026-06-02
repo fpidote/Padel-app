@@ -61,7 +61,7 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
   const isMixer   = t.type === "pozo" && t.config.pozoMode === "mixer";
   const pairs     = t.pairInputs || [];
   const players   = t.playerInputs || [];
-  const act       = t.config.courts * 2;
+  const act       = isMixer ? t.config.courts * 4 : t.config.courts * 2;
   const tot       = isMixer ? players.length : pairs.length;
   const sit       = Math.max(0, tot - act);
   const need      = Math.max(0, act - tot);
@@ -161,13 +161,33 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
           courtLevel: i,
           pts: 0, gf: 0, gc: 0,
         }));
-        const proposed = shufflePlayers(playersToStart, t.config.courts);
+        const proposed  = shufflePlayers(playersToStart, t.config.courts);
+        const playerMap = Object.fromEntries(playersToStart.map((p) => [p.id, p]));
+        const currentPozoRound = proposed.courts.map((court) => {
+          const [pA1, pA2] = court.teamA.playerIds.map((id) => playerMap[id]);
+          const [pB1, pB2] = court.teamB.playerIds.map((id) => playerMap[id]);
+          return {
+            courtNum: court.courtNum,
+            pairA: {
+              id: `tmp_${pA1.id}_${pA2.id}`, _playerIds: [pA1.id, pA2.id],
+              p1: pA1.name, p2: pA2.name, pts: 0, gf: 0, gc: 0,
+              courtLevel: Math.round((pA1.courtLevel + pA2.courtLevel) / 2),
+            },
+            pairB: {
+              id: `tmp_${pB1.id}_${pB2.id}`, _playerIds: [pB1.id, pB2.id],
+              p1: pB1.name, p2: pB2.name, pts: 0, gf: 0, gc: 0,
+              courtLevel: Math.round((pB1.courtLevel + pB2.courtLevel) / 2),
+            },
+            scoreA: "", scoreB: "", saved: false,
+          };
+        });
         await persist({
           ...t,
           config:           finalConfig,
           players:          playersToStart,
-          proposedRound:    proposed,
-          currentPozoRound: null,
+          currentPozoRound,
+          sittingOut:       proposed.unassigned || [],
+          proposedRound:    null,
           pozoRounds:       [],
           roundNum:         1,
           phase:            "playing",
@@ -338,13 +358,21 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
               <div>
                 <label className="text-xs text-gray-400 font-semibold block mb-2">Pistas</label>
                 <div className="flex gap-2">
-                  {[1,2,3,4,5,6].map(n => (
-                    <button key={n}
-                      onClick={() => persist({ ...t, config: { ...t.config, courts: n } })}
-                      className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer"
-                      style={{ background: t.config.courts === n ? color : "#1f2937", color: t.config.courts === n ? "#fff" : "#94a3b8" }}
-                    >{n}</button>
-                  ))}
+                  {[1,2,3,4,5,6].map(n => {
+                    const disabled = t.type === "pozo" && n === 1;
+                    return (
+                      <button key={n}
+                        onClick={() => !disabled && persist({ ...t, config: { ...t.config, courts: n } })}
+                        className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors"
+                        style={{
+                          background: t.config.courts === n ? color : "#1f2937",
+                          color:      disabled ? "#374151" : t.config.courts === n ? "#fff" : "#94a3b8",
+                          cursor:     disabled ? "not-allowed" : "pointer",
+                          opacity:    disabled ? 0.4 : 1,
+                        }}
+                      >{n}</button>
+                    );
+                  })}
                 </div>
               </div>
 
