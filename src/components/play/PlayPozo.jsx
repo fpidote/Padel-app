@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from "react";
+import { collection, addDoc, getDocs, Timestamp } from "firebase/firestore";
+import { db } from "../../firebase";
 import { B, TOURNAMENT_RULES } from "../../logic/constants";
 import { buildPozoRound, applyPozoRoundResults } from "../../logic/pozo";
+import { calculateStats } from "../../logic/stats";
 import { THeader, Tabs } from "../shared/Components";
 import PairStandings from "../shared/PairStandings";
 
@@ -86,8 +89,49 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
 
   async function onNextRound() {
     if (!t.currentPozoRound.every((c) => c.saved)) return;
+
     const updatedPairs = applyPozoRoundResults(t.pairs, t.currentPozoRound, t.config.courts);
-    const newRound = buildPozoRound(updatedPairs, t.config.courts);
+    const newRound     = buildPozoRound(updatedPairs, t.config.courts);
+
+    // Escribir historial de matches a la subcolección
+    const matchesRef = collection(db, "torneos", code, "matches");
+    await Promise.all(
+      t.currentPozoRound.map((court) => {
+        const a    = parseInt(court.scoreA);
+        const b    = parseInt(court.scoreB);
+        const side = a > b ? "A" : "B";
+
+        const pairABefore  = t.pairs.find((p) => p.id === court.pairA.id);
+        const pairBBefore  = t.pairs.find((p) => p.id === court.pairB.id);
+        const pairAAfter   = updatedPairs.find((p) => p.id === court.pairA.id);
+        const pairBAfter   = updatedPairs.find((p) => p.id === court.pairB.id);
+
+        return addDoc(matchesRef, {
+          roundNum:    t.roundNum,
+          courtNum:    court.courtNum,
+          confirmedAt: Timestamp.now(),
+          mode:        "fixed",
+          teamA: {
+            playerIds:        [pairABefore.p1, pairABefore.p2],
+            pairId:           String(pairABefore.id),
+            courtLevelBefore: pairABefore.courtLevel,
+            courtLevelAfter:  pairAAfter.courtLevel,
+          },
+          teamB: {
+            playerIds:        [pairBBefore.p1, pairBBefore.p2],
+            pairId:           String(pairBBefore.id),
+            courtLevelBefore: pairBBefore.courtLevel,
+            courtLevelAfter:  pairBAfter.courtLevel,
+          },
+          result: {
+            scoreA:      a,
+            scoreB:      b,
+            winningSide: side,
+          },
+        });
+      }),
+    );
+
     const savedRounds = [
       ...(t.pozoRounds || []),
       { num: t.roundNum, courts: t.currentPozoRound },
@@ -95,13 +139,13 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
     setLs({});
     await persist({
       ...t,
-      pairs: updatedPairs,
+      pairs:            updatedPairs,
       currentPozoRound: newRound,
-      pozoRounds: savedRounds,
-      roundNum: t.roundNum + 1,
-      timerRunning: false,
-      timerElapsed: 0,
-      timerStartedAt: null,
+      pozoRounds:       savedRounds,
+      roundNum:         t.roundNum + 1,
+      timerRunning:     false,
+      timerElapsed:     0,
+      timerStartedAt:   null,
     });
   }
 
