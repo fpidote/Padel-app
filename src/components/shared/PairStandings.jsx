@@ -8,7 +8,7 @@ export default function PairStandings({
   extra,
   scoringFormat = "games",
 }) {
-  const sorted = [...pairs].sort((a, b) => {
+  const sorted = [...(pairs || [])].sort((a, b) => {
     if (b.pts !== a.pts) return b.pts - a.pts;
     if (b.gf - b.gc !== a.gf - a.gc) return b.gf - b.gc - (a.gf - a.gc);
     return (
@@ -43,7 +43,7 @@ export default function PairStandings({
               <tr key={p.id} style={{ background: i % 2 === 0 ? "#1e293b" : "#172033", borderBottom: "1px solid #1e293b" }}>
                 <td style={tdCenter}>{medal || <span style={{ color: "#64748b", fontSize: 13 }}>{i + 1}</span>}</td>
                 <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>
-                  {p.p1} / {p.p2}
+                  {p.name || `${p.p1} / ${p.p2}`}
                 </td>
                 <td style={{ ...tdCenter, color: "#38bdf8", fontWeight: 800, fontSize: 14 }}>{p.pts}</td>
                 <td style={{ ...tdCenter, color: "#94a3b8", fontSize: 13 }}>{p.gf}</td>
