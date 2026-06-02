@@ -161,13 +161,33 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
           courtLevel: i,
           pts: 0, gf: 0, gc: 0,
         }));
-        const proposed = shufflePlayers(playersToStart, t.config.courts);
+        const proposed  = shufflePlayers(playersToStart, t.config.courts);
+        const playerMap = Object.fromEntries(playersToStart.map((p) => [p.id, p]));
+        const currentPozoRound = proposed.courts.map((court) => {
+          const [pA1, pA2] = court.teamA.playerIds.map((id) => playerMap[id]);
+          const [pB1, pB2] = court.teamB.playerIds.map((id) => playerMap[id]);
+          return {
+            courtNum: court.courtNum,
+            pairA: {
+              id: `tmp_${pA1.id}_${pA2.id}`, _playerIds: [pA1.id, pA2.id],
+              p1: pA1.name, p2: pA2.name, pts: 0, gf: 0, gc: 0,
+              courtLevel: Math.round((pA1.courtLevel + pA2.courtLevel) / 2),
+            },
+            pairB: {
+              id: `tmp_${pB1.id}_${pB2.id}`, _playerIds: [pB1.id, pB2.id],
+              p1: pB1.name, p2: pB2.name, pts: 0, gf: 0, gc: 0,
+              courtLevel: Math.round((pB1.courtLevel + pB2.courtLevel) / 2),
+            },
+            scoreA: "", scoreB: "", saved: false,
+          };
+        });
         await persist({
           ...t,
           config:           finalConfig,
           players:          playersToStart,
-          proposedRound:    proposed,
-          currentPozoRound: null,
+          currentPozoRound,
+          sittingOut:       proposed.unassigned || [],
+          proposedRound:    null,
           pozoRounds:       [],
           roundNum:         1,
           phase:            "playing",
