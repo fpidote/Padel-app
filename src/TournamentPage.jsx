@@ -4,8 +4,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useTournament } from "./hooks/useTournament";
 import { TOURNAMENT_TYPES } from "./logic/constants";
 
-import SetupAmericano from "./components/setup/SetupAmericano";
-import SetupPairs from "./components/setup/SetupPairs";
+const SetupAmericano = lazy(() => import('./components/setup/SetupAmericano'));
+const SetupPairs = lazy(() => import('./components/setup/SetupPairs'));
 const PlayAmericano = lazy(() => import('./components/play/PlayAmericano'));
 const PlayRelampago = lazy(() => import('./components/play/PlayRelampago'));
 const PlayMundialito = lazy(() => import('./components/play/PlayMundialito'));
@@ -65,19 +65,22 @@ export default function TournamentPage() {
   const props = { t, code, isAdmin, persist, copyCode };
   const typeInfo = TOURNAMENT_TYPES.find((x) => x.id === t.type) || TOURNAMENT_TYPES[0];
 
-  if (t.status === "setup" || editMode) {
-    if (t.type === "americano") return <SetupAmericano {...props} onExitEdit={editMode ? () => setEditMode(false) : undefined} />;
-    return <SetupPairs {...props} typeInfo={typeInfo} onExitEdit={editMode ? () => setEditMode(false) : undefined} />;
-  }
-
   const onEditTournament = () => setEditMode(true);
 
   return (
-    <Suspense fallback={<div className="p-4 text-center">Cargando torneo...</div>}>
-      {t.type === "americano" && <PlayAmericano {...props} onEditTournament={onEditTournament} />}
-      {t.type === "relampago" && <PlayRelampago {...props} onEditTournament={onEditTournament} />}
-      {t.type === "mundialito" && <PlayMundialito {...props} onEditTournament={onEditTournament} />}
-      {t.type === "pozo" && <PlayPozo {...props} onEditTournament={onEditTournament} />}
+    <Suspense fallback={<div className="p-4 text-center text-[#f1f5f9]">Cargando torneo...</div>}>
+      {(t.status === "setup" || editMode) ? (
+        t.type === "americano"
+          ? <SetupAmericano {...props} onExitEdit={editMode ? () => setEditMode(false) : undefined} />
+          : <SetupPairs {...props} typeInfo={typeInfo} onExitEdit={editMode ? () => setEditMode(false) : undefined} />
+      ) : (
+        <>
+          {t.type === "americano" && <PlayAmericano {...props} onEditTournament={onEditTournament} />}
+          {t.type === "relampago" && <PlayRelampago {...props} onEditTournament={onEditTournament} />}
+          {t.type === "mundialito" && <PlayMundialito {...props} onEditTournament={onEditTournament} />}
+          {t.type === "pozo" && <PlayPozo {...props} onEditTournament={onEditTournament} />}
+        </>
+      )}
     </Suspense>
   );
 }
