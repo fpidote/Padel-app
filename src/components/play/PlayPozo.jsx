@@ -2,7 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import { collection, addDoc, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "../../firebase";
 import { B, TOURNAMENT_RULES } from "../../logic/constants";
-import { buildPozoRound, applyPozoRoundResults } from "../../logic/pozo";
+import {
+  buildPozoRound,
+  applyPozoRoundResults,
+  shufflePlayers,
+  distributePairLevelToPlayers,
+  isProposedRoundValid,
+} from "../../logic/pozo";
 import { calculateStats } from "../../logic/stats";
 import { THeader, Tabs } from "../shared/Components";
 import PairStandings from "../shared/PairStandings";
@@ -12,6 +18,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
   const [ls, setLs] = useState({});
   const [localTimer, setLocalTimer] = useState(0);
   const [matches, setMatches] = useState(null); // null = no cargado aún
+  const [proposedRound, setProposedRound] = useState(null);
   const timerRef = useRef(null);
 
   async function loadStats() {
@@ -44,6 +51,12 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
     if (tab === "stats") loadStats();
   }, [tab]);
 
+  useEffect(() => {
+    if (t.config?.pozoMode === "mixer" && t.proposedRound && !t.currentPozoRound) {
+      setProposedRound(t.proposedRound);
+    }
+  }, [t.proposedRound, t.currentPozoRound, t.config?.pozoMode]);
+
   const remaining = Math.max(0, t.timerSeconds - localTimer);
   const pct = (localTimer / t.timerSeconds) * 100;
   const timeExpired = remaining === 0 && localTimer > 0;
@@ -53,6 +66,36 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
     const sec = Math.floor(s % 60);
     return `${m}:${sec.toString().padStart(2, "0")}`;
   };
+
+  function buildTempPairs(proposed) {
+    const playerMap = Object.fromEntries((t.players || []).map((p) => [p.id, p]));
+    return proposed.courts.flatMap((court) => {
+      const [pA1, pA2] = court.teamA.playerIds.map((id) => playerMap[id]);
+      const [pB1, pB2] = court.teamB.playerIds.map((id) => playerMap[id]);
+      return [
+        {
+          id:         `tmp_${pA1.id}_${pA2.id}`,
+          _playerIds: [pA1.id, pA2.id],
+          p1:         pA1.name,
+          p2:         pA2.name,
+          pts:        Math.round((pA1.pts + pA2.pts) / 2),
+          gf:         0,
+          gc:         0,
+          courtLevel: Math.round((pA1.courtLevel + pA2.courtLevel) / 2),
+        },
+        {
+          id:         `tmp_${pB1.id}_${pB2.id}`,
+          _playerIds: [pB1.id, pB2.id],
+          p1:         pB1.name,
+          p2:         pB2.name,
+          pts:        Math.round((pB1.pts + pB2.pts) / 2),
+          gf:         0,
+          gc:         0,
+          courtLevel: Math.round((pB1.courtLevel + pB2.courtLevel) / 2),
+        },
+      ];
+    });
+  }
 
   async function toggleTimer() {
     if (t.timerRunning) {
@@ -101,6 +144,25 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
       i === ci ? { ...c, saved: false } : c,
     );
     await persist({ ...t, currentPozoRound: updated });
+  }
+
+  async function onConfirmMixerRound() {
+    if (!isProposedRoundValid(proposedRound)) return;
+    const tempPairs = buildTempPairs(proposedRound);
+    const currentRound = proposedRound.courts.map((court, idx) => ({
+      courtNum: court.courtNum,
+      pairA:    tempPairs[idx * 2],
+      pairB:    tempPairs[idx * 2 + 1],
+      scoreA:   "",
+      scoreB:   "",
+      saved:    false,
+    }));
+    setProposedRound(null);
+    await persist({
+      ...t,
+      currentPozoRound: currentRound,
+      proposedRound:    null,
+    });
   }
 
   async function onNextRound() {
@@ -157,6 +219,67 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
       ...t,
       pairs:            updatedPairs,
       currentPozoRound: newRound,
+      pozoRounds:       savedRounds,
+      roundNum:         t.roundNum + 1,
+      timerRunning:     false,
+      timerElapsed:     0,
+      timerStartedAt:   null,
+    });
+  }
+
+  async function onNextRoundMixer() {
+    if (!t.currentPozoRound.every((c) => c.saved)) return;
+
+    // pairA / pairB ya son temp pairs (construidas en onConfirmMixerRound, con _playerIds)
+    const tempPairs      = t.currentPozoRound.flatMap((c) => [c.pairA, c.pairB]);
+    const updatedTemps   = applyPozoRoundResults(tempPairs, t.currentPozoRound, t.config.courts);
+    const updatedPlayers = distributePairLevelToPlayers(updatedTemps, t.players, t.currentPozoRound);
+    const nextProposed   = shufflePlayers(updatedPlayers, t.config.courts);
+
+    const matchesRef = collection(db, "torneos", code, "matches");
+    await Promise.all(
+      t.currentPozoRound.map((court) => {
+        const a    = parseInt(court.scoreA);
+        const b    = parseInt(court.scoreB);
+        const side = a > b ? "A" : "B";
+        const tpA  = court.pairA;
+        const tpB  = court.pairB;
+        const utA  = updatedTemps.find((p) => p.id === court.pairA.id);
+        const utB  = updatedTemps.find((p) => p.id === court.pairB.id);
+
+        return addDoc(matchesRef, {
+          roundNum:    t.roundNum,
+          courtNum:    court.courtNum,
+          confirmedAt: Timestamp.now(),
+          mode:        "mixer",
+          teamA: {
+            playerIds:        tpA._playerIds,
+            pairId:           null,
+            courtLevelBefore: tpA.courtLevel,
+            courtLevelAfter:  utA.courtLevel,
+          },
+          teamB: {
+            playerIds:        tpB._playerIds,
+            pairId:           null,
+            courtLevelBefore: tpB.courtLevel,
+            courtLevelAfter:  utB.courtLevel,
+          },
+          result: { scoreA: a, scoreB: b, winningSide: side },
+        });
+      }),
+    );
+
+    const savedRounds = [
+      ...(t.pozoRounds || []),
+      { num: t.roundNum, courts: t.currentPozoRound },
+    ];
+    setLs({});
+    setProposedRound(nextProposed);
+    await persist({
+      ...t,
+      players:          updatedPlayers,
+      currentPozoRound: null,
+      proposedRound:    nextProposed,
       pozoRounds:       savedRounds,
       roundNum:         t.roundNum + 1,
       timerRunning:     false,
@@ -286,6 +409,63 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
                 </div>
               )}
             </div>
+
+            {/* Propuesta de emparejamiento (Mixer) */}
+            {t.config?.pozoMode === "mixer" && proposedRound && !t.currentPozoRound && (
+              <div style={{ background: "#1e293b", borderRadius: 12, padding: 16 }}>
+                <div style={{ fontWeight: 700, color: "#38bdf8", marginBottom: 12 }}>
+                  Propuesta de emparejamiento — Ronda {t.roundNum}
+                </div>
+                {proposedRound.courts.map((court) => (
+                  <div key={court.courtNum} style={{ marginBottom: 12, borderBottom: "1px solid #334155", paddingBottom: 12 }}>
+                    <div style={{ color: "#94a3b8", fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+                      Pista {court.courtNum}
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "#f1f5f9" }}>
+                      <span>
+                        {court.teamA.playerIds
+                          .map((id) => (t.players || []).find((p) => p.id === id)?.name || id)
+                          .join(" / ")}
+                      </span>
+                      <span style={{ color: "#64748b" }}>vs</span>
+                      <span>
+                        {court.teamB.playerIds
+                          .map((id) => (t.players || []).find((p) => p.id === id)?.name || id)
+                          .join(" / ")}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                {proposedRound.unassigned.length > 0 && (
+                  <div style={{ fontSize: 12, color: "#f59e0b", marginTop: 8 }}>
+                    ⏳ Descansan:{" "}
+                    {proposedRound.unassigned
+                      .map((id) => (t.players || []).find((p) => p.id === id)?.name || id)
+                      .join(", ")}
+                  </div>
+                )}
+                {isAdmin && (
+                  <button
+                    onClick={onConfirmMixerRound}
+                    disabled={!isProposedRoundValid(proposedRound)}
+                    style={{
+                      marginTop:    16,
+                      width:        "100%",
+                      padding:      14,
+                      borderRadius: 10,
+                      fontWeight:   700,
+                      fontSize:     15,
+                      background:   isProposedRoundValid(proposedRound) ? "#10b981" : "#334155",
+                      color:        "#fff",
+                      border:       "none",
+                      cursor:       isProposedRoundValid(proposedRound) ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    ✓ Confirmar emparejamiento
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Lista de Pistas (Courts) */}
             {(t.currentPozoRound || []).map((court, ci) => {
@@ -593,12 +773,8 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
 
             {allSaved && isAdmin && (
               <button
-                onClick={onNextRound}
-                style={B("#10b981", {
-                  width: "100%",
-                  padding: 16,
-                  fontSize: 16,
-                })}
+                onClick={t.config?.pozoMode === "mixer" ? onNextRoundMixer : onNextRound}
+                style={B("#10b981", { width: "100%", padding: 16, fontSize: 16 })}
               >
                 Rotar Pistas - Siguiente Ronda ➔
               </button>
