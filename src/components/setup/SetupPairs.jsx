@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { shuffle, buildShareMessage } from "../../logic/utils";
 import { buildBracket } from "../../logic/relampago";
 import { buildGroups } from "../../logic/mundialito";
-import { buildPozoRound } from "../../logic/pozo";
+import { buildPozoRound, shufflePlayers } from "../../logic/pozo";
 
 const SCORING_OPTIONS = [
   { id: "timed", icon: "⏱️", name: "Por tiempo",   desc: "Se anota al terminar el tiempo" },
@@ -31,6 +31,7 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
   const [localDatetime, setLocalDatetime] = useState(t.config.datetime   || "");
   const [newP1,         setNewP1]         = useState("");
   const [newP2,         setNewP2]         = useState("");
+  const [newPlayer,     setNewPlayer]     = useState("");
   const [showAdvanced,  setShowAdvanced]  = useState(false);
   const [copied,        setCopied]        = useState(false);
   const [rallyCustom,   setRallyCustom]   = useState("");
@@ -41,29 +42,41 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
   const [editP1,        setEditP1]        = useState("");
   const [editP2,        setEditP2]        = useState("");
 
-  const debName     = useRef(null);
-  const debDesc     = useRef(null);
-  const debLocation = useRef(null);
-  const debDatetime = useRef(null);
-  const debRally    = useRef(null);
-  const debGames    = useRef(null);
-  const debMinutes  = useRef(null);
+  const [localTargetRounds, setLocalTargetRounds] = useState(
+    t.config.targetRounds != null ? String(t.config.targetRounds) : ""
+  );
+
+  const debName         = useRef(null);
+  const debDesc         = useRef(null);
+  const debLocation     = useRef(null);
+  const debDatetime     = useRef(null);
+  const debRally        = useRef(null);
+  const debGames        = useRef(null);
+  const debMinutes      = useRef(null);
+  const debTargetRounds = useRef(null);
   const navigate    = useNavigate();
   const p1InputRef  = useRef(null);
   const p2InputRef  = useRef(null);
 
-  const pairs = t.pairInputs || [];
-  const act   = t.config.courts * 2;
-  const tot   = pairs.length;
-  const sit   = Math.max(0, tot - act);
-  const need  = Math.max(0, act - tot);
+  const isMixer   = t.type === "pozo" && t.config.pozoMode === "mixer";
+  const pairs     = t.pairInputs || [];
+  const players   = t.playerInputs || [];
+  const act       = t.config.courts * 2;
+  const tot       = isMixer ? players.length : pairs.length;
+  const sit       = Math.max(0, tot - act);
+  const need      = Math.max(0, act - tot);
 
   const statusBg  = need > 0 ? "bg-red-400/10 border-red-400/20"    : sit > 0 ? "bg-yellow-400/10 border-yellow-400/20"    : "bg-green-400/10 border-green-400/20";
   const statusTxt = need > 0 ? "text-red-400"                       : sit > 0 ? "text-yellow-400"                          : "text-green-400";
-  const statusMsg = `${tot} parejas · ${t.config.courts} pistas · ${Math.min(tot, act)} juegan` +
-    (sit > 0 ? ` · ⏳ ${sit} descansan` : need > 0 ? ` · ⚠️ faltan ${need}` : " · ✓ listo");
+  const statusMsg = isMixer
+    ? `${tot} jugadores · ${t.config.courts} pistas` +
+      (need > 0 ? ` · ⚠️ faltan ${need}` : ` · ✓ listo`)
+    : `${tot} parejas · ${t.config.courts} pistas · ${Math.min(tot, act)} juegan` +
+      (sit > 0 ? ` · ⏳ ${sit} descansan` : need > 0 ? ` · ⚠️ faltan ${need}` : " · ✓ listo");
 
-  const ok = tot >= 2 && pairs.every(p => p.p1.trim() && p.p2.trim());
+  const ok = isMixer
+    ? players.length >= 4 && players.every(p => p.name.trim())
+    : tot >= 2 && pairs.every(p => p.p1.trim() && p.p2.trim());
   const scoring = t.config.scoringSystem || "timed";
 
   function handleName(val) {
@@ -119,6 +132,18 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
     p1InputRef.current?.focus();
   }
 
+  function addPlayer() {
+    if (!newPlayer.trim()) return;
+    persist({
+      ...t,
+      playerInputs: [
+        ...(t.playerInputs || []),
+        { id: (t.playerInputs || []).length, name: newPlayer.trim() },
+      ],
+    });
+    setNewPlayer("");
+  }
+
   async function onStart() {
     const pairsToStart = t.pairInputs.map((p, i) => ({ ...p, id: i, pts: 0, gf: 0, gc: 0 }));
     const finalConfig = { ...t.config, scoringSystem: t.config.scoringSystem || "timed" };
@@ -130,21 +155,44 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
       const groups = buildGroups(pairsToStart, t.config.groupCount || 2);
       await persist({ ...t, config: finalConfig, groups, pairs: pairsToStart, phase: "groups", status: "playing" });
     } else if (t.type === "pozo") {
-      const sorted = shuffle(pairsToStart);
-      const courtAssign = buildPozoRound(sorted.map((p, i) => ({ ...p, courtLevel: i })), t.config.courts);
-      await persist({
-        ...t,
-        config: finalConfig,
-        pairs: sorted.map((p, i) => ({ ...p, courtLevel: i })),
-        currentPozoRound: courtAssign,
-        pozoRounds: [],
-        roundNum: 1,
-        phase: "playing",
-        status: "playing",
-        timerRunning: false,
-        timerElapsed: 0,
-        timerStartedAt: null,
-      });
+      if (t.config.pozoMode === "mixer") {
+        const playersToStart = (t.playerInputs || []).map((p, i) => ({
+          ...p,
+          courtLevel: i,
+          pts: 0, gf: 0, gc: 0,
+        }));
+        const proposed = shufflePlayers(playersToStart, t.config.courts);
+        await persist({
+          ...t,
+          config:           finalConfig,
+          players:          playersToStart,
+          proposedRound:    proposed,
+          currentPozoRound: null,
+          pozoRounds:       [],
+          roundNum:         1,
+          phase:            "playing",
+          status:           "playing",
+          timerRunning:     false,
+          timerElapsed:     0,
+          timerStartedAt:   null,
+        });
+      } else {
+        const sorted      = shuffle(pairsToStart);
+        const courtAssign = buildPozoRound(sorted.map((p, i) => ({ ...p, courtLevel: i })), t.config.courts);
+        await persist({
+          ...t,
+          config:           finalConfig,
+          pairs:            sorted.map((p, i) => ({ ...p, courtLevel: i })),
+          currentPozoRound: courtAssign,
+          pozoRounds:       [],
+          roundNum:         1,
+          phase:            "playing",
+          status:           "playing",
+          timerRunning:     false,
+          timerElapsed:     0,
+          timerStartedAt:   null,
+        });
+      }
     }
     onExitEdit?.();
   }
@@ -330,20 +378,47 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
                 </>
               )}
 
-              {/* Pozo: duración de ronda */}
+              {/* Pozo: duración de ronda y número de rondas */}
               {t.type === "pozo" && (
-                <div>
-                  <label className="text-xs text-gray-400 font-semibold block mb-2">Duración de ronda</label>
-                  <div className="flex gap-2">
-                    {[5,10,15,20,30].map(n => (
-                      <button key={n}
-                        onClick={() => persist({ ...t, timerSeconds: n * 60 })}
-                        className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer"
-                        style={{ background: t.timerSeconds === n * 60 ? color : "#1f2937", color: t.timerSeconds === n * 60 ? "#fff" : "#94a3b8" }}
-                      >{n}m</button>
-                    ))}
+                <>
+                  <div>
+                    <label className="text-xs text-gray-400 font-semibold block mb-2">Duración de ronda</label>
+                    <div className="flex gap-2">
+                      {[5,10,15,20,30].map(n => (
+                        <button key={n}
+                          onClick={() => persist({ ...t, timerSeconds: n * 60 })}
+                          className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer"
+                          style={{ background: t.timerSeconds === n * 60 ? color : "#1f2937", color: t.timerSeconds === n * 60 ? "#fff" : "#94a3b8" }}
+                        >{n}m</button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                  <div>
+                    <label className="text-xs text-gray-400 font-semibold block mb-2">
+                      Número de rondas <span className="font-normal text-gray-500">(opcional — vacío = sin límite)</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      onKeyDown={(e) => ["-","e","."].includes(e.key) && e.preventDefault()}
+                      placeholder="∞  Sin límite"
+                      value={localTargetRounds}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setLocalTargetRounds(val);
+                        clearTimeout(debTargetRounds.current);
+                        debTargetRounds.current = setTimeout(() => {
+                          const n = parseInt(val);
+                          persist({
+                            ...t,
+                            config: { ...t.config, targetRounds: (!val.trim() || isNaN(n) || n < 1) ? null : n },
+                          });
+                        }, 600);
+                      }}
+                      className="w-full bg-[#0f172a] border border-[#334155] rounded-xl px-4 py-3 text-gray-50 text-sm placeholder-gray-500 focus:outline-none focus:border-[#38bdf8]"
+                    />
+                  </div>
+                </>
               )}
             </div>
 
@@ -471,8 +546,45 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
           {statusMsg}
         </div>
 
-        {/* ── Parejas ── */}
-        <SectionHeader>👥 Parejas</SectionHeader>
+        {/* ── Parejas / Jugadores ── */}
+        {/* Step 4: selector de modo de juego para pozo */}
+        {t.type === "pozo" && isAdmin && (
+          <div style={{ marginBottom: 16 }}>
+            <SectionHeader>Modo de juego</SectionHeader>
+            <div style={{ display: "flex", gap: 8 }}>
+              {[
+                { id: "fixed", label: "Parejas fijas" },
+                { id: "mixer", label: "Mixer (individual)" },
+              ].map(({ id, label }) => (
+                <button
+                  key={id}
+                  onClick={() =>
+                    persist({
+                      ...t,
+                      config:       { ...t.config, pozoMode: id },
+                      pairInputs:   [],
+                      playerInputs: [],
+                    })
+                  }
+                  style={{
+                    padding:      "6px 14px",
+                    borderRadius: 8,
+                    border:       `2px solid ${t.config.pozoMode === id ? color : "#334155"}`,
+                    background:   t.config.pozoMode === id ? `${color}22` : "transparent",
+                    color:        t.config.pozoMode === id ? color : "#64748b",
+                    fontWeight:   700,
+                    cursor:       "pointer",
+                    fontSize:     13,
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <SectionHeader>{isMixer ? "👤 Jugadores" : "👥 Parejas"}</SectionHeader>
 
         {!isAdmin && (
           <div className="mt-4 flex flex-col items-center gap-2 py-8 text-center">
@@ -485,7 +597,44 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
             </div>
           </div>
         )}
-        {isAdmin && <div className="space-y-2">
+
+        {/* Step 6: lista de jugadores individuales (mixer) */}
+        {isAdmin && isMixer && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
+            {players.map((player, idx) => (
+              <div
+                key={player.id}
+                style={{
+                  display:        "flex",
+                  alignItems:     "center",
+                  background:     "#0f172a",
+                  border:         "1px solid #334155",
+                  borderRadius:   10,
+                  padding:        "10px 14px",
+                  justifyContent: "space-between",
+                }}
+              >
+                <span style={{ color: "#f1f5f9", fontSize: 14 }}>
+                  {idx + 1}. {player.name}
+                </span>
+                <button
+                  onClick={() =>
+                    persist({
+                      ...t,
+                      playerInputs: t.playerInputs.filter((_, i) => i !== idx),
+                    })
+                  }
+                  style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: 18 }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Lista de parejas fijas */}
+        {isAdmin && !isMixer && <div className="space-y-2">
           {pairs.map((p, i) => (
             <div key={i} className="flex items-center gap-3 px-3 py-2.5 bg-[#1f2937] rounded-xl">
               <span className="w-6 h-6 rounded-md bg-gray-700 text-gray-400 text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
@@ -531,8 +680,8 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
           ))}
         </div>}
 
-        {/* Formulario agregar pareja */}
-        {isAdmin && (
+        {/* Step 5: inputs de pareja fija — todos los tipos excepto mixer */}
+        {isAdmin && !isMixer && (
           <div className="mt-3 space-y-2">
             <div className="flex gap-2 items-center">
               <input
@@ -559,6 +708,31 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
               style={{ background: newP1.trim() && newP2.trim() ? color : "#374151", color: "#fff" }}
             >
               + Agregar pareja
+            </button>
+          </div>
+        )}
+
+        {/* Step 5: input de jugador individual — solo mixer */}
+        {isAdmin && isMixer && (
+          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <input
+              className="flex-1 bg-[#0f172a] border border-[#334155] rounded-xl px-4 py-3 text-gray-50 text-sm placeholder-gray-500 focus:outline-none focus:border-[#38bdf8]"
+              placeholder="Nombre del jugador"
+              value={newPlayer}
+              onChange={(e) => setNewPlayer(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addPlayer()}
+            />
+            <button
+              onClick={addPlayer}
+              disabled={!newPlayer.trim()}
+              className="px-4 py-3 rounded-xl font-bold text-sm"
+              style={{
+                background: newPlayer.trim() ? color : "#334155",
+                color:      newPlayer.trim() ? "#fff" : "#64748b",
+                cursor:     newPlayer.trim() ? "pointer" : "not-allowed",
+              }}
+            >
+              + Agregar
             </button>
           </div>
         )}

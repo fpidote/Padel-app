@@ -1,5 +1,9 @@
 import { describe, test, expect } from "vitest";
-import { buildPozoRound, applyPozoRoundResults } from "./pozo.js";
+import {
+  buildPozoRound, applyPozoRoundResults,
+  isProposedRoundValid, shufflePlayers,
+  distributePairLevelToPlayers,
+} from "./pozo.js";
 
 // ── Helpers ──────────────────────────────────────────────────
 const pair = (id, pts = 0, courtLevel = 0, gf = 0, gc = 0) => ({
@@ -281,5 +285,212 @@ describe("applyPozoRoundResults — pareja en espera", () => {
     const assigned = nextRound.flatMap((c) => [c.pairA?.id, c.pairB?.id]).filter(Boolean);
     expect(assigned).toHaveLength(4);       // 2 canchas × 2 parejas
     expect(nextRound).toHaveLength(2);      // exactamente 2 canchas
+  });
+});
+
+// ── Helpers ───────────────────────────────────────────────────
+const mkProposedRound = (courts, unassigned = []) => ({ courts, unassigned });
+const mkProposedCourt = (num, aIds, bIds) => ({
+  courtNum: num,
+  teamA: { playerIds: aIds },
+  teamB: { playerIds: bIds },
+});
+
+// ═══════════════════════════════════════════════════════════════
+// isProposedRoundValid
+// ═══════════════════════════════════════════════════════════════
+describe("isProposedRoundValid", () => {
+  test("válido: 1 cancha completa y unassigned vacío", () => {
+    const round = mkProposedRound([mkProposedCourt(1, ["p1","p2"], ["p3","p4"])]);
+    expect(isProposedRoundValid(round)).toBe(true);
+  });
+
+  test("inválido: hay jugadores en unassigned", () => {
+    const round = mkProposedRound([mkProposedCourt(1, ["p1","p2"], ["p3","p4"])], ["p5"]);
+    expect(isProposedRoundValid(round)).toBe(false);
+  });
+
+  test("inválido: cancha con menos de 4 jugadores", () => {
+    const round = mkProposedRound([mkProposedCourt(1, ["p1","p2"], ["p3"])]);
+    expect(isProposedRoundValid(round)).toBe(false);
+  });
+
+  test("inválido: jugador duplicado dentro de la misma cancha", () => {
+    const round = mkProposedRound([mkProposedCourt(1, ["p1","p1"], ["p3","p4"])]);
+    expect(isProposedRoundValid(round)).toBe(false);
+  });
+
+  test("inválido: jugador en dos canchas distintas", () => {
+    const round = mkProposedRound([
+      mkProposedCourt(1, ["p1","p2"], ["p3","p4"]),
+      mkProposedCourt(2, ["p1","p5"], ["p6","p7"]),
+    ]);
+    expect(isProposedRoundValid(round)).toBe(false);
+  });
+
+  test("válido: 2 canchas completas sin repetidos", () => {
+    const round = mkProposedRound([
+      mkProposedCourt(1, ["p1","p2"], ["p3","p4"]),
+      mkProposedCourt(2, ["p5","p6"], ["p7","p8"]),
+    ]);
+    expect(isProposedRoundValid(round)).toBe(true);
+  });
+});
+
+// ── Helper ────────────────────────────────────────────────────
+const playerM = (id, pts = 0, courtLevel = 0) => ({
+  id, name: `P${id}`, pts, gf: 0, gc: 0, courtLevel,
+});
+
+// ═══════════════════════════════════════════════════════════════
+// shufflePlayers
+// ═══════════════════════════════════════════════════════════════
+describe("shufflePlayers", () => {
+  test("genera 1 cancha con 4 jugadores exactos", () => {
+    const players = [playerM("A",0,3), playerM("B",0,2), playerM("C",0,1), playerM("D",0,0)];
+    const result = shufflePlayers(players, 1);
+    expect(result.courts).toHaveLength(1);
+    expect(result.unassigned).toHaveLength(0);
+  });
+
+  test("teamA recibe los 2 jugadores de mayor courtLevel del grupo", () => {
+    const players = [playerM("A",0,3), playerM("B",0,2), playerM("C",0,1), playerM("D",0,0)];
+    const result = shufflePlayers(players, 1);
+    expect(result.courts[0].teamA.playerIds).toEqual(["A", "B"]);
+    expect(result.courts[0].teamB.playerIds).toEqual(["C", "D"]);
+  });
+
+  test("con 5 jugadores y 1 cancha, el de menor courtLevel queda en unassigned", () => {
+    const players = [playerM("A",0,4), playerM("B",0,3), playerM("C",0,2), playerM("D",0,1), playerM("E",0,0)];
+    const result = shufflePlayers(players, 1);
+    expect(result.courts).toHaveLength(1);
+    expect(result.unassigned).toEqual(["E"]);
+  });
+
+  test("con 8 jugadores y 2 canchas, llena ambas canchas sin unassigned", () => {
+    const players = Array.from({ length: 8 }, (_, i) => playerM(String(i), 0, 7 - i));
+    const result = shufflePlayers(players, 2);
+    expect(result.courts).toHaveLength(2);
+    expect(result.unassigned).toHaveLength(0);
+  });
+
+  test("la cancha 1 contiene los jugadores de mayor courtLevel", () => {
+    const players = Array.from({ length: 8 }, (_, i) => playerM(String(i), 0, 7 - i));
+    const result = shufflePlayers(players, 2);
+    const c1Ids = [...result.courts[0].teamA.playerIds, ...result.courts[0].teamB.playerIds];
+    expect(c1Ids).toContain("0");
+    expect(c1Ids).toContain("1");
+  });
+
+  test("con menos de 4 jugadores no genera canchas", () => {
+    const players = [playerM("A"), playerM("B"), playerM("C")];
+    const result = shufflePlayers(players, 1);
+    expect(result.courts).toHaveLength(0);
+    expect(result.unassigned).toHaveLength(3);
+  });
+
+  test("el output tiene la forma correcta de ProposedRound", () => {
+    const players = [playerM("A",0,3), playerM("B",0,2), playerM("C",0,1), playerM("D",0,0)];
+    const result = shufflePlayers(players, 1);
+    expect(result.courts[0]).toMatchObject({
+      courtNum: 1,
+      teamA: { playerIds: expect.any(Array) },
+      teamB: { playerIds: expect.any(Array) },
+    });
+  });
+});
+
+// ── Helper ────────────────────────────────────────────────────
+const playerD = (id, pts = 0, cl = 0, gf = 0, gc = 0) => ({
+  id, name: `P${id}`, pts, gf, gc, courtLevel: cl,
+});
+
+const tempPair = (pAId, pBId, cl, pts = 0, gf = 0, gc = 0) => ({
+  id: `tmp_${pAId}_${pBId}`,
+  _playerIds: [pAId, pBId],
+  p1: pAId, p2: pBId,
+  pts, gf, gc, courtLevel: cl,
+});
+
+const savedCourt = (num, pairA, pairB, scoreA, scoreB) => ({
+  courtNum: num,
+  pairA,
+  pairB,
+  scoreA: String(scoreA),
+  scoreB: String(scoreB),
+  saved: true,
+});
+
+// ═══════════════════════════════════════════════════════════════
+// distributePairLevelToPlayers
+// ═══════════════════════════════════════════════════════════════
+describe("distributePairLevelToPlayers", () => {
+  test("ambos jugadores del equipo ganador reciben el courtLevel del temp pair ganador", () => {
+    const players = [playerD("p1",0,0), playerD("p2",0,0), playerD("p3",0,0), playerD("p4",0,0)];
+    const tpWinner = tempPair("p1","p2", 3, 1, 6, 3);
+    const tpLoser  = tempPair("p3","p4", 1, 0, 3, 6);
+    const round    = [savedCourt(1, tpWinner, tpLoser, 6, 3)];
+
+    const updated = distributePairLevelToPlayers([tpWinner, tpLoser], players, round);
+
+    expect(updated.find((p) => p.id === "p1").courtLevel).toBe(3);
+    expect(updated.find((p) => p.id === "p2").courtLevel).toBe(3);
+    expect(updated.find((p) => p.id === "p3").courtLevel).toBe(1);
+    expect(updated.find((p) => p.id === "p4").courtLevel).toBe(1);
+  });
+
+  test("el equipo ganador recibe +1 punto por jugador", () => {
+    const players = [playerD("p1"), playerD("p2"), playerD("p3"), playerD("p4")];
+    const tpWinner = tempPair("p1","p2", 3, 1, 6, 3);
+    const tpLoser  = tempPair("p3","p4", 1, 0, 3, 6);
+    const round    = [savedCourt(1, tpWinner, tpLoser, 6, 3)];
+
+    const updated = distributePairLevelToPlayers([tpWinner, tpLoser], players, round);
+
+    expect(updated.find((p) => p.id === "p1").pts).toBe(1);
+    expect(updated.find((p) => p.id === "p2").pts).toBe(1);
+    expect(updated.find((p) => p.id === "p3").pts).toBe(0);
+    expect(updated.find((p) => p.id === "p4").pts).toBe(0);
+  });
+
+  test("gf y gc se acumulan sobre valores existentes", () => {
+    const players = [playerD("p1",1,0,3,2), playerD("p2",1,0,3,2), playerD("p3",0,0,2,3), playerD("p4",0,0,2,3)];
+    const tpWinner = tempPair("p1","p2", 3, 2, 9, 5);
+    const tpLoser  = tempPair("p3","p4", 1, 0, 5, 9);
+    const round    = [savedCourt(1, tpWinner, tpLoser, 6, 3)];
+
+    const updated = distributePairLevelToPlayers([tpWinner, tpLoser], players, round);
+
+    expect(updated.find((p) => p.id === "p1").pts).toBe(2);
+    expect(updated.find((p) => p.id === "p1").gf).toBe(9);
+    expect(updated.find((p) => p.id === "p1").gc).toBe(5);
+  });
+
+  test("no muta el array original de jugadores", () => {
+    const players = [playerD("p1"), playerD("p2"), playerD("p3"), playerD("p4")];
+    const snap = players.map((p) => ({ ...p }));
+    const tpWinner = tempPair("p1","p2", 3, 1, 6, 3);
+    const tpLoser  = tempPair("p3","p4", 1, 0, 3, 6);
+    const round    = [savedCourt(1, tpWinner, tpLoser, 6, 3)];
+
+    distributePairLevelToPlayers([tpWinner, tpLoser], players, round);
+
+    expect(players).toEqual(snap);
+  });
+
+  test("jugadores que no jugaron conservan sus stats intactas", () => {
+    const players = [
+      playerD("p1"), playerD("p2"), playerD("p3"), playerD("p4"),
+      playerD("p5", 2, 1),
+    ];
+    const tpWinner = tempPair("p1","p2", 3, 1, 6, 3);
+    const tpLoser  = tempPair("p3","p4", 1, 0, 3, 6);
+    const round    = [savedCourt(1, tpWinner, tpLoser, 6, 3)];
+
+    const updated = distributePairLevelToPlayers([tpWinner, tpLoser], players, round);
+
+    const p5 = updated.find((p) => p.id === "p5");
+    expect(p5.pts).toBe(2);
+    expect(p5.courtLevel).toBe(1);
   });
 });

@@ -59,6 +59,7 @@ export function buildInitialTournament(type, ownerUid) {
     },
     pozo: {
       ...base,
+      config: { ...base.config, pozoMode: "fixed", targetRounds: null },
       pairInputs: [],
       pozoRounds: [],
       currentPozoRound: null,

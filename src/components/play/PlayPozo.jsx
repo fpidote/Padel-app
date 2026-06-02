@@ -1,6 +1,15 @@
 import { useState, useEffect, useRef } from "react";
+import { collection, addDoc, getDocs, Timestamp } from "firebase/firestore";
+import { db } from "../../firebase";
 import { B, TOURNAMENT_RULES } from "../../logic/constants";
-import { buildPozoRound, applyPozoRoundResults } from "../../logic/pozo";
+import {
+  buildPozoRound,
+  applyPozoRoundResults,
+  shufflePlayers,
+  distributePairLevelToPlayers,
+  isProposedRoundValid,
+} from "../../logic/pozo";
+import { calculateStats } from "../../logic/stats";
 import { THeader, Tabs } from "../shared/Components";
 import PairStandings from "../shared/PairStandings";
 
@@ -8,7 +17,20 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
   const [tab, setTab] = useState("courts");
   const [ls, setLs] = useState({});
   const [localTimer, setLocalTimer] = useState(0);
+  const [matches, setMatches] = useState(null); // null = no cargado aún
+  const [proposedRound, setProposedRound] = useState(null);
   const timerRef = useRef(null);
+
+  async function loadStats() {
+    if (matches !== null) return;
+    try {
+      const snap = await getDocs(collection(db, "torneos", code, "matches"));
+      setMatches(snap.docs.map((d) => d.data()));
+    } catch (err) {
+      console.error("Error al cargar historial de matches:", err);
+      setMatches([]);
+    }
+  }
 
   useEffect(() => {
     if (t.timerRunning && t.timerStartedAt) {
@@ -25,6 +47,16 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
     return () => clearInterval(timerRef.current);
   }, [t.timerRunning, t.timerStartedAt, t.timerElapsed, t.timerSeconds]);
 
+  useEffect(() => {
+    if (tab === "stats") loadStats();
+  }, [tab]);
+
+  useEffect(() => {
+    if (t.config?.pozoMode === "mixer" && t.proposedRound && !t.currentPozoRound) {
+      setProposedRound(t.proposedRound);
+    }
+  }, [t.proposedRound, t.currentPozoRound, t.config?.pozoMode]);
+
   const remaining = Math.max(0, t.timerSeconds - localTimer);
   const pct = (localTimer / t.timerSeconds) * 100;
   const timeExpired = remaining === 0 && localTimer > 0;
@@ -34,6 +66,36 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
     const sec = Math.floor(s % 60);
     return `${m}:${sec.toString().padStart(2, "0")}`;
   };
+
+  function buildTempPairs(proposed) {
+    const playerMap = Object.fromEntries((t.players || []).map((p) => [p.id, p]));
+    return proposed.courts.flatMap((court) => {
+      const [pA1, pA2] = court.teamA.playerIds.map((id) => playerMap[id]);
+      const [pB1, pB2] = court.teamB.playerIds.map((id) => playerMap[id]);
+      return [
+        {
+          id:         `tmp_${pA1.id}_${pA2.id}`,
+          _playerIds: [pA1.id, pA2.id],
+          p1:         pA1.name,
+          p2:         pA2.name,
+          pts:        Math.round((pA1.pts + pA2.pts) / 2),
+          gf:         0,
+          gc:         0,
+          courtLevel: Math.round((pA1.courtLevel + pA2.courtLevel) / 2),
+        },
+        {
+          id:         `tmp_${pB1.id}_${pB2.id}`,
+          _playerIds: [pB1.id, pB2.id],
+          p1:         pB1.name,
+          p2:         pB2.name,
+          pts:        Math.round((pB1.pts + pB2.pts) / 2),
+          gf:         0,
+          gc:         0,
+          courtLevel: Math.round((pB1.courtLevel + pB2.courtLevel) / 2),
+        },
+      ];
+    });
+  }
 
   async function toggleTimer() {
     if (t.timerRunning) {
@@ -84,28 +146,172 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
     await persist({ ...t, currentPozoRound: updated });
   }
 
-  async function onNextRound() {
-    if (!t.currentPozoRound.every((c) => c.saved)) return;
-    const updatedPairs = applyPozoRoundResults(t.pairs, t.currentPozoRound, t.config.courts);
-    const newRound = buildPozoRound(updatedPairs, t.config.courts);
-    const savedRounds = [
-      ...(t.pozoRounds || []),
-      { num: t.roundNum, courts: t.currentPozoRound },
-    ];
-    setLs({});
+  async function finishTournament() {
     await persist({
       ...t,
-      pairs: updatedPairs,
-      currentPozoRound: newRound,
-      pozoRounds: savedRounds,
-      roundNum: t.roundNum + 1,
-      timerRunning: false,
-      timerElapsed: 0,
+      status:        "finished",
+      timerRunning:  false,
+      timerElapsed:  0,
       timerStartedAt: null,
     });
   }
 
-  const allSaved = t.currentPozoRound?.every((c) => c.saved);
+  async function onForceEnd() {
+    if (!window.confirm("¿Finalizar el torneo ahora? Esta acción no se puede deshacer.")) return;
+    await finishTournament();
+  }
+
+  async function onConfirmMixerRound() {
+    if (!isProposedRoundValid(proposedRound)) return;
+    const tempPairs = buildTempPairs(proposedRound);
+    const currentRound = proposedRound.courts.map((court, idx) => ({
+      courtNum: court.courtNum,
+      pairA:    tempPairs[idx * 2],
+      pairB:    tempPairs[idx * 2 + 1],
+      scoreA:   "",
+      scoreB:   "",
+      saved:    false,
+    }));
+    setProposedRound(null);
+    await persist({
+      ...t,
+      currentPozoRound: currentRound,
+      proposedRound:    null,
+    });
+  }
+
+  async function onNextRound() {
+    if (!t.currentPozoRound.every((c) => c.saved)) return;
+
+    const updatedPairs = applyPozoRoundResults(t.pairs, t.currentPozoRound, t.config.courts);
+    const newRound     = buildPozoRound(updatedPairs, t.config.courts);
+
+    // Escribir historial de matches a la subcolección
+    const matchesRef = collection(db, "torneos", code, "matches");
+    await Promise.all(
+      t.currentPozoRound.map((court) => {
+        const a    = parseInt(court.scoreA);
+        const b    = parseInt(court.scoreB);
+        const side = a > b ? "A" : "B";
+
+        const pairABefore  = t.pairs.find((p) => p.id === court.pairA.id);
+        const pairBBefore  = t.pairs.find((p) => p.id === court.pairB.id);
+        const pairAAfter   = updatedPairs.find((p) => p.id === court.pairA.id);
+        const pairBAfter   = updatedPairs.find((p) => p.id === court.pairB.id);
+
+        return addDoc(matchesRef, {
+          roundNum:    t.roundNum,
+          courtNum:    court.courtNum,
+          confirmedAt: Timestamp.now(),
+          mode:        "fixed",
+          teamA: {
+            playerIds:        [pairABefore.p1, pairABefore.p2],
+            pairId:           String(pairABefore.id),
+            courtLevelBefore: pairABefore.courtLevel,
+            courtLevelAfter:  pairAAfter.courtLevel,
+          },
+          teamB: {
+            playerIds:        [pairBBefore.p1, pairBBefore.p2],
+            pairId:           String(pairBBefore.id),
+            courtLevelBefore: pairBBefore.courtLevel,
+            courtLevelAfter:  pairBAfter.courtLevel,
+          },
+          result: {
+            scoreA:      a,
+            scoreB:      b,
+            winningSide: side,
+          },
+        });
+      }),
+    );
+
+    const savedRounds = [
+      ...(t.pozoRounds || []),
+      { num: t.roundNum, courts: t.currentPozoRound },
+    ];
+    const isLastRound = t.config.targetRounds && t.roundNum >= t.config.targetRounds;
+    setLs({});
+    await persist({
+      ...t,
+      pairs:            updatedPairs,
+      currentPozoRound: isLastRound ? null : newRound,
+      pozoRounds:       savedRounds,
+      roundNum:         t.roundNum + 1,
+      timerRunning:     false,
+      timerElapsed:     0,
+      timerStartedAt:   null,
+      status:           isLastRound ? "finished" : t.status,
+    });
+  }
+
+  async function onNextRoundMixer() {
+    if (!t.currentPozoRound.every((c) => c.saved)) return;
+
+    // pairA / pairB ya son temp pairs (construidas en onConfirmMixerRound, con _playerIds)
+    const tempPairs      = t.currentPozoRound.flatMap((c) => [c.pairA, c.pairB]);
+    const updatedTemps   = applyPozoRoundResults(tempPairs, t.currentPozoRound, t.config.courts);
+    const updatedPlayers = distributePairLevelToPlayers(updatedTemps, t.players, t.currentPozoRound);
+    const nextProposed   = shufflePlayers(updatedPlayers, t.config.courts);
+
+    const matchesRef = collection(db, "torneos", code, "matches");
+    await Promise.all(
+      t.currentPozoRound.map((court) => {
+        const a    = parseInt(court.scoreA);
+        const b    = parseInt(court.scoreB);
+        const side = a > b ? "A" : "B";
+        const tpA  = court.pairA;
+        const tpB  = court.pairB;
+        const utA  = updatedTemps.find((p) => p.id === court.pairA.id);
+        const utB  = updatedTemps.find((p) => p.id === court.pairB.id);
+
+        return addDoc(matchesRef, {
+          roundNum:    t.roundNum,
+          courtNum:    court.courtNum,
+          confirmedAt: Timestamp.now(),
+          mode:        "mixer",
+          teamA: {
+            playerIds:        tpA._playerIds,
+            pairId:           null,
+            courtLevelBefore: tpA.courtLevel,
+            courtLevelAfter:  utA.courtLevel,
+          },
+          teamB: {
+            playerIds:        tpB._playerIds,
+            pairId:           null,
+            courtLevelBefore: tpB.courtLevel,
+            courtLevelAfter:  utB.courtLevel,
+          },
+          result: { scoreA: a, scoreB: b, winningSide: side },
+        });
+      }),
+    );
+
+    const savedRounds = [
+      ...(t.pozoRounds || []),
+      { num: t.roundNum, courts: t.currentPozoRound },
+    ];
+    const isLastRound = t.config.targetRounds && t.roundNum >= t.config.targetRounds;
+    setLs({});
+    if (!isLastRound) setProposedRound(nextProposed);
+    await persist({
+      ...t,
+      players:          updatedPlayers,
+      currentPozoRound: null,
+      proposedRound:    isLastRound ? null : nextProposed,
+      pozoRounds:       savedRounds,
+      roundNum:         t.roundNum + 1,
+      timerRunning:     false,
+      timerElapsed:     0,
+      timerStartedAt:   null,
+      status:           isLastRound ? "finished" : t.status,
+    });
+  }
+
+  const allSaved    = t.currentPozoRound?.every((c) => c.saved);
+  const isFinished  = t.status === "finished";
+  const roundLabel  = t.config.targetRounds
+    ? `Ronda ${isFinished ? t.roundNum - 1 : t.roundNum} / ${t.config.targetRounds}`
+    : `Ronda ${isFinished ? t.roundNum - 1 : t.roundNum}`;
 
   // A PARTIR DE AQUÍ EMPIEZA EL "JSX" (Lo visual de la pantalla)
   return (
@@ -115,18 +321,50 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
         code={code}
         isAdmin={isAdmin}
         copyCode={copyCode}
-        subtitle={`Ronda ${t.roundNum}`}
-        onEdit={isAdmin ? onEditTournament : undefined}
+        subtitle={isFinished ? "🏆 Torneo Finalizado" : roundLabel}
+        onEdit={isAdmin && !isFinished ? onEditTournament : undefined}
       />
+
+      {/* Banner de torneo finalizado */}
+      {isFinished && (
+        <div style={{ padding: "16px 16px 0" }}>
+          <div style={{
+            background:   "#1e293b",
+            border:       "2px solid #f59e0b",
+            borderRadius: 16,
+            padding:      24,
+            textAlign:    "center",
+          }}>
+            <div style={{ fontSize: 48 }}>🏆</div>
+            <div style={{ color: "#fbbf24", fontWeight: 900, fontSize: 20, marginTop: 8 }}>
+              ¡Torneo Finalizado!
+            </div>
+            <div style={{ color: "#94a3b8", fontSize: 13, marginTop: 6 }}>
+              {t.config.targetRounds
+                ? `${t.config.targetRounds} rondas completadas`
+                : `${(t.roundNum || 1) - 1} rondas jugadas`}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ padding: 16 }}>
         <Tabs
-          tabs={[
-            ["courts", "⚔️ Pistas"],
-            ["standings", "🏆 Clasificación"],
-            ["history", "📜 Historial"],
-            ["rules", "📖 Reglas"], // 👇 AÑADIMOS LA PESTAÑA REGLAS AQUÍ
-          ]}
-          active={tab}
+          tabs={isFinished
+            ? [
+                ["standings", "🏆 Clasificación"],
+                ["stats",     "📊 Stats"],
+                ["history",   "📜 Historial"],
+              ]
+            : [
+                ["courts",    "⚔️ Pistas"],
+                ["standings", "🏆 Clasificación"],
+                ["history",   "📜 Historial"],
+                ["stats",     "📊 Stats"],
+                ["rules",     "📖 Reglas"],
+              ]
+          }
+          active={isFinished && tab === "courts" ? "standings" : tab}
           setActive={setTab}
         />
       </div>
@@ -225,6 +463,63 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
                 </div>
               )}
             </div>
+
+            {/* Propuesta de emparejamiento (Mixer) */}
+            {t.config?.pozoMode === "mixer" && proposedRound && !t.currentPozoRound && (
+              <div style={{ background: "#1e293b", borderRadius: 12, padding: 16 }}>
+                <div style={{ fontWeight: 700, color: "#38bdf8", marginBottom: 12 }}>
+                  Propuesta de emparejamiento — Ronda {t.roundNum}
+                </div>
+                {proposedRound.courts.map((court) => (
+                  <div key={court.courtNum} style={{ marginBottom: 12, borderBottom: "1px solid #334155", paddingBottom: 12 }}>
+                    <div style={{ color: "#94a3b8", fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+                      Pista {court.courtNum}
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "#f1f5f9" }}>
+                      <span>
+                        {court.teamA.playerIds
+                          .map((id) => (t.players || []).find((p) => p.id === id)?.name || id)
+                          .join(" / ")}
+                      </span>
+                      <span style={{ color: "#64748b" }}>vs</span>
+                      <span>
+                        {court.teamB.playerIds
+                          .map((id) => (t.players || []).find((p) => p.id === id)?.name || id)
+                          .join(" / ")}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                {proposedRound.unassigned.length > 0 && (
+                  <div style={{ fontSize: 12, color: "#f59e0b", marginTop: 8 }}>
+                    ⏳ Descansan:{" "}
+                    {proposedRound.unassigned
+                      .map((id) => (t.players || []).find((p) => p.id === id)?.name || id)
+                      .join(", ")}
+                  </div>
+                )}
+                {isAdmin && (
+                  <button
+                    onClick={onConfirmMixerRound}
+                    disabled={!isProposedRoundValid(proposedRound)}
+                    style={{
+                      marginTop:    16,
+                      width:        "100%",
+                      padding:      14,
+                      borderRadius: 10,
+                      fontWeight:   700,
+                      fontSize:     15,
+                      background:   isProposedRoundValid(proposedRound) ? "#10b981" : "#334155",
+                      color:        "#fff",
+                      border:       "none",
+                      cursor:       isProposedRoundValid(proposedRound) ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    ✓ Confirmar emparejamiento
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Lista de Pistas (Courts) */}
             {(t.currentPozoRound || []).map((court, ci) => {
@@ -532,14 +827,18 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
 
             {allSaved && isAdmin && (
               <button
-                onClick={onNextRound}
-                style={B("#10b981", {
-                  width: "100%",
-                  padding: 16,
-                  fontSize: 16,
-                })}
+                onClick={t.config?.pozoMode === "mixer" ? onNextRoundMixer : onNextRound}
+                style={B("#10b981", { width: "100%", padding: 16, fontSize: 16 })}
               >
                 Rotar Pistas - Siguiente Ronda ➔
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                onClick={onForceEnd}
+                style={B("#334155", { width: "100%", padding: 12, fontSize: 13, marginTop: 4 })}
+              >
+                🏁 Finalizar Torneo
               </button>
             )}
             {!isAdmin && !allSaved && (
@@ -644,6 +943,45 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
                 </div>
               ))
             )}
+          </div>
+        )}
+
+        {tab === "stats" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {matches === null && (
+              <div style={{ textAlign: "center", color: "#64748b", padding: 20 }}>
+                Cargando stats...
+              </div>
+            )}
+            {matches !== null && matches.length === 0 && (
+              <div style={{ textAlign: "center", color: "#64748b", padding: 20 }}>
+                Aún no hay matches completados.
+              </div>
+            )}
+            {matches !== null && matches.length > 0 &&
+              Object.entries(calculateStats(matches))
+                .sort(([, a], [, b]) => b.winRate - a.winRate || b.gamesWon - a.gamesWon)
+                .map(([id, s]) => (
+                  <div
+                    key={id}
+                    style={{
+                      background:   "#1e293b",
+                      borderRadius: 12,
+                      padding:      16,
+                    }}
+                  >
+                    <div style={{ fontWeight: 700, color: "#f1f5f9", marginBottom: 8 }}>
+                      {id}
+                    </div>
+                    <div style={{ display: "flex", gap: 16, fontSize: 13, color: "#94a3b8" }}>
+                      <span>🏆 {s.gamesWon}V / {s.gamesLost}D</span>
+                      <span>⚡ {(s.winRate * 100).toFixed(0)}%</span>
+                      <span>🎯 {s.pointsDiff > 0 ? "+" : ""}{s.pointsDiff}</span>
+                      <span>🎾 {s.matchesPlayed} partidos</span>
+                    </div>
+                  </div>
+                ))
+            }
           </div>
         )}
 
