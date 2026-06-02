@@ -1,5 +1,5 @@
 import { describe, test, expect } from "vitest";
-import { buildPozoRound, applyPozoRoundResults } from "./pozo.js";
+import { buildPozoRound, applyPozoRoundResults, isProposedRoundValid } from "./pozo.js";
 
 // ── Helpers ──────────────────────────────────────────────────
 const pair = (id, pts = 0, courtLevel = 0, gf = 0, gc = 0) => ({
@@ -281,5 +281,54 @@ describe("applyPozoRoundResults — pareja en espera", () => {
     const assigned = nextRound.flatMap((c) => [c.pairA?.id, c.pairB?.id]).filter(Boolean);
     expect(assigned).toHaveLength(4);       // 2 canchas × 2 parejas
     expect(nextRound).toHaveLength(2);      // exactamente 2 canchas
+  });
+});
+
+// ── Helpers ───────────────────────────────────────────────────
+const mkProposedRound = (courts, unassigned = []) => ({ courts, unassigned });
+const mkProposedCourt = (num, aIds, bIds) => ({
+  courtNum: num,
+  teamA: { playerIds: aIds },
+  teamB: { playerIds: bIds },
+});
+
+// ═══════════════════════════════════════════════════════════════
+// isProposedRoundValid
+// ═══════════════════════════════════════════════════════════════
+describe("isProposedRoundValid", () => {
+  test("válido: 1 cancha completa y unassigned vacío", () => {
+    const round = mkProposedRound([mkProposedCourt(1, ["p1","p2"], ["p3","p4"])]);
+    expect(isProposedRoundValid(round)).toBe(true);
+  });
+
+  test("inválido: hay jugadores en unassigned", () => {
+    const round = mkProposedRound([mkProposedCourt(1, ["p1","p2"], ["p3","p4"])], ["p5"]);
+    expect(isProposedRoundValid(round)).toBe(false);
+  });
+
+  test("inválido: cancha con menos de 4 jugadores", () => {
+    const round = mkProposedRound([mkProposedCourt(1, ["p1","p2"], ["p3"])]);
+    expect(isProposedRoundValid(round)).toBe(false);
+  });
+
+  test("inválido: jugador duplicado dentro de la misma cancha", () => {
+    const round = mkProposedRound([mkProposedCourt(1, ["p1","p1"], ["p3","p4"])]);
+    expect(isProposedRoundValid(round)).toBe(false);
+  });
+
+  test("inválido: jugador en dos canchas distintas", () => {
+    const round = mkProposedRound([
+      mkProposedCourt(1, ["p1","p2"], ["p3","p4"]),
+      mkProposedCourt(2, ["p1","p5"], ["p6","p7"]),
+    ]);
+    expect(isProposedRoundValid(round)).toBe(false);
+  });
+
+  test("válido: 2 canchas completas sin repetidos", () => {
+    const round = mkProposedRound([
+      mkProposedCourt(1, ["p1","p2"], ["p3","p4"]),
+      mkProposedCourt(2, ["p5","p6"], ["p7","p8"]),
+    ]);
+    expect(isProposedRoundValid(round)).toBe(true);
   });
 });

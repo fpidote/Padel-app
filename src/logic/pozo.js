@@ -64,3 +64,17 @@ export function applyPozoRoundResults(pairs, currentRound, courts) {
 
   return updated;
 }
+
+export function isProposedRoundValid(proposedRound) {
+  if (proposedRound.unassigned.length > 0) return false;
+  const seen = new Set();
+  for (const court of proposedRound.courts) {
+    const ids = [...court.teamA.playerIds, ...court.teamB.playerIds];
+    if (ids.length !== 4) return false;
+    for (const id of ids) {
+      if (seen.has(id)) return false;
+      seen.add(id);
+    }
+  }
+  return true;
+}
