@@ -54,8 +54,11 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
   }, [tab]);
 
   useEffect(() => {
-    if (t.config?.pozoMode === "mixer" && t.proposedRound && !t.currentPozoRound) {
+    if (t.config?.pozoMode !== "mixer") return;
+    if (t.proposedRound && !t.currentPozoRound?.length) {
       setProposedRound(t.proposedRound);
+    } else if (!t.proposedRound) {
+      setProposedRound(null);
     }
   }, [t.proposedRound, t.currentPozoRound, t.config?.pozoMode]);
 
@@ -197,8 +200,22 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
     await persist(update);
   }
 
+  function isRoundConfirmable(proposed) {
+    if (!proposed?.courts?.length) return false;
+    const seen = new Set();
+    for (const court of proposed.courts) {
+      const ids = [...court.teamA.playerIds, ...court.teamB.playerIds];
+      if (ids.length !== 4) return false;
+      for (const id of ids) {
+        if (seen.has(id)) return false;
+        seen.add(id);
+      }
+    }
+    return proposed.unassigned.length <= 1;
+  }
+
   async function onConfirmMixerRound() {
-    if (!isProposedRoundValid(proposedRound)) return;
+    if (!isRoundConfirmable(proposedRound)) return;
     const tempPairs = buildTempPairs(proposedRound);
     const currentRound = proposedRound.courts.map((court, idx) => ({
       courtNum: court.courtNum,
@@ -388,19 +405,23 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
         <Tabs
           tabs={isFinished
             ? [
-                ["standings", "🏆 Clasificación"],
+                ...(t.config?.pozoMode !== "mixer" ? [["standings", "🏆 Clasificación"]] : []),
                 ["stats",     "📊 Stats"],
                 ["history",   "📜 Historial"],
               ]
             : [
                 ["courts",    "⚔️ Pistas"],
-                ["standings", "🏆 Clasificación"],
+                ...(t.config?.pozoMode !== "mixer" ? [["standings", "🏆 Clasificación"]] : []),
                 ["history",   "📜 Historial"],
                 ["stats",     "📊 Stats"],
                 ["rules",     "📖 Reglas"],
               ]
           }
-          active={isFinished && tab === "courts" ? "standings" : tab}
+          active={
+            isFinished && tab === "courts"
+              ? (t.config?.pozoMode === "mixer" ? "stats" : "standings")
+              : tab
+          }
           setActive={setTab}
         />
       </div>
@@ -537,7 +558,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
                 {isAdmin && (
                   <button
                     onClick={onConfirmMixerRound}
-                    disabled={!isProposedRoundValid(proposedRound)}
+                    disabled={!isRoundConfirmable(proposedRound)}
                     style={{
                       marginTop:    16,
                       width:        "100%",
@@ -545,10 +566,10 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
                       borderRadius: 10,
                       fontWeight:   700,
                       fontSize:     15,
-                      background:   isProposedRoundValid(proposedRound) ? "#10b981" : "#334155",
+                      background:   isRoundConfirmable(proposedRound) ? "#10b981" : "#334155",
                       color:        "#fff",
                       border:       "none",
-                      cursor:       isProposedRoundValid(proposedRound) ? "pointer" : "not-allowed",
+                      cursor:       isRoundConfirmable(proposedRound) ? "pointer" : "not-allowed",
                     }}
                   >
                     ✓ Confirmar emparejamiento
@@ -559,8 +580,8 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
 
             {/* Lista de Pistas (Courts) */}
             {(t.currentPozoRound || []).map((court, ci) => {
-              const sA    = ls[`${ci}_A`] ?? (court.scoreA || "");
-              const sB    = ls[`${ci}_B`] ?? (court.scoreB || "");
+              const sA    = ls[`${ci}_A`] ?? (court.scoreA != null ? String(court.scoreA) : "");
+              const sB    = ls[`${ci}_B`] ?? (court.scoreB != null ? String(court.scoreB) : "");
               const a     = parseInt(sA);
               const b     = parseInt(sB);
               const valid = !isNaN(a) && !isNaN(b) && a >= 0 && b >= 0 && a !== b;
