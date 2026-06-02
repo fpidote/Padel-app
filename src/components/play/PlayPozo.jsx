@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { B, TOURNAMENT_RULES } from "../../logic/constants";
-import { buildPozoRound } from "../../logic/pozo";
+import { buildPozoRound, applyPozoRoundResults } from "../../logic/pozo";
 import { THeader, Tabs } from "../shared/Components";
 import PairStandings from "../shared/PairStandings";
 
@@ -86,36 +86,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
 
   async function onNextRound() {
     if (!t.currentPozoRound.every((c) => c.saved)) return;
-    let updatedPairs = [...t.pairs];
-    t.currentPozoRound.forEach((court) => {
-      const a = parseInt(court.scoreA),
-        b = parseInt(court.scoreB);
-      const winner = a > b ? court.pairA : court.pairB;
-      const loser = a > b ? court.pairB : court.pairA;
-      if (winner) {
-        const idx = updatedPairs.findIndex((p) => p.id === winner.id);
-        if (idx >= 0) {
-          updatedPairs[idx] = {
-            ...updatedPairs[idx],
-            pts: updatedPairs[idx].pts + 1,
-            gf: updatedPairs[idx].gf + Math.max(a, b),
-            gc: updatedPairs[idx].gc + Math.min(a, b),
-            courtLevel: Math.max(0, court.courtNum - 2),
-          };
-        }
-      }
-      if (loser) {
-        const idx = updatedPairs.findIndex((p) => p.id === loser.id);
-        if (idx >= 0) {
-          updatedPairs[idx] = {
-            ...updatedPairs[idx],
-            gf: updatedPairs[idx].gf + Math.min(a, b),
-            gc: updatedPairs[idx].gc + Math.max(a, b),
-            courtLevel: court.courtNum,
-          };
-        }
-      }
-    });
+    const updatedPairs = applyPozoRoundResults(t.pairs, t.currentPozoRound, t.config.courts);
     const newRound = buildPozoRound(updatedPairs, t.config.courts);
     const savedRounds = [
       ...(t.pozoRounds || []),
