@@ -1,8 +1,37 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if false;
+    match /torneos/{code} {
+
+      // Lectura directa: cualquiera con el código (espectadores sin login)
+      allow get: if true;
+
+      // Query sobre la colección: solo el dueño (Panel.jsx)
+      allow list: if request.auth != null
+               && request.auth.uid == resource.data.ownerUid;
+
+      // Creación: auth requerido, ownerUid propio, createdAt del servidor, data string
+      allow create: if request.auth != null
+                 && request.resource.data.ownerUid == request.auth.uid
+                 && request.resource.data.createdAt == request.time
+                 && request.resource.data.data is string;
+
+      // Actualización: solo el dueño, ownerUid y createdAt inmutables, data string
+      allow update: if request.auth != null
+                 && request.auth.uid == resource.data.ownerUid
+                 && request.resource.data.ownerUid == resource.data.ownerUid
+                 && request.resource.data.createdAt == resource.data.createdAt
+                 && request.resource.data.data is string;
+
+      // Borrado: solo el dueño
+      allow delete: if request.auth != null
+                 && request.auth.uid == resource.data.ownerUid;
+
+      // Sub-colección — punto de extensión para escrituras de jugadores
+      match /partidos/{matchId} {
+        allow read: if true;
+        allow write: if false;
+      }
     }
   }
 }
