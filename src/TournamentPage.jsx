@@ -74,12 +74,14 @@ export default function TournamentPage() {
           ? <SetupAmericano {...props} onExitEdit={editMode ? () => setEditMode(false) : undefined} />
           : <SetupPairs {...props} typeInfo={typeInfo} onExitEdit={editMode ? () => setEditMode(false) : undefined} />
       ) : (
-        <>
-          {t.type === "americano" && <PlayAmericano {...props} onEditTournament={onEditTournament} />}
-          {t.type === "relampago" && <PlayRelampago {...props} onEditTournament={onEditTournament} />}
-          {t.type === "mundialito" && <PlayMundialito {...props} onEditTournament={onEditTournament} />}
-          {t.type === "pozo" && <PlayPozo {...props} onEditTournament={onEditTournament} />}
-        </>
+        <div className="min-h-screen bg-[#0f172a]">
+          <div className="max-w-2xl mx-auto w-full">
+            {t.type === "americano" && <PlayAmericano {...props} onEditTournament={onEditTournament} />}
+            {t.type === "relampago" && <PlayRelampago {...props} onEditTournament={onEditTournament} />}
+            {t.type === "mundialito" && <PlayMundialito {...props} onEditTournament={onEditTournament} />}
+            {t.type === "pozo" && <PlayPozo {...props} onEditTournament={onEditTournament} />}
+          </div>
+        </div>
       )}
     </Suspense>
   );
