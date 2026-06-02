@@ -236,7 +236,7 @@ describe("buildRoundAmericano — historial de parejas (ph)", () => {
   });
 
   // T16: el par (1,2) ya jugó junto — bestSplit evita esa pareja
-  // NOTA: pk() usa Math.min/max → los IDs deben ser numéricos
+  // NOTA: pk() usa comparación numérica para IDs numéricos — usar IDs numéricos aquí
   test("T16: si el par (1,2) ya jugó junto, no los pone en la misma pareja", () => {
     const players = [p(1, 0, 3), p(2, 0, 2), p(3, 0, 1), p(4, 0, 0)];
     const ph = { "1_2": 1 }; // pk(1,2) = "1_2"
