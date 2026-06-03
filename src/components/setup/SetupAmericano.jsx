@@ -52,6 +52,9 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
   const [editLvl,       setEditLvl]       = useState(0);
   const [editP1,        setEditP1]        = useState("");
   const [editP2,        setEditP2]        = useState("");
+  const [warningDismissed,       setWarningDismissed]       = useState(false);
+  const [localPrecomputedRounds, setLocalPrecomputedRounds] = useState(null);
+  const [localRoundWarnings,     setLocalRoundWarnings]     = useState([]);
 
   const debName     = useRef(null);
   const debDesc     = useRef(null);
@@ -83,6 +86,16 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
 
   const scoring = t.config.scoringSystem || "timed";
   const useLevels = !!t.config.useLevels;
+
+  const allUnrated = useLevels && !isPairs &&
+    (t.playerInputs || []).length > 0 &&
+    (t.playerInputs || []).every(p => (p.level || 0) === 0);
+  const showUnratedWarning = allUnrated && !warningDismissed;
+
+  const canReshuffle = !isPairs &&
+    (t.config.matchmaking || "americano") === "americano" &&
+    t.status !== "playing" &&
+    ok;
 
   function handleName(val) {
     setLocalName(val);
@@ -135,6 +148,16 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
     if (!isNaN(num) && num >= 1) {
       debMinutes.current = setTimeout(() => persist({ ...t, config: { ...t.config, matchMinutes: num } }), 600);
     }
+  }
+
+  function handleReshuffle() {
+    if (isPairs) return;
+    const entities = (t.playerInputs || []).map((p, i) => ({
+      id: i, name: p.name.trim(), level: p.level || 0, pts: 0, gf: 0, gc: 0
+    }));
+    const result = precomputeAllRounds(entities, t.config);
+    setLocalPrecomputedRounds(result.rounds);
+    setLocalRoundWarnings(result.warnings);
   }
 
   function addPlayer() {
