@@ -1,10 +1,9 @@
 import { useState, useRef, useMemo } from "react";
-import { B } from "../../logic/constants";
+import { TOURNAMENT_RULES } from "../../logic/constants";
 import { pk } from "../../logic/utils";
 import { buildRoundAmericano } from "../../logic/americano";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import History from "../shared/History";
-import { TOURNAMENT_RULES } from "../../logic/constants";
 
 const LEVELS = [
   { id: 0, label: "Sin definir",  short: "-", color: "#64748b" },
@@ -56,7 +55,14 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
       delete n[`${ci}_B`];
       return n;
     });
-    await persist({ ...t, currentRound: cr });
+    try {
+      await persist({ ...t, currentRound: cr });
+    } catch (err) {
+      console.error("Error al guardar resultado:", err);
+      // Revertir estado local para que el admin pueda reintentar
+      setLs((prev) => ({ ...prev, [`${ci}_A`]: String(a), [`${ci}_B`]: String(b) }));
+      setModalMsg("No se pudo guardar el resultado. Intenta de nuevo.");
+    }
   }
 
   async function onEdit(ci) {
@@ -69,7 +75,19 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
     const cr = t.currentRound.map((c, i) =>
       i === ci ? { ...c, saved: false } : c,
     );
-    await persist({ ...t, currentRound: cr });
+    try {
+      await persist({ ...t, currentRound: cr });
+    } catch (err) {
+      console.error("Error al editar resultado:", err);
+      // Revertir ls para que la pista no quede en estado de edición sin respaldo
+      setLs((prev) => {
+        const n = { ...prev };
+        delete n[`${ci}_A`];
+        delete n[`${ci}_B`];
+        return n;
+      });
+      setModalMsg("No se pudo editar el resultado. Intenta de nuevo.");
+    }
   }
 
   async function onNext() {
@@ -111,28 +129,40 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
         });
       }
     });
-    const { courts: nc, sittingOut: nSit } = buildRoundAmericano(
-      np,
-      t.config.courts,
-      nh,
-      nso,
-      t.config.mode,
-    );
+    let nc, nSit;
+    if (t.precomputedRounds?.length && t.precomputedRounds[t.roundNum]) {
+      const preRound = t.precomputedRounds[t.roundNum];
+      nc = preRound.courts.map(c => ({ ...c, scoreA: "", scoreB: "", saved: false }));
+      nSit = preRound.sittingOut;
+    } else {
+      ({ courts: nc, sittingOut: nSit } = buildRoundAmericano(
+        np,
+        t.config.courts,
+        nh,
+        nso,
+        t.config.mode,
+      ));
+    }
     const newRounds = [
       ...t.rounds,
       { num: t.roundNum, courts: t.currentRound, sittingOut: t.sittingOut },
     ];
     setLs({});
-    await persist({
-      ...t,
-      [entityKey]: np,
-      rounds: newRounds,
-      currentRound: nc,
-      sittingOut: nSit,
-      partnerHistory: nh,
-      sitOutHistory: nso,
-      roundNum: t.roundNum + 1,
-    });
+    try {
+      await persist({
+        ...t,
+        [entityKey]: np,
+        rounds: newRounds,
+        currentRound: nc,
+        sittingOut: nSit,
+        partnerHistory: nh,
+        sitOutHistory: nso,
+        roundNum: t.roundNum + 1,
+      });
+    } catch (err) {
+      console.error("Error al avanzar ronda:", err);
+      setModalMsg("No se pudo avanzar de ronda. Intenta de nuevo.");
+    }
   }
 
   const isPairs = t.config.mode === "pairs";
@@ -141,7 +171,10 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
     b.pts !== a.pts ? b.pts - a.pts : b.gf - b.gc - (a.gf - a.gc),
   );
   const allSaved = t.currentRound?.every((c) => c.saved);
-  const isFinished = !!(t.config.maxRounds && t.roundNum >= t.config.maxRounds);
+  const isFinished = !!(
+    (t.config.maxRounds && t.roundNum >= t.config.maxRounds)
+    || (t.precomputedRounds?.length && t.roundNum > t.precomputedRounds.length)
+  );
 
   const allPlayers = isPairs
     ? [...(t.pairs || [])].sort((a, b) => `${a.p1} ${a.p2}`.localeCompare(`${b.p1} ${b.p2}`))
@@ -154,7 +187,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
     const ids = isPairs
       ? [court.pairA?.id, court.pairB?.id]
       : [...(court.pairA || []).map((p) => p.id), ...(court.pairB || []).map((p) => p.id)];
-    return ids.includes(search);
+    return ids.map(String).includes(String(search));
   }
 
   return (
@@ -168,12 +201,16 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
         onEdit={isAdmin ? onEditTournament : undefined}
       />
       <div style={{ padding: 16 }}>
+        {isAdmin && t.roundWarnings?.length > 0 && (
+          <WarningsBanner warnings={t.roundWarnings} />
+        )}
         <Tabs
           tabs={[
             ["courts", "⚔️ Pistas"],
             ["standings", "🏆 Posiciones"],
             ["history", "📜 Historial"],
             ["rules", "📖 Reglas"],
+            ...(t.precomputedRounds?.length ? [["descansos", "💤 Descansos"]] : []),
           ]}
           active={tab}
           setActive={setTab}
@@ -187,7 +224,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
               <label className="text-xs text-gray-500 font-semibold block mb-1.5">🔍 Filtrar por jugador</label>
               <select
                 value={search ?? ""}
-                onChange={(e) => setSearch(e.target.value === "" ? null : Number(e.target.value))}
+                onChange={(e) => setSearch(e.target.value === "" ? null : e.target.value)}
                 className="w-full bg-[#1f2937] border border-gray-700 rounded-xl text-gray-50 px-4 py-2.5 text-sm outline-none"
               >
                 <option value="">👥 Todos los jugadores</option>
@@ -332,7 +369,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
               <label className="text-xs text-gray-500 font-semibold block mb-1.5">🔍 Filtrar por jugador</label>
               <select
                 value={search ?? ""}
-                onChange={(e) => setSearch(e.target.value === "" ? null : Number(e.target.value))}
+                onChange={(e) => setSearch(e.target.value === "" ? null : e.target.value)}
                 className="w-full bg-[#1f2937] border border-gray-700 rounded-xl text-gray-50 px-4 py-2.5 text-sm outline-none"
               >
                 <option value="">👥 Todos los jugadores</option>
@@ -373,6 +410,35 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
             </ul>
           </div>
         )}
+        {tab === "descansos" && t.precomputedRounds?.length > 0 && (
+          <div className="max-w-lg mx-auto">
+            <p className="text-xs text-gray-500 font-semibold mb-3">Jugadores que descansan por ronda</p>
+            {t.precomputedRounds.map((round, i) => {
+              const rNum = i + 1;
+              const isCurrent = rNum === t.roundNum;
+              const names = round.sittingOut?.length
+                ? round.sittingOut.map(p => p.name).join(", ")
+                : "Nadie descansa";
+              return (
+                <div
+                  key={i}
+                  className={`flex items-center gap-3 px-4 py-2.5 rounded-xl mb-1.5 text-sm ${
+                    isCurrent
+                      ? "bg-yellow-400/10 border border-yellow-400/20"
+                      : "bg-[#1f2937] border border-gray-700"
+                  }`}
+                >
+                  <span className={`font-black text-xs shrink-0 w-8 ${isCurrent ? "text-yellow-400" : "text-gray-500"}`}>
+                    R{rNum}{isCurrent ? " ●" : ""}
+                  </span>
+                  <span className={isCurrent ? "text-yellow-200 font-medium" : "text-gray-400"}>
+                    {names}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
       {modalMsg && <SimpleModal message={modalMsg} onClose={() => setModalMsg(null)} />}
     </div>
@@ -405,23 +471,27 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEd
   function handleNameChange(type, id, field, val) {
     setEditingName(prev => prev ? { ...prev, value: val } : null);
     clearTimeout(debName.current);
-    debName.current = setTimeout(() => {
-      if (type === "player") {
-        const updatedPlayers = (t.players || []).map(p => p.id === id ? { ...p, name: val } : p);
-        const updatedRound = (t.currentRound || []).map(c => ({
-          ...c,
-          pairA: Array.isArray(c.pairA) ? c.pairA.map(p => p.id === id ? { ...p, name: val } : p) : c.pairA,
-          pairB: Array.isArray(c.pairB) ? c.pairB.map(p => p.id === id ? { ...p, name: val } : p) : c.pairB,
-        }));
-        persist({ ...t, players: updatedPlayers, currentRound: updatedRound });
-      } else {
-        const updatedPairs = (t.pairs || []).map(p => p.id === id ? { ...p, [field]: val } : p);
-        const updatedRound = (t.currentRound || []).map(c => ({
-          ...c,
-          pairA: c.pairA?.id === id ? { ...c.pairA, [field]: val } : c.pairA,
-          pairB: c.pairB?.id === id ? { ...c.pairB, [field]: val } : c.pairB,
-        }));
-        persist({ ...t, pairs: updatedPairs, currentRound: updatedRound });
+    debName.current = setTimeout(async () => {
+      try {
+        if (type === "player") {
+          const updatedPlayers = (t.players || []).map(p => p.id === id ? { ...p, name: val } : p);
+          const updatedRound = (t.currentRound || []).map(c => ({
+            ...c,
+            pairA: Array.isArray(c.pairA) ? c.pairA.map(p => p.id === id ? { ...p, name: val } : p) : c.pairA,
+            pairB: Array.isArray(c.pairB) ? c.pairB.map(p => p.id === id ? { ...p, name: val } : p) : c.pairB,
+          }));
+          await persist({ ...t, players: updatedPlayers, currentRound: updatedRound });
+        } else {
+          const updatedPairs = (t.pairs || []).map(p => p.id === id ? { ...p, [field]: val } : p);
+          const updatedRound = (t.currentRound || []).map(c => ({
+            ...c,
+            pairA: c.pairA?.id === id ? { ...c.pairA, [field]: val } : c.pairA,
+            pairB: c.pairB?.id === id ? { ...c.pairB, [field]: val } : c.pairB,
+          }));
+          await persist({ ...t, pairs: updatedPairs, currentRound: updatedRound });
+        }
+      } catch (err) {
+        console.error("Error al guardar nombre:", err);
       }
     }, 800);
   }
@@ -776,6 +846,35 @@ function FutureRound({ round, matchesSearch, isAdmin, useLevels, showLevelsToggl
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+function WarningsBanner({ warnings }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mb-2 rounded-xl border border-amber-500/30 bg-amber-500/10 overflow-hidden">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-4 py-2.5 text-left"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-amber-400 text-sm font-bold">⚠️ Restricciones relajadas</span>
+          <span className="text-xs text-amber-500/80 bg-amber-500/20 px-2 py-0.5 rounded-full font-semibold">
+            {warnings.length}
+          </span>
+        </div>
+        <span className="text-amber-500/60 text-xs font-bold">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div className="px-4 pb-3 flex flex-col gap-1.5">
+          {warnings.map((w, i) => (
+            <div key={i} className="text-xs text-amber-200/80 bg-amber-500/5 rounded-lg px-3 py-2">
+              {w.message}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

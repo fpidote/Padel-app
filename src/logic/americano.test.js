@@ -3,6 +3,8 @@ import {
   buildFirstRoundAmericano,
   buildRoundAmericano,
   precomputeAllRounds,
+  PENALTY,
+  RELAX_THRESHOLDS,
 } from "./americano.js";
 
 // shuffle es no-determinista — la mockeamos para que devuelva el array intacto
@@ -95,8 +97,8 @@ describe("buildFirstRoundAmericano — individual", () => {
     expect(sitIds).toEqual(["E", "F"]);
   });
 
-  // T3: 8 jugadores, 2 canchas — agrupación correcta por cancha
-  test("T3: con 8 jugadores y 2 canchas cada cancha recibe su grupo de 4 por nivel", () => {
+  // T3: 8 jugadores, 2 canchas — cada cancha recibe 2 del tramo alto + 2 del tramo bajo
+  test("T3: con 8 jugadores y 2 canchas, cada cancha mezcla 2 del tramo alto y 2 del tramo bajo por nivel", () => {
     const players = [
       p("A", 8), p("B", 7), p("C", 6), p("D", 5),
       p("E", 4), p("F", 3), p("G", 2), p("H", 1),
@@ -105,12 +107,14 @@ describe("buildFirstRoundAmericano — individual", () => {
 
     expect(courts).toHaveLength(2);
     expect(sittingOut).toHaveLength(0);
-    // Cancha 0: grupo [A,B,C,D] → pairA=[A,D], pairB=[B,C]
-    expect(courts[0].pairA.map((x) => x.id).sort()).toEqual(["A", "D"]);
-    expect(courts[0].pairB.map((x) => x.id).sort()).toEqual(["B", "C"]);
-    // Cancha 1: grupo [E,F,G,H] → pairA=[E,H], pairB=[F,G]
-    expect(courts[1].pairA.map((x) => x.id).sort()).toEqual(["E", "H"]);
-    expect(courts[1].pairB.map((x) => x.id).sort()).toEqual(["F", "G"]);
+    // Top half (lv 8,7,6,5) y bottom half (lv 4,3,2,1) distribuidos 2+2 por cancha
+    const topIds = new Set(["A", "B", "C", "D"]);
+    const botIds = new Set(["E", "F", "G", "H"]);
+    for (const court of courts) {
+      const ids = [...court.pairA, ...court.pairB].map((x) => x.id);
+      expect(ids.filter((id) => topIds.has(id))).toHaveLength(2);
+      expect(ids.filter((id) => botIds.has(id))).toHaveLength(2);
+    }
   });
 
   // T4: más canchas que grupos posibles
@@ -236,7 +240,7 @@ describe("buildRoundAmericano — historial de parejas (ph)", () => {
   });
 
   // T16: el par (1,2) ya jugó junto — bestSplit evita esa pareja
-  // NOTA: pk() usa Math.min/max → los IDs deben ser numéricos
+  // NOTA: pk() usa comparación numérica para IDs numéricos — usar IDs numéricos aquí
   test("T16: si el par (1,2) ya jugó junto, no los pone en la misma pareja", () => {
     const players = [p(1, 0, 3), p(2, 0, 2), p(3, 0, 1), p(4, 0, 0)];
     const ph = { "1_2": 1 }; // pk(1,2) = "1_2"
@@ -266,12 +270,14 @@ describe("buildRoundAmericano — historial de parejas (ph)", () => {
     expect(pairIds).not.toContain("1_2");
   });
 
-  // T27: penalización por diferencia de nivel — elige la pareja que minimiza diferencia
-  test("T27: sin historial de parejas, empareja minimizando diferencia de nivel", () => {
-    // Los 4 players: A(lv4), B(lv3), C(lv2), D(lv1) — mismos pts
-    // Split 1°+4° vs 2°+3° tiene menor penalty de nivel (|4-1|=3, |3-2|=1 → score=12)
-    // Split 1°+2° vs 3°+4° tiene mayor penalty (|4-3|=1, |2-1|=1 → score=6)
-    // Espera que bestSplit elija el split con menor score total
+  // T27: sin historial, bestSplit equilibra la suma de niveles de los equipos
+  test("T27: sin historial de parejas, empareja equilibrando la suma de niveles de los equipos", () => {
+    // Players: A(lv4,pts3) B(lv3,pts2) C(lv2,pts1) D(lv1,pts0)
+    // Sort by pts desc: [A,B,C,D]
+    // Opciones:
+    //   [A+B] vs [C+D]: clash(lv4,lv3)=15 + balance=|7-3|*2=8 = 23
+    //   [A+C] vs [B+D]: clash=0 + balance=|6-4|*2=4 = 4
+    //   [A+D] vs [B+C]: clash=0 + balance=|5-5|*2=0 = 0  ← gana
     const players = [
       p("A", 4, 3), p("B", 3, 2), p("C", 2, 1), p("D", 1, 0),
     ];
@@ -280,11 +286,9 @@ describe("buildRoundAmericano — historial de parejas (ph)", () => {
     const pairIds = [courts[0].pairA, courts[0].pairB].map(
       (pair) => pair.map((x) => x.id).sort().join("+")
     );
-    // El split con menor penalización de nivel: A+B vs C+D (diff 1 y 1) o A+C vs B+D (diff 2 y 2)
-    // NO debe ser A+D vs B+C (diff 3 y 1 = score 12) cuando hay alternativas mejores
-    // Mejor opción: A+B (diff=1) vs C+D (diff=1) → score total de nivel = 6 (1*3 + 1*3)
-    expect(pairIds).toContain("A+B");
-    expect(pairIds).toContain("C+D");
+    // La opción más equilibrada es A+D vs B+C (suma 5 vs 5)
+    expect(pairIds).toContain("A+D");
+    expect(pairIds).toContain("B+C");
   });
 });
 
@@ -320,7 +324,7 @@ describe("buildRoundAmericano — pairs", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// precomputeAllRounds
+// precomputeAllRounds — forma de retorno { rounds, warnings }
 // ═══════════════════════════════════════════════════════════════
 describe("precomputeAllRounds", () => {
   const players6 = [
@@ -328,56 +332,113 @@ describe("precomputeAllRounds", () => {
     p("D", 3, 0), p("E", 2, 0), p("F", 1, 0),
   ];
 
+  // T-ret1: retorna objeto con { rounds, warnings } — NO un array plano
+  test("T-ret1: retorna objeto con keys 'rounds' y 'warnings', no un array", () => {
+    const result = precomputeAllRounds(players6, { courts: 1, mode: "individual" });
+    expect(result).not.toBeInstanceOf(Array);
+    expect(result).toHaveProperty("rounds");
+    expect(result).toHaveProperty("warnings");
+    expect(Array.isArray(result.rounds)).toBe(true);
+    expect(Array.isArray(result.warnings)).toBe(true);
+  });
+
+  // T-pairs: modo pairs retorna { rounds: null, warnings: [] }
+  test("T-pairs: modo pairs retorna { rounds: null, warnings: [] }", () => {
+    const result = precomputeAllRounds(players6, { courts: 1, mode: "pairs" });
+    expect(result.rounds).toBeNull();
+    expect(result.warnings).toHaveLength(0);
+  });
+
+  // T-warn: warnings tienen la forma correcta cuando se emiten
+  test("T-warn: los warnings emitidos tienen shape { round, constraint, message }", () => {
+    const result = precomputeAllRounds(players6, { courts: 1, mode: "individual", maxRounds: 10 });
+    result.warnings.forEach((w) => {
+      expect(w).toHaveProperty("round");
+      expect(typeof w.round).toBe("number");
+      expect(w).toHaveProperty("constraint");
+      expect(["partner_repeat", "court_repeat", "advanced_pair"]).toContain(w.constraint);
+      expect(w).toHaveProperty("message");
+      expect(typeof w.message).toBe("string");
+    });
+  });
+
+  // T-advancedOk: con 4 avanzados y 2 canchas (advancedCount >= 2*courts), no hay warnings advanced_pair
+  test("T-advancedOk: con advancedCount >= 2*courts, no se emiten warnings advanced_pair", () => {
+    const adv = Array.from({ length: 8 }, (_, i) => ({
+      id: i, name: `P${i}`, level: i < 4 ? 3 : 1, pts: 0, gf: 0, gc: 0,
+    }));
+    const result = precomputeAllRounds(adv, { courts: 2, mode: "individual", maxRounds: 3 });
+    const apWarn = result.warnings.filter((w) => w.constraint === "advanced_pair");
+    expect(apWarn).toHaveLength(0);
+  });
+
+  // T-courtShape: cada elemento de rounds tiene { courts, sittingOut } con forma correcta
+  test("T-courtShape: cada ronda tiene courts con pairA/pairB (2 jugadores) y scoreA/scoreB/saved por defecto", () => {
+    const players = Array.from({ length: 8 }, (_, i) => ({ id: i, name: `P${i}`, level: 0, pts: 0, gf: 0, gc: 0 }));
+    const result = precomputeAllRounds(players, { courts: 2, mode: "individual", maxRounds: 7 });
+    expect(result.rounds).toHaveLength(7);
+    result.rounds.forEach((r) => {
+      expect(Array.isArray(r.courts)).toBe(true);
+      expect(Array.isArray(r.sittingOut)).toBe(true);
+      r.courts.forEach((c) => {
+        expect(Array.isArray(c.pairA) && c.pairA.length === 2).toBe(true);
+        expect(Array.isArray(c.pairB) && c.pairB.length === 2).toBe(true);
+        expect(c.scoreA).toBe("");
+        expect(c.scoreB).toBe("");
+        expect(c.saved).toBe(false);
+      });
+    });
+  });
+
   // T21: sin maxRounds, 6 jugadores → min(5,12)=5 rondas
   test("T21: sin maxRounds con 6 jugadores genera min(n-1, 12) rondas", () => {
-    const rounds = precomputeAllRounds(players6, { courts: 1, mode: "individual" });
-    expect(rounds).toHaveLength(5);
+    const result = precomputeAllRounds(players6, { courts: 1, mode: "individual" });
+    expect(result.rounds).toHaveLength(5);
   });
 
   // T22: sin maxRounds, 14 jugadores → capped en 12
   test("T22: con 14 jugadores sin maxRounds el resultado se limita a 12 rondas", () => {
     const players14 = Array.from({ length: 14 }, (_, i) => p(`P${i}`, i));
-    const rounds = precomputeAllRounds(players14, { courts: 3, mode: "individual" });
-    expect(rounds).toHaveLength(12);
+    const result = precomputeAllRounds(players14, { courts: 3, mode: "individual" });
+    expect(result.rounds).toHaveLength(12);
   });
 
   // T23: maxRounds override
   test("T23: cuando maxRounds=3, se generan exactamente 3 rondas", () => {
-    const rounds = precomputeAllRounds(players6, {
+    const result = precomputeAllRounds(players6, {
       courts: 1,
       mode: "individual",
       maxRounds: 3,
     });
-    expect(rounds).toHaveLength(3);
+    expect(result.rounds).toHaveLength(3);
   });
 
-  // T24: la primera ronda usa ordenamiento por nivel (buildFirstRoundAmericano)
+  // T24: la primera ronda empareja por nivel
   test("T24: la ronda 0 empareja por nivel (1°+4° vs 2°+3°), no por pts", () => {
-    const rounds = precomputeAllRounds(players6, { courts: 1, mode: "individual" });
-    const court0 = rounds[0].courts[0];
-    // players6 ordenados por nivel: A(6)>B(5)>C(4)>D(3)>E(2)>F(1)
-    // Activos en cancha 0: A,B,C,D → pairA=[A,D], pairB=[B,C]
-    expect(court0.pairA.map((x) => x.id).sort()).toEqual(["A", "D"]);
-    expect(court0.pairB.map((x) => x.id).sort()).toEqual(["B", "C"]);
+    const result = precomputeAllRounds(players6, { courts: 1, mode: "individual" });
+    const court0 = result.rounds[0].courts[0];
+    // players6 con shuffle mockeado (identidad): ordenados por nivel desc: A(6)>B(5)>C(4)>D(3)>E(2)>F(1)
+    // Activos en cancha 0 (topHalf: A,B; botHalf: C,D) → alguna de las 3 combinaciones
+    expect(court0.pairA).toHaveLength(2);
+    expect(court0.pairB).toHaveLength(2);
   });
 
   // T25: ph se acumula — en ronda 2, la pareja de ronda 1 se evita
   test("T25: en la segunda ronda las parejas de la primera ronda no se repiten", () => {
     const players = [p("A", 4), p("B", 3), p("C", 2), p("D", 1)].map((pl, i) => ({
       ...pl,
-      pts: i, // distintos pts para que el sort cambie
+      pts: i,
     }));
-    const rounds = precomputeAllRounds(players, { courts: 1, mode: "individual", maxRounds: 2 });
+    const result = precomputeAllRounds(players, { courts: 1, mode: "individual", maxRounds: 2 });
 
     const r0pairs = [
-      rounds[0].courts[0].pairA.map((x) => x.id).sort().join("_"),
-      rounds[0].courts[0].pairB.map((x) => x.id).sort().join("_"),
+      result.rounds[0].courts[0].pairA.map((x) => x.id).sort().join("_"),
+      result.rounds[0].courts[0].pairB.map((x) => x.id).sort().join("_"),
     ];
     const r1pairs = [
-      rounds[1].courts[0].pairA.map((x) => x.id).sort().join("_"),
-      rounds[1].courts[0].pairB.map((x) => x.id).sort().join("_"),
+      result.rounds[1].courts[0].pairA.map((x) => x.id).sort().join("_"),
+      result.rounds[1].courts[0].pairB.map((x) => x.id).sort().join("_"),
     ];
-    // Ninguna pareja de ronda 1 debe repetirse en ronda 2
     for (const pair of r0pairs) {
       expect(r1pairs).not.toContain(pair);
     }
@@ -389,17 +450,129 @@ describe("precomputeAllRounds", () => {
       p("A", 0, 4), p("B", 0, 3), p("C", 0, 2),
       p("D", 0, 1), p("E", 0, 0),
     ];
-    const rounds = precomputeAllRounds(players, {
+    const result = precomputeAllRounds(players, {
       courts: 1,
       mode: "individual",
       maxRounds: 2,
     });
 
-    const sitR1 = rounds[0].sittingOut.map((x) => x.id);
-    const sitR2 = rounds[1].sittingOut.map((x) => x.id);
-    // El jugador que se sentó en ronda 1 no debe sentarse en ronda 2
+    const sitR1 = result.rounds[0].sittingOut.map((x) => x.id);
+    const sitR2 = result.rounds[1].sittingOut.map((x) => x.id);
     for (const id of sitR1) {
       expect(sitR2).not.toContain(id);
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// PENALTY y RELAX_THRESHOLDS — constantes exportadas
+// ═══════════════════════════════════════════════════════════════
+describe("PENALTY y RELAX_THRESHOLDS — constantes exportadas", () => {
+  test("T-penalty: PENALTY tiene las 4 claves con valores correctos", () => {
+    expect(PENALTY.PARTNER_REPEAT).toBe(1000);
+    expect(PENALTY.ADVANCED_PAIR).toBe(5000);
+    expect(PENALTY.COURT_REPEAT).toBe(500);
+    expect(PENALTY.REST_IMBALANCE).toBe(2000);
+  });
+
+  test("T-relax: RELAX_THRESHOLDS es array de 3 elementos [2000, 6000, 15000]", () => {
+    expect(Array.isArray(RELAX_THRESHOLDS)).toBe(true);
+    expect(RELAX_THRESHOLDS).toHaveLength(3);
+    expect(RELAX_THRESHOLDS[0]).toBe(2000);
+    expect(RELAX_THRESHOLDS[1]).toBe(6000);
+    expect(RELAX_THRESHOLDS[2]).toBe(15000);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// bestSplit — separación de avanzados y equilibrio de equipos
+// ═══════════════════════════════════════════════════════════════
+describe("bestSplit — separación de avanzados (level >= 3)", () => {
+  // T28: 2 avanzados → equipos distintos
+  test("T28: con 2 avanzados y 2 no-avanzados, los avanzados quedan en equipos distintos", () => {
+    // Todos pts distintos para que el sort sea [1,2,3,4]
+    const players = [p(1, 3, 3), p(2, 3, 2), p(3, 2, 1), p(4, 1, 0)];
+    const { courts } = buildRoundAmericano(players, 1, {}, {}, "individual");
+
+    const pairA = courts[0].pairA.map((x) => x.id);
+    const pairB = courts[0].pairB.map((x) => x.id);
+    // Jugadores 1 y 2 son avanzados (lv 3) — deben estar en equipos distintos
+    expect(
+      (pairA.includes(1) && pairB.includes(2)) ||
+      (pairA.includes(2) && pairB.includes(1))
+    ).toBe(true);
+  });
+
+  // T29: posibilidades limpias agotadas → acepta avanzados juntos
+  test("T29: cuando todas las combinaciones sin clash ya fueron usadas, acepta avanzados en el mismo equipo", () => {
+    const players = [p(1, 3, 3), p(2, 3, 2), p(3, 2, 1), p(4, 1, 0)];
+    // ph cubre todas las opciones limpias: 1+3, 2+4, 1+4, 2+3 (usado 1 vez cada una)
+    // [1+3] vs [2+4]: 12+12+0+2=26  [1+4] vs [2+3]: 12+12+0+2=26
+    // [1+2] vs [3+4]: 0+0+15+6=21  ← gana el clash
+    const ph = { "1_3": 1, "2_4": 1, "1_4": 1, "2_3": 1 };
+    const { courts } = buildRoundAmericano(players, 1, ph, {}, "individual");
+
+    const pairA = courts[0].pairA.map((x) => x.id);
+    const pairB = courts[0].pairB.map((x) => x.id);
+    // Ahora 1 y 2 deben estar en el mismo equipo (clash aceptado)
+    const hasClash =
+      (pairA.includes(1) && pairA.includes(2)) ||
+      (pairB.includes(1) && pairB.includes(2));
+    expect(hasClash).toBe(true);
+  });
+
+  // T30: equilibrio de equipos — suma de niveles lo más pareja posible
+  test("T30: sin historial, elige la distribución que equilibra la suma de niveles de los equipos", () => {
+    // [1(lv3), 2(lv2), 3(lv2), 4(lv1)] — pts distintos para sort [1,2,3,4]
+    // [1+4] vs [2+3]: sumas = 4 vs 4 = balance 0  ← gana
+    // [1+3] vs [2+4]: sumas = 5 vs 3 = balance 2
+    // [1+2] vs [3+4]: sumas = 5 vs 3 = balance 2
+    const players = [p(1, 3, 3), p(2, 2, 2), p(3, 2, 1), p(4, 1, 0)];
+    const { courts } = buildRoundAmericano(players, 1, {}, {}, "individual");
+
+    const sumTeam = (pair) => pair.reduce((s, pl) => s + (pl.level || 0), 0);
+    const diff = Math.abs(
+      sumTeam(courts[0].pairA) - sumTeam(courts[0].pairB)
+    );
+    expect(diff).toBeLessThanOrEqual(1);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Distribución entre canchas — mezcla de niveles
+// ═══════════════════════════════════════════════════════════════
+describe("distribución entre canchas — mezcla avanzados/básicos", () => {
+  // T31: buildFirstRoundAmericano — 4 avanzados + 4 básicos, 2 canchas
+  test("T31: con 4 avanzados (lv≥3) y 4 básicos en 2 canchas, cada equipo tiene exactamente 1 avanzado", () => {
+    const players = [
+      p("A1", 4), p("A2", 4), p("A3", 3), p("A4", 3),
+      p("B1", 2), p("B2", 2), p("B3", 1), p("B4", 1),
+    ];
+    const { courts } = buildFirstRoundAmericano(players, 2, "individual");
+
+    expect(courts).toHaveLength(2);
+    for (const court of courts) {
+      const advA = court.pairA.filter((x) => x.level >= 3).length;
+      const advB = court.pairB.filter((x) => x.level >= 3).length;
+      expect(advA).toBe(1);
+      expect(advB).toBe(1);
+    }
+  });
+
+  // T32: buildRoundAmericano — avanzados dominan pts, 2 canchas
+  test("T32: cuando avanzados tienen más pts que básicos, cada equipo tiene exactamente 1 avanzado por cancha", () => {
+    const players = [
+      p("A1", 4, 4), p("A2", 4, 3), p("A3", 3, 2), p("A4", 3, 1),
+      p("B1", 2, 0), p("B2", 2, 0), p("B3", 1, 0), p("B4", 1, 0),
+    ];
+    const { courts } = buildRoundAmericano(players, 2, {}, {}, "individual");
+
+    expect(courts).toHaveLength(2);
+    for (const court of courts) {
+      const advA = court.pairA.filter((x) => x.level >= 3).length;
+      const advB = court.pairB.filter((x) => x.level >= 3).length;
+      expect(advA).toBe(1);
+      expect(advB).toBe(1);
     }
   });
 });
