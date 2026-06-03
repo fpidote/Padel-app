@@ -55,6 +55,6 @@ Wave 1 *(all tasks atomic — algorithm body + call site update must ship togeth
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Core Penalty Engine | 1/1 | Complete   | 2026-06-03 |
+| 1. Core Penalty Engine | 1/1 | Complete    | 2026-06-03 |
 | 2. PlayAmericano Wire-Up | 0/? | Not started | - |
 | 3. Setup Validation and UX | 0/? | Not started | - |

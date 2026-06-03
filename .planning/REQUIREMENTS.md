@@ -10,11 +10,11 @@
 
 ### Algorithm
 
-- [ ] **ALGO-01**: Pre-calculate all rounds upfront at tournament start, stored in `precomputedRounds[]` before any round is played
-- [ ] **ALGO-02**: Penalty-based scoring for each round candidate — partner repeat (+1000), Advanced+Advanced pair (+5000), court repeat (+500), rest imbalance (+2000) — minimize total penalty
-- [ ] **ALGO-03**: Dynamic per-round threshold-based relaxation — strict → relax court repeat → relax partner repeat → allow Advanced+Advanced pairing (flags scoped locally per round, never global)
-- [ ] **ALGO-04**: Algorithm emits `warnings[]` alongside `precomputedRounds[]` when constraints are relaxed, describing which round and which constraint was relaxed
-- [ ] **ALGO-05**: Impossible-constraint detection — when `advancedCount >= 2 * courts`, automatically disable Advanced+Advanced penalty before solver loop (constraint is mathematically unsatisfiable)
+- [x] **ALGO-01**: Pre-calculate all rounds upfront at tournament start, stored in `precomputedRounds[]` before any round is played
+- [x] **ALGO-02**: Penalty-based scoring for each round candidate — partner repeat (+1000), Advanced+Advanced pair (+5000), court repeat (+500), rest imbalance (+2000) — minimize total penalty
+- [x] **ALGO-03**: Dynamic per-round threshold-based relaxation — strict → relax court repeat → relax partner repeat → allow Advanced+Advanced pairing (flags scoped locally per round, never global)
+- [x] **ALGO-04**: Algorithm emits `warnings[]` alongside `precomputedRounds[]` when constraints are relaxed, describing which round and which constraint was relaxed
+- [x] **ALGO-05**: Impossible-constraint detection — when `advancedCount >= 2 * courts`, automatically disable Advanced+Advanced penalty before solver loop (constraint is mathematically unsatisfiable)
 
 ### Setup UI
 
@@ -61,11 +61,11 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ALGO-01 | Phase 1 | Pending |
-| ALGO-02 | Phase 1 | Pending |
-| ALGO-03 | Phase 1 | Pending |
-| ALGO-04 | Phase 1 | Pending |
-| ALGO-05 | Phase 1 | Pending |
+| ALGO-01 | Phase 1 | Complete |
+| ALGO-02 | Phase 1 | Complete |
+| ALGO-03 | Phase 1 | Complete |
+| ALGO-04 | Phase 1 | Complete |
+| ALGO-05 | Phase 1 | Complete |
 | PLAY-01 | Phase 2 | Pending |
 | PLAY-02 | Phase 2 | Pending |
 | SETUP-01 | Phase 3 | Pending |
