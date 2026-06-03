@@ -55,6 +55,7 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
   const [warningDismissed,       setWarningDismissed]       = useState(false);
   const [localPrecomputedRounds, setLocalPrecomputedRounds] = useState(null);
   const [localRoundWarnings,     setLocalRoundWarnings]     = useState([]);
+  const [showPreview,            setShowPreview]            = useState(false);
 
   const debName     = useRef(null);
   const debDesc     = useRef(null);
@@ -158,6 +159,7 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
     const result = precomputeAllRounds(entities, t.config);
     setLocalPrecomputedRounds(result.rounds);
     setLocalRoundWarnings(result.warnings);
+    setShowPreview(true);
   }
 
   function addPlayer() {
@@ -259,6 +261,7 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
   const addInputCls = "flex-1 bg-[#1f2937] border border-gray-700 focus:border-sky-600 rounded-xl text-gray-50 px-4 py-2.5 text-sm outline-none transition-colors min-w-0";
 
   return (
+    <>
     <div className="min-h-screen bg-[#111827] text-gray-50" style={{ fontFamily: "system-ui" }}>
       <div className="max-w-lg mx-auto px-4 pb-16 pt-6">
 
@@ -830,13 +833,13 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
           </div>
         )}
 
-        {/* ── Botón re-sorteo (SETUP-02) ── */}
+        {/* ── Botón previsualizar cuadro (SETUP-02) ── */}
         {isAdmin && canReshuffle && (
           <button
-            onClick={handleReshuffle}
+            onClick={() => localPrecomputedRounds !== null ? setShowPreview(true) : handleReshuffle()}
             className="w-full mt-3 py-2.5 rounded-xl font-bold text-sm border border-gray-700 bg-[#1f2937] text-gray-300 hover:text-gray-100 hover:border-gray-500 transition-colors cursor-pointer"
           >
-            {localPrecomputedRounds !== null ? "✓ Emparejamiento listo — Re-sortear" : "🔀 Generar emparejamiento"}
+            {localPrecomputedRounds !== null ? "📋 Ver cuadro generado" : "🔀 Previsualizar cuadro"}
           </button>
         )}
 
@@ -859,5 +862,102 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
 
       </div>
     </div>
+
+    {/* ── Modal: Vista previa del cuadro ── */}
+    {showPreview && localPrecomputedRounds && (
+      <div className="fixed inset-0 z-50 bg-black/80 flex flex-col">
+        <div className="flex-1 flex flex-col max-w-lg mx-auto w-full bg-[#111827] overflow-hidden">
+
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-4 border-b border-gray-800 shrink-0">
+            <h2 className="text-sm font-black text-gray-50">📋 Vista previa del cuadro</h2>
+            <button
+              onClick={() => setShowPreview(false)}
+              className="text-gray-500 hover:text-gray-200 font-bold cursor-pointer transition-colors text-lg leading-none"
+              style={{ background: "none", border: "none", padding: "0 4px" }}
+            >✕</button>
+          </div>
+
+          {/* Aviso */}
+          <div className="px-4 py-2.5 bg-amber-500/10 border-b border-amber-500/20 shrink-0">
+            <p className="text-xs text-amber-400">
+              ⚠️ Una vez iniciado el torneo no se puede cambiar el emparejamiento
+            </p>
+          </div>
+
+          {/* Rondas — scrollable */}
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+            {localPrecomputedRounds.map((round, ri) => (
+              <div key={ri}>
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                  Ronda {ri + 1}
+                </div>
+                <div className="space-y-2">
+                  {round.courts.map((court, ci) => (
+                    <div key={ci} className="bg-[#1f2937] rounded-xl px-3 py-2.5 border border-gray-700">
+                      <div className="text-xs text-gray-500 font-semibold mb-1">Cancha {ci + 1}</div>
+                      <div className="text-sm text-gray-100 flex flex-wrap items-center gap-x-1.5">
+                        <span className="font-medium">{court.pairA[0].name} / {court.pairA[1].name}</span>
+                        <span className="text-gray-500 text-xs font-bold">vs</span>
+                        <span className="font-medium">{court.pairB[0].name} / {court.pairB[1].name}</span>
+                      </div>
+                      {useLevels && (
+                        <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                          {[...court.pairA, ...court.pairB].map((p, pi) => {
+                            const lvl = LEVELS[p.level || 0];
+                            return (
+                              <span
+                                key={pi}
+                                className="text-xs font-bold px-1.5 py-0.5 rounded"
+                                style={{ background: lvl.color + "20", color: lvl.color }}
+                              >
+                                {p.name.split(" ")[0]} {lvl.short}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {round.sittingOut.length > 0 && (
+                    <div className="text-xs text-gray-500 px-1">
+                      ⏳ Descansan: {round.sittingOut.map(p => p.name).join(", ")}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {localRoundWarnings.length > 0 && (
+              <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-3 py-2.5">
+                <div className="text-xs font-bold text-yellow-500/70 mb-1.5">Advertencias de emparejamiento</div>
+                {localRoundWarnings.map((w, wi) => (
+                  <div key={wi} className="text-xs text-yellow-400/60">{w.message}</div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-4 py-4 border-t border-gray-800 shrink-0 flex gap-3">
+            <button
+              onClick={handleReshuffle}
+              className="flex-1 py-3 rounded-xl font-bold text-sm border border-gray-700 bg-[#1f2937] text-gray-300 hover:text-gray-100 hover:border-gray-500 transition-colors cursor-pointer"
+            >
+              🔀 Re-sortear
+            </button>
+            <button
+              onClick={() => setShowPreview(false)}
+              className="flex-1 py-3 rounded-xl font-bold text-sm text-white transition-colors cursor-pointer"
+              style={{ background: COLOR }}
+            >
+              Cerrar
+            </button>
+          </div>
+
+        </div>
+      </div>
+    )}
+    </>
   );
 }
