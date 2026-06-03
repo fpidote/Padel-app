@@ -23,7 +23,9 @@ Three focused phases upgrade the Americano Clásico sub-mode from on-the-fly rou
   3. When `advancedCount >= 2 * courts`, the algorithm detects the impossible constraint, disables the ADVANCED_PAIR penalty, and continues without throwing
   4. The returned value includes a `warnings[]` array that describes each round where a constraint was relaxed and which constraint was relaxed
   5. Running the engine for 24 players completes without blocking the UI (under 50ms in-browser)
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 01-01-PLAN.md — Penalty engine constants + helpers + precomputeAllRounds() body + SetupAmericano call site update
 
 ### Phase 2: PlayAmericano Wire-Up
 **Goal**: PlayAmericano renders from pre-calculated rounds and surfaces algorithm output to the organizer
@@ -52,6 +54,6 @@ Three focused phases upgrade the Americano Clásico sub-mode from on-the-fly rou
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Core Penalty Engine | 0/? | Not started | - |
+| 1. Core Penalty Engine | 0/1 | Not started | - |
 | 2. PlayAmericano Wire-Up | 0/? | Not started | - |
 | 3. Setup Validation and UX | 0/? | Not started | - |
