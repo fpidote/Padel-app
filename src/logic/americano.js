@@ -298,15 +298,16 @@ export function buildFirstRoundAmericano(
     return { courts: cs, sittingOut: sit };
   }
 
-  // Individual: sort by level desc, split into top half + bottom half so each
-  // court gets 2 from each half — ensures advanced players are spread across courts
-  const sorted = [...entities].sort((a, b) => (b.level || 0) - (a.level || 0));
+  // Individual: group by level desc (shuffle within each level group), then split into
+  // top half + bottom half — interleaved indexing [c] / [c + activeCourts] spreads
+  // advanced players across courts instead of concentrating them on court 0.
+  const sorted = levelSortedWithShuffle(entities);
   const act = sorted.slice(0, activeCourts * units);
   const sit = sorted.slice(activeCourts * units);
   const topH = act.slice(0, activeCourts * 2);
   const botH = act.slice(activeCourts * 2);
   for (let c = 0; c < activeCourts; c++) {
-    const g = [topH[c * 2], topH[c * 2 + 1], botH[c * 2], botH[c * 2 + 1]];
+    const g = [topH[c], topH[c + activeCourts], botH[c], botH[c + activeCourts]];
     const [pA, pB] = bestSplit(g, {});
     cs.push({ pairA: pA, pairB: pB, scoreA: "", scoreB: "", saved: false });
   }
