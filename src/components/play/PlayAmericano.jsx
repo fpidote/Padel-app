@@ -178,12 +178,16 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
         onEdit={isAdmin ? onEditTournament : undefined}
       />
       <div style={{ padding: 16 }}>
+        {isAdmin && t.roundWarnings?.length > 0 && (
+          <WarningsBanner warnings={t.roundWarnings} />
+        )}
         <Tabs
           tabs={[
             ["courts", "⚔️ Pistas"],
             ["standings", "🏆 Posiciones"],
             ["history", "📜 Historial"],
             ["rules", "📖 Reglas"],
+            ...(t.precomputedRounds?.length ? [["descansos", "💤 Descansos"]] : []),
           ]}
           active={tab}
           setActive={setTab}
@@ -381,6 +385,35 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+        {tab === "descansos" && t.precomputedRounds?.length > 0 && (
+          <div className="max-w-lg mx-auto">
+            <p className="text-xs text-gray-500 font-semibold mb-3">Jugadores que descansan por ronda</p>
+            {t.precomputedRounds.map((round, i) => {
+              const rNum = i + 1;
+              const isCurrent = rNum === t.roundNum;
+              const names = round.sittingOut?.length
+                ? round.sittingOut.map(p => p.name).join(", ")
+                : "Nadie descansa";
+              return (
+                <div
+                  key={i}
+                  className={`flex items-center gap-3 px-4 py-2.5 rounded-xl mb-1.5 text-sm ${
+                    isCurrent
+                      ? "bg-yellow-400/10 border border-yellow-400/20"
+                      : "bg-[#1f2937] border border-gray-700"
+                  }`}
+                >
+                  <span className={`font-black text-xs shrink-0 w-8 ${isCurrent ? "text-yellow-400" : "text-gray-500"}`}>
+                    R{rNum}{isCurrent ? " ●" : ""}
+                  </span>
+                  <span className={isCurrent ? "text-yellow-200 font-medium" : "text-gray-400"}>
+                    {names}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -786,6 +819,35 @@ function FutureRound({ round, matchesSearch, isAdmin, useLevels, showLevelsToggl
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+function WarningsBanner({ warnings }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mb-2 rounded-xl border border-amber-500/30 bg-amber-500/10 overflow-hidden">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-4 py-2.5 text-left"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-amber-400 text-sm font-bold">⚠️ Restricciones relajadas</span>
+          <span className="text-xs text-amber-500/80 bg-amber-500/20 px-2 py-0.5 rounded-full font-semibold">
+            {warnings.length}
+          </span>
+        </div>
+        <span className="text-amber-500/60 text-xs font-bold">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div className="px-4 pb-3 flex flex-col gap-1.5">
+          {warnings.map((w, i) => (
+            <div key={i} className="text-xs text-amber-200/80 bg-amber-500/5 rounded-lg px-3 py-2">
+              {w.message}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
