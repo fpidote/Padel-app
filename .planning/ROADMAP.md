@@ -63,4 +63,4 @@ Wave 1 *(single file — banner + re-shuffle + onStart integration ship together
 |-------|----------------|--------|-----------|
 | 1. Core Penalty Engine | 1/1 | Complete    | 2026-06-03 |
 | 2. PlayAmericano Wire-Up | 1/1 | Complete   | 2026-06-03 |
-| 3. Setup Validation and UX | 1/1 | Complete   | 2026-06-03 |
+| 3. Setup Validation and UX | 1/1 | Complete    | 2026-06-03 |

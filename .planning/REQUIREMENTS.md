@@ -18,8 +18,8 @@
 
 ### Setup UI
 
-- [ ] **SETUP-01**: Level validation gate — if `useLevels=ON` and no players have a level assigned, display a warning before allowing tournament start (soft warning, organizer can confirm and proceed)
-- [ ] **SETUP-02**: Re-shuffle button — after initial pre-calculation, organizer can re-trigger `precomputeAllRounds()` to generate a new schedule if unhappy with the distribution
+- [x] **SETUP-01**: Level validation gate — if `useLevels=ON` and no players have a level assigned, display a warning before allowing tournament start (soft warning, organizer can confirm and proceed)
+- [x] **SETUP-02**: Re-shuffle button — after initial pre-calculation, organizer can re-trigger `precomputeAllRounds()` to generate a new schedule if unhappy with the distribution
 
 ### Play UI
 
@@ -68,7 +68,7 @@
 | ALGO-05 | Phase 1 | Complete |
 | PLAY-01 | Phase 2 | Pending |
 | PLAY-02 | Phase 2 | Pending |
-| SETUP-01 | Phase 3 | Pending |
-| SETUP-02 | Phase 3 | Pending |
+| SETUP-01 | Phase 3 | Complete |
+| SETUP-02 | Phase 3 | Complete |
 
 *(Traceability updated by roadmapper — 2026-06-03)*
