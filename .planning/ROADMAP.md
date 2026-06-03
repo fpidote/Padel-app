@@ -7,7 +7,7 @@ Three focused phases upgrade the Americano Clásico sub-mode from on-the-fly rou
 ## Phases
 
 - [x] **Phase 1: Core Penalty Engine** - Implement level-aware greedy engine with penalty scoring, relaxation, and warnings output in `americano.js` (completed 2026-06-03)
-- [ ] **Phase 2: PlayAmericano Wire-Up** - Connect `PlayAmericano.jsx` to pre-calculated rounds and surface warnings/rest schedule panels
+- [x] **Phase 2: PlayAmericano Wire-Up** - Connect `PlayAmericano.jsx` to pre-calculated rounds and surface warnings/rest schedule panels (completed 2026-06-03)
 - [ ] **Phase 3: Setup Validation and UX** - Add level validation gate and re-shuffle button to `SetupAmericano.jsx`
 
 ## Phase Details
@@ -41,7 +41,7 @@ Wave 1 *(all tasks atomic — algorithm body + call site update must ship togeth
 **Plans**: 1 plan
 
 Wave 1 *(single file, all changes atomic)*:
-- [ ] 02-01-PLAN.md — onNext() wire-up + isFinished extension + Descansos tab + WarningsBanner sub-component
+- [x] 02-01-PLAN.md — onNext() wire-up + isFinished extension + Descansos tab + WarningsBanner sub-component
 
 ### Phase 3: Setup Validation and UX
 **Goal**: SetupAmericano guides the organizer through level assignment before allowing tournament start
@@ -59,5 +59,5 @@ Wave 1 *(single file, all changes atomic)*:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Core Penalty Engine | 1/1 | Complete    | 2026-06-03 |
-| 2. PlayAmericano Wire-Up | 0/1 | Not started | - |
+| 2. PlayAmericano Wire-Up | 1/1 | Complete   | 2026-06-03 |
 | 3. Setup Validation and UX | 0/? | Not started | - |
