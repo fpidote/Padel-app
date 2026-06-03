@@ -62,6 +62,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
       console.error("Error al guardar resultado:", err);
       // Revertir estado local para que el admin pueda reintentar
       setLs((prev) => ({ ...prev, [`${ci}_A`]: String(a), [`${ci}_B`]: String(b) }));
+      setModalMsg("No se pudo guardar el resultado. Intenta de nuevo.");
     }
   }
 
@@ -86,6 +87,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
         delete n[`${ci}_B`];
         return n;
       });
+      setModalMsg("No se pudo editar el resultado. Intenta de nuevo.");
     }
   }
 
@@ -160,6 +162,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
       });
     } catch (err) {
       console.error("Error al avanzar ronda:", err);
+      setModalMsg("No se pudo avanzar de ronda. Intenta de nuevo.");
     }
   }
 
