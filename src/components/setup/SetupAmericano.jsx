@@ -162,6 +162,8 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
 
   function addPlayer() {
     if (!newName.trim()) return;
+    setLocalPrecomputedRounds(null);
+    setLocalRoundWarnings([]);
     persist({ ...t, playerInputs: [...(t.playerInputs || []), { name: newName.trim(), level: useLevels ? newLvl : 0 }] });
     setNewName("");
     nameInputRef.current?.focus();
@@ -177,39 +179,43 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
   }
 
   async function onStart() {
-    let entities;
-    if (isPairs) {
-      entities = t.pairInputs.map((p, i) => ({ ...p, id: i, pts: 0, gf: 0, gc: 0 }));
-    } else {
-      entities = t.playerInputs.map((p, i) => ({ id: i, name: p.name.trim(), level: p.level, pts: 0, gf: 0, gc: 0 }));
-    }
-    const { courts, sittingOut } = buildFirstRoundAmericano(entities, t.config.courts, t.config.mode);
-    let precomputedRounds = null;
-    let roundWarnings = [];
-    if ((t.config.matchmaking || "americano") === "americano") {
-      if (localPrecomputedRounds !== null) {
-        precomputedRounds = localPrecomputedRounds;
-        roundWarnings = localRoundWarnings;
+    try {
+      let entities;
+      if (isPairs) {
+        entities = t.pairInputs.map((p, i) => ({ ...p, id: i, pts: 0, gf: 0, gc: 0 }));
       } else {
-        const result = precomputeAllRounds(entities, t.config);
-        precomputedRounds = result.rounds;
-        roundWarnings = result.warnings;
+        entities = t.playerInputs.map((p, i) => ({ id: i, name: p.name.trim(), level: p.level || 0, pts: 0, gf: 0, gc: 0 }));
       }
+      const { courts, sittingOut } = buildFirstRoundAmericano(entities, t.config.courts, t.config.mode);
+      let precomputedRounds = null;
+      let roundWarnings = [];
+      if (!isPairs && (t.config.matchmaking || "americano") === "americano") {
+        if (localPrecomputedRounds !== null) {
+          precomputedRounds = localPrecomputedRounds;
+          roundWarnings = localRoundWarnings;
+        } else {
+          const result = precomputeAllRounds(entities, t.config);
+          precomputedRounds = result.rounds;
+          roundWarnings = result.warnings;
+        }
+      }
+      await persist({
+        ...t,
+        [isPairs ? "pairs" : "players"]: entities,
+        currentRound: courts,
+        sittingOut,
+        status: "playing",
+        roundNum: 1,
+        rounds: [],
+        partnerHistory: {},
+        sitOutHistory: {},
+        precomputedRounds,
+        roundWarnings,
+      });
+      onExitEdit?.();
+    } catch (err) {
+      console.error("Error al iniciar el torneo:", err);
     }
-    await persist({
-      ...t,
-      [isPairs ? "pairs" : "players"]: entities,
-      currentRound: courts,
-      sittingOut,
-      status: "playing",
-      roundNum: 1,
-      rounds: [],
-      partnerHistory: {},
-      sitOutHistory: {},
-      precomputedRounds,
-      roundWarnings,
-    });
-    onExitEdit?.();
   }
 
   function startEdit(i) {
@@ -364,7 +370,7 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
                 <div className="flex gap-2">
                   {[1,2,3,4,5,6].map(n => (
                     <button key={n}
-                      onClick={() => persist({ ...t, config: { ...t.config, courts: n } })}
+                      onClick={() => { setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); persist({ ...t, config: { ...t.config, courts: n } }); }}
                       className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer"
                       style={{ background: t.config.courts === n ? COLOR : "#1f2937", color: t.config.courts === n ? "#fff" : "#94a3b8" }}
                     >{n}</button>
@@ -519,7 +525,7 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
                 <div className="text-xs text-gray-500 mt-0.5">Mezcla jugadores por nivel. Solo visible para el organizador durante el torneo.</div>
               </div>
               <button
-                onClick={() => persist({ ...t, config: { ...t.config, useLevels: !useLevels } })}
+                onClick={() => { setWarningDismissed(false); setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); persist({ ...t, config: { ...t.config, useLevels: !useLevels } }); }}
                 className="px-4 py-1.5 rounded-lg text-sm font-bold cursor-pointer shrink-0"
                 style={{
                   background: useLevels ? "#16a34a30" : "#374151",
@@ -643,7 +649,7 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
                   })()}
                   {isAdmin && (
                     <button
-                      onClick={() => { setEditingIdx(null); persist({ ...t, playerInputs: t.playerInputs.filter((_, idx) => idx !== i) }); }}
+                      onClick={() => { setEditingIdx(null); setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); persist({ ...t, playerInputs: t.playerInputs.filter((_, idx) => idx !== i) }); }}
                       className="text-gray-600 hover:text-red-400 transition-colors cursor-pointer text-sm leading-none shrink-0"
                     >✕</button>
                   )}
@@ -780,7 +786,7 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
                     {[null, 4, 6, 8, 10, 12].map(n => (
                       <button
                         key={n ?? "ilim"}
-                        onClick={() => { setRoundsCustom(""); persist({ ...t, config: { ...t.config, maxRounds: n } }); }}
+                        onClick={() => { setRoundsCustom(""); setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); persist({ ...t, config: { ...t.config, maxRounds: n } }); }}
                         className="px-3 py-2 rounded-xl text-sm font-bold cursor-pointer transition-colors"
                         style={{
                           background: (t.config.maxRounds ?? null) === n ? COLOR : "#374151",
