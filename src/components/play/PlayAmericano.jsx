@@ -469,23 +469,27 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEd
   function handleNameChange(type, id, field, val) {
     setEditingName(prev => prev ? { ...prev, value: val } : null);
     clearTimeout(debName.current);
-    debName.current = setTimeout(() => {
-      if (type === "player") {
-        const updatedPlayers = (t.players || []).map(p => p.id === id ? { ...p, name: val } : p);
-        const updatedRound = (t.currentRound || []).map(c => ({
-          ...c,
-          pairA: Array.isArray(c.pairA) ? c.pairA.map(p => p.id === id ? { ...p, name: val } : p) : c.pairA,
-          pairB: Array.isArray(c.pairB) ? c.pairB.map(p => p.id === id ? { ...p, name: val } : p) : c.pairB,
-        }));
-        persist({ ...t, players: updatedPlayers, currentRound: updatedRound });
-      } else {
-        const updatedPairs = (t.pairs || []).map(p => p.id === id ? { ...p, [field]: val } : p);
-        const updatedRound = (t.currentRound || []).map(c => ({
-          ...c,
-          pairA: c.pairA?.id === id ? { ...c.pairA, [field]: val } : c.pairA,
-          pairB: c.pairB?.id === id ? { ...c.pairB, [field]: val } : c.pairB,
-        }));
-        persist({ ...t, pairs: updatedPairs, currentRound: updatedRound });
+    debName.current = setTimeout(async () => {
+      try {
+        if (type === "player") {
+          const updatedPlayers = (t.players || []).map(p => p.id === id ? { ...p, name: val } : p);
+          const updatedRound = (t.currentRound || []).map(c => ({
+            ...c,
+            pairA: Array.isArray(c.pairA) ? c.pairA.map(p => p.id === id ? { ...p, name: val } : p) : c.pairA,
+            pairB: Array.isArray(c.pairB) ? c.pairB.map(p => p.id === id ? { ...p, name: val } : p) : c.pairB,
+          }));
+          await persist({ ...t, players: updatedPlayers, currentRound: updatedRound });
+        } else {
+          const updatedPairs = (t.pairs || []).map(p => p.id === id ? { ...p, [field]: val } : p);
+          const updatedRound = (t.currentRound || []).map(c => ({
+            ...c,
+            pairA: c.pairA?.id === id ? { ...c.pairA, [field]: val } : c.pairA,
+            pairB: c.pairB?.id === id ? { ...c.pairB, [field]: val } : c.pairB,
+          }));
+          await persist({ ...t, pairs: updatedPairs, currentRound: updatedRound });
+        }
+      } catch (err) {
+        console.error("Error al guardar nombre:", err);
       }
     }, 800);
   }
