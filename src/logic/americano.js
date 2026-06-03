@@ -165,7 +165,7 @@ export function precomputeAllRounds(entities, config) {
     let maxAttemptUsed = 0;
 
     for (let c = 0; c < activeCourts; c++) {
-      const group = [topHalf[c * 2], topHalf[c * 2 + 1], botHalf[c * 2], botHalf[c * 2 + 1]];
+      const group = [topHalf[c], topHalf[c + activeCourts], botHalf[c], botHalf[c + activeCourts]];
 
       let accepted = null;
       let attemptUsed = 0;
@@ -347,7 +347,7 @@ export function buildRoundAmericano(entities, n, ph, soh, mode = "individual") {
     const topH = active.slice(0, activeCourts * 2);
     const botH = active.slice(activeCourts * 2);
     for (let c = 0; c < activeCourts; c++) {
-      const g = [topH[c * 2], topH[c * 2 + 1], botH[c * 2], botH[c * 2 + 1]];
+      const g = [topH[c], topH[c + activeCourts], botH[c], botH[c + activeCourts]];
       const [pA, pB] = bestSplit(g, ph);
       cs.push({ pairA: pA, pairB: pB, scoreA: "", scoreB: "", saved: false });
     }

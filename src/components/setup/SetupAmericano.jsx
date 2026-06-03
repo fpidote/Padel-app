@@ -896,27 +896,19 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
                   {round.courts.map((court, ci) => (
                     <div key={ci} className="bg-[#1f2937] rounded-xl px-3 py-2.5 border border-gray-700">
                       <div className="text-xs text-gray-500 font-semibold mb-1">Cancha {ci + 1}</div>
-                      <div className="text-sm text-gray-100 flex flex-wrap items-center gap-x-1.5">
-                        <span className="font-medium">{court.pairA[0].name} / {court.pairA[1].name}</span>
-                        <span className="text-gray-500 text-xs font-bold">vs</span>
-                        <span className="font-medium">{court.pairB[0].name} / {court.pairB[1].name}</span>
+                      <div className="text-sm text-gray-100 flex flex-wrap items-center gap-x-1">
+                        {useLevels && (() => { const l = LEVELS[court.pairA[0].level || 0]; return <span className="text-xs font-black mr-0.5" style={{ color: l.color }}>{l.short}</span>; })()}
+                        <span className="font-medium">{court.pairA[0].name}</span>
+                        <span className="text-gray-600 text-xs">/</span>
+                        {useLevels && (() => { const l = LEVELS[court.pairA[1].level || 0]; return <span className="text-xs font-black mr-0.5" style={{ color: l.color }}>{l.short}</span>; })()}
+                        <span className="font-medium">{court.pairA[1].name}</span>
+                        <span className="text-gray-500 text-xs font-bold mx-1">vs</span>
+                        {useLevels && (() => { const l = LEVELS[court.pairB[0].level || 0]; return <span className="text-xs font-black mr-0.5" style={{ color: l.color }}>{l.short}</span>; })()}
+                        <span className="font-medium">{court.pairB[0].name}</span>
+                        <span className="text-gray-600 text-xs">/</span>
+                        {useLevels && (() => { const l = LEVELS[court.pairB[1].level || 0]; return <span className="text-xs font-black mr-0.5" style={{ color: l.color }}>{l.short}</span>; })()}
+                        <span className="font-medium">{court.pairB[1].name}</span>
                       </div>
-                      {useLevels && (
-                        <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                          {[...court.pairA, ...court.pairB].map((p, pi) => {
-                            const lvl = LEVELS[p.level || 0];
-                            return (
-                              <span
-                                key={pi}
-                                className="text-xs font-bold px-1.5 py-0.5 rounded"
-                                style={{ background: lvl.color + "20", color: lvl.color }}
-                              >
-                                {p.name.split(" ")[0]} {lvl.short}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      )}
                     </div>
                   ))}
                   {round.sittingOut.length > 0 && (
