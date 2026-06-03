@@ -111,13 +111,20 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
         });
       }
     });
-    const { courts: nc, sittingOut: nSit } = buildRoundAmericano(
-      np,
-      t.config.courts,
-      nh,
-      nso,
-      t.config.mode,
-    );
+    let nc, nSit;
+    if (t.precomputedRounds?.length && t.precomputedRounds[t.roundNum]) {
+      const preRound = t.precomputedRounds[t.roundNum];
+      nc = preRound.courts.map(c => ({ ...c, scoreA: "", scoreB: "", saved: false }));
+      nSit = preRound.sittingOut;
+    } else {
+      ({ courts: nc, sittingOut: nSit } = buildRoundAmericano(
+        np,
+        t.config.courts,
+        nh,
+        nso,
+        t.config.mode,
+      ));
+    }
     const newRounds = [
       ...t.rounds,
       { num: t.roundNum, courts: t.currentRound, sittingOut: t.sittingOut },
@@ -141,7 +148,10 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
     b.pts !== a.pts ? b.pts - a.pts : b.gf - b.gc - (a.gf - a.gc),
   );
   const allSaved = t.currentRound?.every((c) => c.saved);
-  const isFinished = !!(t.config.maxRounds && t.roundNum >= t.config.maxRounds);
+  const isFinished = !!(
+    (t.config.maxRounds && t.roundNum >= t.config.maxRounds)
+    || (t.precomputedRounds?.length && t.roundNum > t.precomputedRounds.length)
+  );
 
   const allPlayers = isPairs
     ? [...(t.pairs || [])].sort((a, b) => `${a.p1} ${a.p2}`.localeCompare(`${b.p1} ${b.p2}`))
