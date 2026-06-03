@@ -185,7 +185,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
     const ids = isPairs
       ? [court.pairA?.id, court.pairB?.id]
       : [...(court.pairA || []).map((p) => p.id), ...(court.pairB || []).map((p) => p.id)];
-    return ids.includes(search);
+    return ids.map(String).includes(String(search));
   }
 
   return (
@@ -222,7 +222,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
               <label className="text-xs text-gray-500 font-semibold block mb-1.5">🔍 Filtrar por jugador</label>
               <select
                 value={search ?? ""}
-                onChange={(e) => setSearch(e.target.value === "" ? null : Number(e.target.value))}
+                onChange={(e) => setSearch(e.target.value === "" ? null : e.target.value)}
                 className="w-full bg-[#1f2937] border border-gray-700 rounded-xl text-gray-50 px-4 py-2.5 text-sm outline-none"
               >
                 <option value="">👥 Todos los jugadores</option>
@@ -367,7 +367,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
               <label className="text-xs text-gray-500 font-semibold block mb-1.5">🔍 Filtrar por jugador</label>
               <select
                 value={search ?? ""}
-                onChange={(e) => setSearch(e.target.value === "" ? null : Number(e.target.value))}
+                onChange={(e) => setSearch(e.target.value === "" ? null : e.target.value)}
                 className="w-full bg-[#1f2937] border border-gray-700 rounded-xl text-gray-50 px-4 py-2.5 text-sm outline-none"
               >
                 <option value="">👥 Todos los jugadores</option>
