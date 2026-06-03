@@ -23,12 +23,12 @@ These capabilities already exist in the codebase and are preserved:
 
 ### Active
 
-- [ ] Pre-calculate all rounds upfront before tournament starts (not on-the-fly per round)
-- [ ] Penalty-based scoring: pairing repeat (+1000), Advanced+Advanced pair (+5000), court repeat (+500), rest imbalance (+2000)
-- [ ] No Advanced+Advanced partnerships enforced in initial rounds (level constraint)
-- [ ] Dynamic relaxation when strict constraints deadlock: court repeat → partner repeat → Advanced pairing
-- [ ] Rest rotation enforcement — no player rests twice before all have rested once
-- [ ] Constraint deadlock fallback: prioritize match completion over rule enforcement
+- [x] Pre-calculate all rounds upfront before tournament starts — Validated in Phase 1 (2026-06-03)
+- [x] Penalty-based scoring: pairing repeat (+1000), Advanced+Advanced pair (+5000), court repeat (+500), rest imbalance (+2000) — Validated in Phase 1 (2026-06-03)
+- [x] No Advanced+Advanced partnerships enforced in initial rounds (level constraint) — Validated in Phase 1 (2026-06-03)
+- [x] Dynamic relaxation when strict constraints deadlock: court repeat → partner repeat → Advanced pairing — Validated in Phase 1 (2026-06-03)
+- [x] Rest rotation enforcement — no player rests twice before all have rested once — Validated in Phase 1 (2026-06-03)
+- [x] Constraint deadlock fallback: prioritize match completion over rule enforcement — Validated in Phase 1 (2026-06-03)
 - [ ] Last-round completeness: final round never leaves rest distribution violated
 - [ ] Support all player counts from 8 to 24+ without quality degradation
 - [ ] SetupAmericano UI validates level assignments before allowing round generation
