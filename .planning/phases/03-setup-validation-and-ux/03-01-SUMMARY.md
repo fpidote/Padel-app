@@ -19,8 +19,9 @@ decisions:
 metrics:
   duration: "2m"
   completed: "2026-06-03T20:27:56Z"
-  tasks_completed: 2
+  tasks_completed: 3
   tasks_total: 3
+  checkpoint_result: approved
   files_modified: 1
 ---
 
