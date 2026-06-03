@@ -61,14 +61,14 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ALGO-01 | Phase 1 | — |
-| ALGO-02 | Phase 1 | — |
-| ALGO-03 | Phase 1 | — |
-| ALGO-04 | Phase 1 | — |
-| ALGO-05 | Phase 1 | — |
-| SETUP-01 | Phase 3 | — |
-| SETUP-02 | Phase 3 | — |
-| PLAY-01 | Phase 3 | — |
-| PLAY-02 | Phase 3 | — |
+| ALGO-01 | Phase 1 | Pending |
+| ALGO-02 | Phase 1 | Pending |
+| ALGO-03 | Phase 1 | Pending |
+| ALGO-04 | Phase 1 | Pending |
+| ALGO-05 | Phase 1 | Pending |
+| PLAY-01 | Phase 2 | Pending |
+| PLAY-02 | Phase 2 | Pending |
+| SETUP-01 | Phase 3 | Pending |
+| SETUP-02 | Phase 3 | Pending |
 
-*(Traceability updated by roadmapper)*
+*(Traceability updated by roadmapper — 2026-06-03)*
