@@ -101,12 +101,15 @@ export function buildFirstRoundAmericano(
     return { courts: cs, sittingOut: sit };
   }
 
-  // Individual: sort by level desc, then pair 1st+4th vs 2nd+3rd per court
+  // Individual: sort by level desc, split into top half + bottom half so each
+  // court gets 2 from each half — ensures advanced players are spread across courts
   const sorted = [...entities].sort((a, b) => (b.level || 0) - (a.level || 0));
   const act = sorted.slice(0, activeCourts * units);
   const sit = sorted.slice(activeCourts * units);
+  const topH = act.slice(0, activeCourts * 2);
+  const botH = act.slice(activeCourts * 2);
   for (let c = 0; c < activeCourts; c++) {
-    const g = act.slice(c * 4, c * 4 + 4);
+    const g = [topH[c * 2], topH[c * 2 + 1], botH[c * 2], botH[c * 2 + 1]];
     const [pA, pB] = bestSplit(g, {});
     cs.push({ pairA: pA, pairB: pB, scoreA: "", scoreB: "", saved: false });
   }
@@ -143,8 +146,11 @@ export function buildRoundAmericano(entities, n, ph, soh, mode = "individual") {
       });
     }
   } else {
+    const topH = active.slice(0, activeCourts * 2);
+    const botH = active.slice(activeCourts * 2);
     for (let c = 0; c < activeCourts; c++) {
-      const [pA, pB] = bestSplit(active.slice(c * 4, c * 4 + 4), ph);
+      const g = [topH[c * 2], topH[c * 2 + 1], botH[c * 2], botH[c * 2 + 1]];
+      const [pA, pB] = bestSplit(g, ph);
       cs.push({ pairA: pA, pairB: pB, scoreA: "", scoreB: "", saved: false });
     }
   }

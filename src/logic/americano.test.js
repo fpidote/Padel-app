@@ -95,8 +95,8 @@ describe("buildFirstRoundAmericano — individual", () => {
     expect(sitIds).toEqual(["E", "F"]);
   });
 
-  // T3: 8 jugadores, 2 canchas — agrupación correcta por cancha
-  test("T3: con 8 jugadores y 2 canchas cada cancha recibe su grupo de 4 por nivel", () => {
+  // T3: 8 jugadores, 2 canchas — cada cancha recibe 2 del tramo alto + 2 del tramo bajo
+  test("T3: con 8 jugadores y 2 canchas, cada cancha mezcla 2 del tramo alto y 2 del tramo bajo por nivel", () => {
     const players = [
       p("A", 8), p("B", 7), p("C", 6), p("D", 5),
       p("E", 4), p("F", 3), p("G", 2), p("H", 1),
@@ -105,12 +105,14 @@ describe("buildFirstRoundAmericano — individual", () => {
 
     expect(courts).toHaveLength(2);
     expect(sittingOut).toHaveLength(0);
-    // Cancha 0: grupo [A,B,C,D] → pairA=[A,D], pairB=[B,C]
-    expect(courts[0].pairA.map((x) => x.id).sort()).toEqual(["A", "D"]);
-    expect(courts[0].pairB.map((x) => x.id).sort()).toEqual(["B", "C"]);
-    // Cancha 1: grupo [E,F,G,H] → pairA=[E,H], pairB=[F,G]
-    expect(courts[1].pairA.map((x) => x.id).sort()).toEqual(["E", "H"]);
-    expect(courts[1].pairB.map((x) => x.id).sort()).toEqual(["F", "G"]);
+    // Top half (lv 8,7,6,5) y bottom half (lv 4,3,2,1) distribuidos 2+2 por cancha
+    const topIds = new Set(["A", "B", "C", "D"]);
+    const botIds = new Set(["E", "F", "G", "H"]);
+    for (const court of courts) {
+      const ids = [...court.pairA, ...court.pairB].map((x) => x.id);
+      expect(ids.filter((id) => topIds.has(id))).toHaveLength(2);
+      expect(ids.filter((id) => botIds.has(id))).toHaveLength(2);
+    }
   });
 
   // T4: más canchas que grupos posibles
@@ -455,5 +457,44 @@ describe("bestSplit — separación de avanzados (level >= 3)", () => {
       sumTeam(courts[0].pairA) - sumTeam(courts[0].pairB)
     );
     expect(diff).toBeLessThanOrEqual(1);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Distribución entre canchas — mezcla de niveles
+// ═══════════════════════════════════════════════════════════════
+describe("distribución entre canchas — mezcla avanzados/básicos", () => {
+  // T31: buildFirstRoundAmericano — 4 avanzados + 4 básicos, 2 canchas
+  test("T31: con 4 avanzados (lv≥3) y 4 básicos en 2 canchas, cada equipo tiene exactamente 1 avanzado", () => {
+    const players = [
+      p("A1", 4), p("A2", 4), p("A3", 3), p("A4", 3),
+      p("B1", 2), p("B2", 2), p("B3", 1), p("B4", 1),
+    ];
+    const { courts } = buildFirstRoundAmericano(players, 2, "individual");
+
+    expect(courts).toHaveLength(2);
+    for (const court of courts) {
+      const advA = court.pairA.filter((x) => x.level >= 3).length;
+      const advB = court.pairB.filter((x) => x.level >= 3).length;
+      expect(advA).toBe(1);
+      expect(advB).toBe(1);
+    }
+  });
+
+  // T32: buildRoundAmericano — avanzados dominan pts, 2 canchas
+  test("T32: cuando avanzados tienen más pts que básicos, cada equipo tiene exactamente 1 avanzado por cancha", () => {
+    const players = [
+      p("A1", 4, 4), p("A2", 4, 3), p("A3", 3, 2), p("A4", 3, 1),
+      p("B1", 2, 0), p("B2", 2, 0), p("B3", 1, 0), p("B4", 1, 0),
+    ];
+    const { courts } = buildRoundAmericano(players, 2, {}, {}, "individual");
+
+    expect(courts).toHaveLength(2);
+    for (const court of courts) {
+      const advA = court.pairA.filter((x) => x.level >= 3).length;
+      const advB = court.pairB.filter((x) => x.level >= 3).length;
+      expect(advA).toBe(1);
+      expect(advB).toBe(1);
+    }
   });
 });
