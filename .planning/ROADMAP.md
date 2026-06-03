@@ -52,7 +52,10 @@ Wave 1 *(single file, all changes atomic)*:
   1. When `useLevels=ON` and every player has level "Unrated", a visible warning appears before the start button — organizer can dismiss and proceed (soft warning, not a hard block)
   2. After initial pre-calculation, a re-shuffle button is visible; clicking it re-runs `precomputeAllRounds()` and replaces the schedule in local state without persisting to Firestore
   3. The re-shuffle button is absent (or disabled) once the tournament status has moved to "playing"
-**Plans**: TBD
+**Plans**: 1 plan
+
+Wave 1 *(single file — banner + re-shuffle + onStart integration ship together)*:
+- [ ] 03-01-PLAN.md — Banner de niveles sin asignar (SETUP-01) + botón re-sorteo con estado local + integración onStart (SETUP-02)
 
 ## Progress
 
@@ -60,4 +63,4 @@ Wave 1 *(single file, all changes atomic)*:
 |-------|----------------|--------|-----------|
 | 1. Core Penalty Engine | 1/1 | Complete    | 2026-06-03 |
 | 2. PlayAmericano Wire-Up | 1/1 | Complete   | 2026-06-03 |
-| 3. Setup Validation and UX | 0/? | Not started | - |
+| 3. Setup Validation and UX | 0/1 | Not started | - |
