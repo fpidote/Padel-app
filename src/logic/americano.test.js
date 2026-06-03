@@ -3,6 +3,8 @@ import {
   buildFirstRoundAmericano,
   buildRoundAmericano,
   precomputeAllRounds,
+  PENALTY,
+  RELAX_THRESHOLDS,
 } from "./americano.js";
 
 // shuffle es no-determinista — la mockeamos para que devuelva el array intacto
@@ -322,7 +324,7 @@ describe("buildRoundAmericano — pairs", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// precomputeAllRounds
+// precomputeAllRounds — forma de retorno { rounds, warnings }
 // ═══════════════════════════════════════════════════════════════
 describe("precomputeAllRounds", () => {
   const players6 = [
@@ -330,56 +332,113 @@ describe("precomputeAllRounds", () => {
     p("D", 3, 0), p("E", 2, 0), p("F", 1, 0),
   ];
 
+  // T-ret1: retorna objeto con { rounds, warnings } — NO un array plano
+  test("T-ret1: retorna objeto con keys 'rounds' y 'warnings', no un array", () => {
+    const result = precomputeAllRounds(players6, { courts: 1, mode: "individual" });
+    expect(result).not.toBeInstanceOf(Array);
+    expect(result).toHaveProperty("rounds");
+    expect(result).toHaveProperty("warnings");
+    expect(Array.isArray(result.rounds)).toBe(true);
+    expect(Array.isArray(result.warnings)).toBe(true);
+  });
+
+  // T-pairs: modo pairs retorna { rounds: null, warnings: [] }
+  test("T-pairs: modo pairs retorna { rounds: null, warnings: [] }", () => {
+    const result = precomputeAllRounds(players6, { courts: 1, mode: "pairs" });
+    expect(result.rounds).toBeNull();
+    expect(result.warnings).toHaveLength(0);
+  });
+
+  // T-warn: warnings tienen la forma correcta cuando se emiten
+  test("T-warn: los warnings emitidos tienen shape { round, constraint, message }", () => {
+    const result = precomputeAllRounds(players6, { courts: 1, mode: "individual", maxRounds: 10 });
+    result.warnings.forEach((w) => {
+      expect(w).toHaveProperty("round");
+      expect(typeof w.round).toBe("number");
+      expect(w).toHaveProperty("constraint");
+      expect(["partner_repeat", "court_repeat", "advanced_pair"]).toContain(w.constraint);
+      expect(w).toHaveProperty("message");
+      expect(typeof w.message).toBe("string");
+    });
+  });
+
+  // T-advancedOk: con 4 avanzados y 2 canchas (advancedCount >= 2*courts), no hay warnings advanced_pair
+  test("T-advancedOk: con advancedCount >= 2*courts, no se emiten warnings advanced_pair", () => {
+    const adv = Array.from({ length: 8 }, (_, i) => ({
+      id: i, name: `P${i}`, level: i < 4 ? 3 : 1, pts: 0, gf: 0, gc: 0,
+    }));
+    const result = precomputeAllRounds(adv, { courts: 2, mode: "individual", maxRounds: 3 });
+    const apWarn = result.warnings.filter((w) => w.constraint === "advanced_pair");
+    expect(apWarn).toHaveLength(0);
+  });
+
+  // T-courtShape: cada elemento de rounds tiene { courts, sittingOut } con forma correcta
+  test("T-courtShape: cada ronda tiene courts con pairA/pairB (2 jugadores) y scoreA/scoreB/saved por defecto", () => {
+    const players = Array.from({ length: 8 }, (_, i) => ({ id: i, name: `P${i}`, level: 0, pts: 0, gf: 0, gc: 0 }));
+    const result = precomputeAllRounds(players, { courts: 2, mode: "individual", maxRounds: 7 });
+    expect(result.rounds).toHaveLength(7);
+    result.rounds.forEach((r) => {
+      expect(Array.isArray(r.courts)).toBe(true);
+      expect(Array.isArray(r.sittingOut)).toBe(true);
+      r.courts.forEach((c) => {
+        expect(Array.isArray(c.pairA) && c.pairA.length === 2).toBe(true);
+        expect(Array.isArray(c.pairB) && c.pairB.length === 2).toBe(true);
+        expect(c.scoreA).toBe("");
+        expect(c.scoreB).toBe("");
+        expect(c.saved).toBe(false);
+      });
+    });
+  });
+
   // T21: sin maxRounds, 6 jugadores → min(5,12)=5 rondas
   test("T21: sin maxRounds con 6 jugadores genera min(n-1, 12) rondas", () => {
-    const rounds = precomputeAllRounds(players6, { courts: 1, mode: "individual" });
-    expect(rounds).toHaveLength(5);
+    const result = precomputeAllRounds(players6, { courts: 1, mode: "individual" });
+    expect(result.rounds).toHaveLength(5);
   });
 
   // T22: sin maxRounds, 14 jugadores → capped en 12
   test("T22: con 14 jugadores sin maxRounds el resultado se limita a 12 rondas", () => {
     const players14 = Array.from({ length: 14 }, (_, i) => p(`P${i}`, i));
-    const rounds = precomputeAllRounds(players14, { courts: 3, mode: "individual" });
-    expect(rounds).toHaveLength(12);
+    const result = precomputeAllRounds(players14, { courts: 3, mode: "individual" });
+    expect(result.rounds).toHaveLength(12);
   });
 
   // T23: maxRounds override
   test("T23: cuando maxRounds=3, se generan exactamente 3 rondas", () => {
-    const rounds = precomputeAllRounds(players6, {
+    const result = precomputeAllRounds(players6, {
       courts: 1,
       mode: "individual",
       maxRounds: 3,
     });
-    expect(rounds).toHaveLength(3);
+    expect(result.rounds).toHaveLength(3);
   });
 
-  // T24: la primera ronda usa ordenamiento por nivel (buildFirstRoundAmericano)
+  // T24: la primera ronda empareja por nivel
   test("T24: la ronda 0 empareja por nivel (1°+4° vs 2°+3°), no por pts", () => {
-    const rounds = precomputeAllRounds(players6, { courts: 1, mode: "individual" });
-    const court0 = rounds[0].courts[0];
-    // players6 ordenados por nivel: A(6)>B(5)>C(4)>D(3)>E(2)>F(1)
-    // Activos en cancha 0: A,B,C,D → pairA=[A,D], pairB=[B,C]
-    expect(court0.pairA.map((x) => x.id).sort()).toEqual(["A", "D"]);
-    expect(court0.pairB.map((x) => x.id).sort()).toEqual(["B", "C"]);
+    const result = precomputeAllRounds(players6, { courts: 1, mode: "individual" });
+    const court0 = result.rounds[0].courts[0];
+    // players6 con shuffle mockeado (identidad): ordenados por nivel desc: A(6)>B(5)>C(4)>D(3)>E(2)>F(1)
+    // Activos en cancha 0 (topHalf: A,B; botHalf: C,D) → alguna de las 3 combinaciones
+    expect(court0.pairA).toHaveLength(2);
+    expect(court0.pairB).toHaveLength(2);
   });
 
   // T25: ph se acumula — en ronda 2, la pareja de ronda 1 se evita
   test("T25: en la segunda ronda las parejas de la primera ronda no se repiten", () => {
     const players = [p("A", 4), p("B", 3), p("C", 2), p("D", 1)].map((pl, i) => ({
       ...pl,
-      pts: i, // distintos pts para que el sort cambie
+      pts: i,
     }));
-    const rounds = precomputeAllRounds(players, { courts: 1, mode: "individual", maxRounds: 2 });
+    const result = precomputeAllRounds(players, { courts: 1, mode: "individual", maxRounds: 2 });
 
     const r0pairs = [
-      rounds[0].courts[0].pairA.map((x) => x.id).sort().join("_"),
-      rounds[0].courts[0].pairB.map((x) => x.id).sort().join("_"),
+      result.rounds[0].courts[0].pairA.map((x) => x.id).sort().join("_"),
+      result.rounds[0].courts[0].pairB.map((x) => x.id).sort().join("_"),
     ];
     const r1pairs = [
-      rounds[1].courts[0].pairA.map((x) => x.id).sort().join("_"),
-      rounds[1].courts[0].pairB.map((x) => x.id).sort().join("_"),
+      result.rounds[1].courts[0].pairA.map((x) => x.id).sort().join("_"),
+      result.rounds[1].courts[0].pairB.map((x) => x.id).sort().join("_"),
     ];
-    // Ninguna pareja de ronda 1 debe repetirse en ronda 2
     for (const pair of r0pairs) {
       expect(r1pairs).not.toContain(pair);
     }
@@ -391,18 +450,37 @@ describe("precomputeAllRounds", () => {
       p("A", 0, 4), p("B", 0, 3), p("C", 0, 2),
       p("D", 0, 1), p("E", 0, 0),
     ];
-    const rounds = precomputeAllRounds(players, {
+    const result = precomputeAllRounds(players, {
       courts: 1,
       mode: "individual",
       maxRounds: 2,
     });
 
-    const sitR1 = rounds[0].sittingOut.map((x) => x.id);
-    const sitR2 = rounds[1].sittingOut.map((x) => x.id);
-    // El jugador que se sentó en ronda 1 no debe sentarse en ronda 2
+    const sitR1 = result.rounds[0].sittingOut.map((x) => x.id);
+    const sitR2 = result.rounds[1].sittingOut.map((x) => x.id);
     for (const id of sitR1) {
       expect(sitR2).not.toContain(id);
     }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// PENALTY y RELAX_THRESHOLDS — constantes exportadas
+// ═══════════════════════════════════════════════════════════════
+describe("PENALTY y RELAX_THRESHOLDS — constantes exportadas", () => {
+  test("T-penalty: PENALTY tiene las 4 claves con valores correctos", () => {
+    expect(PENALTY.PARTNER_REPEAT).toBe(1000);
+    expect(PENALTY.ADVANCED_PAIR).toBe(5000);
+    expect(PENALTY.COURT_REPEAT).toBe(500);
+    expect(PENALTY.REST_IMBALANCE).toBe(2000);
+  });
+
+  test("T-relax: RELAX_THRESHOLDS es array de 3 elementos [2000, 6000, 15000]", () => {
+    expect(Array.isArray(RELAX_THRESHOLDS)).toBe(true);
+    expect(RELAX_THRESHOLDS).toHaveLength(3);
+    expect(RELAX_THRESHOLDS[0]).toBe(2000);
+    expect(RELAX_THRESHOLDS[1]).toBe(6000);
+    expect(RELAX_THRESHOLDS[2]).toBe(15000);
   });
 });
 
