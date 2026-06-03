@@ -38,7 +38,10 @@ Wave 1 *(all tasks atomic — algorithm body + call site update must ship togeth
   2. When `t.precomputedRounds` is null or empty (legacy tournament), `onNext()` falls back to the previous behavior without errors
   3. An admin-only warnings panel appears when `warnings[]` is non-empty, listing which rounds had relaxed constraints and why
   4. A rest schedule panel shows all rounds at a glance with the sitting-out player(s) per round, readable on a 390px mobile screen
-**Plans**: TBD
+**Plans**: 1 plan
+
+Wave 1 *(single file, all changes atomic)*:
+- [ ] 02-01-PLAN.md — onNext() wire-up + isFinished extension + Descansos tab + WarningsBanner sub-component
 
 ### Phase 3: Setup Validation and UX
 **Goal**: SetupAmericano guides the organizer through level assignment before allowing tournament start
@@ -56,5 +59,5 @@ Wave 1 *(all tasks atomic — algorithm body + call site update must ship togeth
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Core Penalty Engine | 1/1 | Complete    | 2026-06-03 |
-| 2. PlayAmericano Wire-Up | 0/? | Not started | - |
+| 2. PlayAmericano Wire-Up | 0/1 | Not started | - |
 | 3. Setup Validation and UX | 0/? | Not started | - |
