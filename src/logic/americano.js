@@ -99,36 +99,135 @@ function levelSortedWithShuffle(active) {
   return levels.flatMap((l) => shuffle(byLevel[l]));
 }
 
+// Returns { rounds: Array<{courts, sittingOut}>, warnings: Array<{round, constraint, message}> }
 export function precomputeAllRounds(entities, config) {
   const { courts, mode = "individual", maxRounds } = config;
   const isPairs = mode === "pairs";
-  const totalRounds = maxRounds ?? Math.min(entities.length - 1, 12);
+
+  // Pairs mode: sin pre-cálculo nivel-aware; retornar null para que el caller lo omita
+  if (isPairs) return { rounds: null, warnings: [] };
+
+  const totalRounds = maxRounds ?? Math.min(entities.length - 1, 12); // cap matches existing stub formula
+  const activeCourts = Math.min(courts, Math.floor(entities.length / 4));
+
+  // ALGO-05: Pre-comprobación de restricción imposible (D-12)
+  // Cuando advancedCount >= 2 * activeCourts, la restricción ADVANCED_PAIR es matemáticamente
+  // insatisfactible — excluir la penalización para todas las rondas y no emitir 'advanced_pair' warnings.
+  const advancedCount = entities.filter((p) => (p.level || 0) >= 3).length;
+  const advancedPairingAllowed = advancedCount >= 2 * activeCourts;
+
+  // Estado mutable compartido entre rondas (objetos planos — D-02)
+  const ph = {};            // historial de parejas: { "0_1": 2, ... }
+  const courtHistory = {};  // historial de canchas: { "3_c0": 1, ... }
+  const soh = {};           // historial de descanso: { 5: 1, ... }
 
   const rounds = [];
-  let ph = {};
-  let soh = {};
+  const warnings = [];
 
-  const first = buildFirstRoundAmericano(entities, courts, mode);
-  rounds.push({ courts: first.courts, sittingOut: first.sittingOut });
+  // Configuraciones de relajación — 4 intentos con pesos progresivamente más permisivos
+  // Si advancedPairingAllowed=true, ADVANCED_PAIR se anula en todos los niveles (D-12)
+  const RELAX_CONFIGS = [
+    {
+      weights: advancedPairingAllowed
+        ? { ...PENALTY, ADVANCED_PAIR: 0 }
+        : { ...PENALTY },
+      threshold: RELAX_THRESHOLDS[0], // 2000 — estricto
+    },
+    {
+      weights: advancedPairingAllowed
+        ? { ...PENALTY, COURT_REPEAT: 0, ADVANCED_PAIR: 0 }
+        : { ...PENALTY, COURT_REPEAT: 0 },
+      threshold: RELAX_THRESHOLDS[1], // 6000 — relajar repetición de cancha
+    },
+    {
+      weights: advancedPairingAllowed
+        ? { ...PENALTY, COURT_REPEAT: 0, PARTNER_REPEAT: 100, ADVANCED_PAIR: 0 }
+        : { ...PENALTY, COURT_REPEAT: 0, PARTNER_REPEAT: 100 },
+      threshold: RELAX_THRESHOLDS[2], // 15000 — relajar repetición de pareja
+    },
+    {
+      weights: { ...PENALTY, COURT_REPEAT: 0, PARTNER_REPEAT: 100, ADVANCED_PAIR: 0 },
+      threshold: Infinity, // intento 3: aceptar siempre
+    },
+  ];
 
-  for (let r = 1; r < totalRounds; r++) {
-    const prev = rounds[r - 1];
-    prev.sittingOut.forEach((p) => {
+  for (let r = 0; r < totalRounds; r++) {
+    // Variables locales al loop de ronda (D-08 — las banderas de relajación no se filtran entre rondas)
+    const { active, sittingOut } = selectSittingOut(entities, courts, soh);
+    const sorted = levelSortedWithShuffle(active);
+
+    const topHalf = sorted.slice(0, activeCourts * 2);
+    const botHalf = sorted.slice(activeCourts * 2);
+
+    const cs = [];
+    // Set de restricciones que dispararon relaxación en esta ronda (colapsado por tipo — Open Question 2)
+    const constraintsRelaxed = new Set();
+    let maxAttemptUsed = 0;
+
+    for (let c = 0; c < activeCourts; c++) {
+      const group = [topHalf[c * 2], topHalf[c * 2 + 1], botHalf[c * 2], botHalf[c * 2 + 1]];
+
+      let accepted = null;
+      let attemptUsed = 0;
+
+      for (let attempt = 0; attempt < RELAX_CONFIGS.length; attempt++) {
+        const { weights, threshold } = RELAX_CONFIGS[attempt];
+        const { pairs, score } = scoredSplit(group, c, { ph, courtHistory }, weights);
+
+        if (score <= threshold || attempt === RELAX_CONFIGS.length - 1) {
+          accepted = pairs;
+          attemptUsed = attempt;
+          break;
+        }
+      }
+
+      if (attemptUsed > maxAttemptUsed) maxAttemptUsed = attemptUsed;
+
+      // Registrar qué restricciones se relajaron en esta cancha
+      if (attemptUsed >= 1) constraintsRelaxed.add("court_repeat");
+      if (attemptUsed >= 2) constraintsRelaxed.add("partner_repeat");
+      if (attemptUsed >= 3 && !advancedPairingAllowed) constraintsRelaxed.add("advanced_pair");
+
+      const [pA, pB] = accepted;
+      cs.push({ pairA: pA, pairB: pB, scoreA: "", scoreB: "", saved: false });
+    }
+
+    // Emitir un warning por tipo de restricción relajada en esta ronda (D-09, D-11)
+    for (const constraint of constraintsRelaxed) {
+      let message;
+      if (constraint === "partner_repeat") {
+        message = `Ronda ${r + 1}: repetición de pareja permitida (sin combinación válida disponible)`;
+      } else if (constraint === "court_repeat") {
+        message = `Ronda ${r + 1}: repetición de cancha permitida (sin combinación sin repetición disponible)`;
+      } else {
+        message = `Ronda ${r + 1}: pareja de nivel avanzado permitida (restricción relajada)`;
+      }
+      warnings.push({ round: r + 1, constraint, message });
+    }
+
+    rounds.push({ courts: cs, sittingOut });
+
+    // Actualizar estado después de la ronda
+    // Actualizar courtHistory con claves "${id}_c${courtIndex}"
+    // Seguro porque los IDs son enteros 0..N y ningún entero formateado como string contiene "_c"
+    cs.forEach((court, ci) => {
+      const kA = pk(court.pairA[0].id, court.pairA[1].id);
+      const kB = pk(court.pairB[0].id, court.pairB[1].id);
+      ph[kA] = (ph[kA] || 0) + 1;
+      ph[kB] = (ph[kB] || 0) + 1;
+
+      [...court.pairA, ...court.pairB].forEach((p) => {
+        const key = `${p.id}_c${ci}`;
+        courtHistory[key] = (courtHistory[key] || 0) + 1;
+      });
+    });
+
+    sittingOut.forEach((p) => {
       soh[p.id] = (soh[p.id] || 0) + 1;
     });
-    if (!isPairs) {
-      prev.courts.forEach((court) => {
-        const kA = pk(court.pairA[0].id, court.pairA[1].id);
-        const kB = pk(court.pairB[0].id, court.pairB[1].id);
-        ph[kA] = (ph[kA] || 0) + 1;
-        ph[kB] = (ph[kB] || 0) + 1;
-      });
-    }
-    const round = buildRoundAmericano(entities, courts, ph, soh, mode);
-    rounds.push({ courts: round.courts, sittingOut: round.sittingOut });
   }
 
-  return rounds;
+  return { rounds, warnings };
 }
 
 function highLevelClash(pair) {

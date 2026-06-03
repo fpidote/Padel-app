@@ -161,9 +161,13 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
       entities = t.playerInputs.map((p, i) => ({ id: i, name: p.name.trim(), level: p.level, pts: 0, gf: 0, gc: 0 }));
     }
     const { courts, sittingOut } = buildFirstRoundAmericano(entities, t.config.courts, t.config.mode);
-    const precomputedRounds = (t.config.matchmaking || "americano") === "americano"
-      ? precomputeAllRounds(entities, t.config)
-      : null;
+    let precomputedRounds = null;
+    let roundWarnings = [];
+    if ((t.config.matchmaking || "americano") === "americano") {
+      const result = precomputeAllRounds(entities, t.config);
+      precomputedRounds = result.rounds;
+      roundWarnings = result.warnings;
+    }
     await persist({
       ...t,
       [isPairs ? "pairs" : "players"]: entities,
@@ -175,6 +179,7 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
       partnerHistory: {},
       sitOutHistory: {},
       precomputedRounds,
+      roundWarnings,
     });
     onExitEdit?.();
   }
