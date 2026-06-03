@@ -52,6 +52,9 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
   const [editLvl,       setEditLvl]       = useState(0);
   const [editP1,        setEditP1]        = useState("");
   const [editP2,        setEditP2]        = useState("");
+  const [warningDismissed,       setWarningDismissed]       = useState(false);
+  const [localPrecomputedRounds, setLocalPrecomputedRounds] = useState(null);
+  const [localRoundWarnings,     setLocalRoundWarnings]     = useState([]);
 
   const debName     = useRef(null);
   const debDesc     = useRef(null);
@@ -83,6 +86,16 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
 
   const scoring = t.config.scoringSystem || "timed";
   const useLevels = !!t.config.useLevels;
+
+  const allUnrated = useLevels && !isPairs &&
+    (t.playerInputs || []).length > 0 &&
+    (t.playerInputs || []).every(p => (p.level || 0) === 0);
+  const showUnratedWarning = allUnrated && !warningDismissed;
+
+  const canReshuffle = !isPairs &&
+    (t.config.matchmaking || "americano") === "americano" &&
+    t.status !== "playing" &&
+    ok;
 
   function handleName(val) {
     setLocalName(val);
@@ -137,6 +150,16 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
     }
   }
 
+  function handleReshuffle() {
+    if (isPairs) return;
+    const entities = (t.playerInputs || []).map((p, i) => ({
+      id: i, name: p.name.trim(), level: p.level || 0, pts: 0, gf: 0, gc: 0
+    }));
+    const result = precomputeAllRounds(entities, t.config);
+    setLocalPrecomputedRounds(result.rounds);
+    setLocalRoundWarnings(result.warnings);
+  }
+
   function addPlayer() {
     if (!newName.trim()) return;
     persist({ ...t, playerInputs: [...(t.playerInputs || []), { name: newName.trim(), level: useLevels ? newLvl : 0 }] });
@@ -164,9 +187,14 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
     let precomputedRounds = null;
     let roundWarnings = [];
     if ((t.config.matchmaking || "americano") === "americano") {
-      const result = precomputeAllRounds(entities, t.config);
-      precomputedRounds = result.rounds;
-      roundWarnings = result.warnings;
+      if (localPrecomputedRounds !== null) {
+        precomputedRounds = localPrecomputedRounds;
+        roundWarnings = localRoundWarnings;
+      } else {
+        const result = precomputeAllRounds(entities, t.config);
+        precomputedRounds = result.rounds;
+        roundWarnings = result.warnings;
+      }
     }
     await persist({
       ...t,
@@ -774,6 +802,36 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
               </div>
             )}
           </div>
+        )}
+
+        {/* ── Banner advertencia niveles sin asignar (SETUP-01) ── */}
+        {isAdmin && showUnratedWarning && (
+          <div className="mt-4 rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-bold text-yellow-400">⚠️ Ningún jugador tiene nivel asignado</div>
+                <div className="text-xs text-yellow-300/70 mt-1">
+                  El emparejamiento por niveles no tendrá efecto. Puedes asignar niveles arriba o continuar sin ellos.
+                </div>
+              </div>
+              <button
+                onClick={() => setWarningDismissed(true)}
+                className="text-yellow-500/60 hover:text-yellow-400 text-xs font-bold shrink-0 cursor-pointer transition-colors"
+              >
+                Continuar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Botón re-sorteo (SETUP-02) ── */}
+        {isAdmin && canReshuffle && (
+          <button
+            onClick={handleReshuffle}
+            className="w-full mt-3 py-2.5 rounded-xl font-bold text-sm border border-gray-700 bg-[#1f2937] text-gray-300 hover:text-gray-100 hover:border-gray-500 transition-colors cursor-pointer"
+          >
+            {localPrecomputedRounds !== null ? "✓ Emparejamiento listo — Re-sortear" : "🔀 Generar emparejamiento"}
+          </button>
         )}
 
         {/* ── Botón iniciar ── */}
