@@ -56,7 +56,13 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
       delete n[`${ci}_B`];
       return n;
     });
-    await persist({ ...t, currentRound: cr });
+    try {
+      await persist({ ...t, currentRound: cr });
+    } catch (err) {
+      console.error("Error al guardar resultado:", err);
+      // Revertir estado local para que el admin pueda reintentar
+      setLs((prev) => ({ ...prev, [`${ci}_A`]: String(a), [`${ci}_B`]: String(b) }));
+    }
   }
 
   async function onEdit(ci) {
@@ -69,7 +75,18 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
     const cr = t.currentRound.map((c, i) =>
       i === ci ? { ...c, saved: false } : c,
     );
-    await persist({ ...t, currentRound: cr });
+    try {
+      await persist({ ...t, currentRound: cr });
+    } catch (err) {
+      console.error("Error al editar resultado:", err);
+      // Revertir ls para que la pista no quede en estado de edición sin respaldo
+      setLs((prev) => {
+        const n = { ...prev };
+        delete n[`${ci}_A`];
+        delete n[`${ci}_B`];
+        return n;
+      });
+    }
   }
 
   async function onNext() {
@@ -130,16 +147,20 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
       { num: t.roundNum, courts: t.currentRound, sittingOut: t.sittingOut },
     ];
     setLs({});
-    await persist({
-      ...t,
-      [entityKey]: np,
-      rounds: newRounds,
-      currentRound: nc,
-      sittingOut: nSit,
-      partnerHistory: nh,
-      sitOutHistory: nso,
-      roundNum: t.roundNum + 1,
-    });
+    try {
+      await persist({
+        ...t,
+        [entityKey]: np,
+        rounds: newRounds,
+        currentRound: nc,
+        sittingOut: nSit,
+        partnerHistory: nh,
+        sitOutHistory: nso,
+        roundNum: t.roundNum + 1,
+      });
+    } catch (err) {
+      console.error("Error al avanzar ronda:", err);
+    }
   }
 
   const isPairs = t.config.mode === "pairs";
