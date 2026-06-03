@@ -139,7 +139,11 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
     clearTimeout(debRounds.current);
     const num = parseInt(val);
     if (!isNaN(num) && num >= 1) {
-      debRounds.current = setTimeout(() => persist({ ...t, config: { ...t.config, maxRounds: num } }), 600);
+      debRounds.current = setTimeout(() => {
+        setLocalPrecomputedRounds(null);
+        setLocalRoundWarnings([]);
+        persist({ ...t, config: { ...t.config, maxRounds: num } });
+      }, 600);
     }
   }
   function handleMinutesCustom(val) {
