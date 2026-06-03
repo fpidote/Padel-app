@@ -1,5 +1,5 @@
 ---
-status: partial
+status: resolved
 phase: 03-setup-validation-and-ux
 source: [03-VERIFICATION.md]
 started: 2026-06-03T21:53:12Z
@@ -22,18 +22,18 @@ result: approved (checkpoint humano 2026-06-03)
 
 ### 3. Botón ausente cuando status=playing
 expected: Una vez que el torneo está iniciado (status=playing), el botón de re-sorteo no aparece en el setup.
-result: [pending]
+result: approved (2026-06-04)
 
 ### 4. Botón ausente con matchmaking=mexicano
 expected: En setup, al cambiar emparejamiento a "Mexicano", el botón de re-sorteo desaparece.
-result: [pending]
+result: approved (2026-06-04)
 
 ## Summary
 
 total: 4
-passed: 2
+passed: 4
 issues: 0
-pending: 2
+pending: 0
 skipped: 0
 blocked: 0
 
