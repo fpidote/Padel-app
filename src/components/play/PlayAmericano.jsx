@@ -1,10 +1,9 @@
 import { useState, useRef, useMemo } from "react";
-import { B } from "../../logic/constants";
+import { TOURNAMENT_RULES } from "../../logic/constants";
 import { pk } from "../../logic/utils";
 import { buildRoundAmericano } from "../../logic/americano";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import History from "../shared/History";
-import { TOURNAMENT_RULES } from "../../logic/constants";
 
 const LEVELS = [
   { id: 0, label: "Sin definir",  short: "-", color: "#64748b" },
