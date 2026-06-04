@@ -9,6 +9,8 @@ export const PENALTY = {
   ADVANCED_PAIR: 5000,
   COURT_REPEAT: 500,
   REST_IMBALANCE: 2000,
+  MATCH_IMBALANCE: 2000,
+  OPPONENT_REPEAT: 300,
 };
 
 // ── Relaxation thresholds ─────────────────────────────────────
@@ -21,7 +23,7 @@ export const RELAX_THRESHOLDS = [2000, 6000, 15000];
 // returns the split with the lowest penalty score given current state and weights.
 // REST_IMBALANCE is NOT in this formula — enforced at selectSittingOut, not here.
 function scoredSplit(group, courtIndex, state, weights) {
-  const { ph, courtHistory } = state;
+  const { ph, courtHistory, oh = {} } = state;
 
   const opts = [
     [[group[0], group[1]], [group[2], group[3]]],
@@ -55,6 +57,19 @@ function scoredSplit(group, courtIndex, state, weights) {
       score += (courtHistory[`${p.id}_c${courtIndex}`] || 0) * crWeight;
     });
 
+    // Team level-balance penalty — prefers splits where both teams have equal total level.
+    // Distinguishes AM vs AM (balance=0) from AA vs MM (balance=2) when ADVANCED_PAIR
+    // gives equal scores for both (e.g. when all players are level>=3).
+    score += matchBalance(pA, pB) * (weights.MATCH_IMBALANCE ?? PENALTY.MATCH_IMBALANCE);
+
+    // Opponent repeat penalty — softly diversifies who faces whom across rounds.
+    // Applied per cross-team pair so accumulated history nudges the algorithm
+    // toward new opponent combinations without breaking team balance.
+    const orWeight = weights.OPPONENT_REPEAT ?? PENALTY.OPPONENT_REPEAT;
+    pA.forEach((a) => pB.forEach((b) => {
+      score += (oh[pk(a.id, b.id)] || 0) * orWeight;
+    }));
+
     if (score < bestScore) {
       bestScore = score;
       best = [pA, pB];
@@ -65,17 +80,22 @@ function scoredSplit(group, courtIndex, state, weights) {
 }
 
 // ── selectSittingOut ──────────────────────────────────────────
-// Selects which players sit out each round, preferring those who have
-// rested least. Tiebreaker: player ID ascending (NOT pts — all pts=0 during pre-calc, per D-05).
-function selectSittingOut(entities, courts, soh) {
+// Selects which players sit out each round.
+// Sort priority:
+//   1. Fewest total rests (soh) — primary fairness criterion
+//   2. Longest consecutive rounds played without rest (streak desc) — tie-break
+//   3. Random — eliminates ID-order bias when streak also ties
+function selectSittingOut(entities, courts, soh, streak = {}) {
   const activeCourts = Math.min(courts, Math.floor(entities.length / 4));
   const cnt = entities.length - activeCourts * 4;
 
   if (cnt <= 0) return { active: entities, sittingOut: [] };
 
-  const pool = [...entities]
-    .map((p) => ({ ...p, _soh: soh[p.id] || 0 }))
-    .sort((a, b) => (a._soh !== b._soh ? a._soh - b._soh : a.id - b.id));
+  const pool = shuffle([...entities])
+    .map((p) => ({ ...p, _soh: soh[p.id] || 0, _streak: streak[p.id] || 0 }))
+    .sort((a, b) =>
+      a._soh !== b._soh ? a._soh - b._soh : b._streak - a._streak
+    );
 
   const sittingOutIds = new Set(pool.slice(0, cnt).map((p) => p.id));
   return {
@@ -114,12 +134,17 @@ export function precomputeAllRounds(entities, config) {
   // Cuando advancedCount >= 2 * activeCourts, la restricción ADVANCED_PAIR es matemáticamente
   // insatisfactible — excluir la penalización para todas las rondas y no emitir 'advanced_pair' warnings.
   const advancedCount = entities.filter((p) => (p.level || 0) >= 3).length;
-  const advancedPairingAllowed = advancedCount >= 2 * activeCourts;
+  // > (strict) — only disable the penalty when M+M partners are mathematically unavoidable
+  // (more than 2 M players per court on average). With exactly 2*activeCourts M's,
+  // consecutive grouping puts 2 M's per court and scoredSplit can still pair them as opponents.
+  const advancedPairingAllowed = advancedCount > 2 * activeCourts;
 
   // Estado mutable compartido entre rondas (objetos planos — D-02)
   const ph = {};            // historial de parejas: { "0_1": 2, ... }
+  const oh = {};            // historial de rivales: { "0_1": 3, ... }
   const courtHistory = {};  // historial de canchas: { "3_c0": 1, ... }
   const soh = {};           // historial de descanso: { 5: 1, ... }
+  const streak = {};        // rondas consecutivas jugadas sin descanso: { 5: 3, ... }
 
   const rounds = [];
   const warnings = [];
@@ -153,7 +178,7 @@ export function precomputeAllRounds(entities, config) {
 
   for (let r = 0; r < totalRounds; r++) {
     // Variables locales al loop de ronda (D-08 — las banderas de relajación no se filtran entre rondas)
-    const { active, sittingOut } = selectSittingOut(entities, courts, soh);
+    const { active, sittingOut } = selectSittingOut(entities, courts, soh, streak);
     const sorted = levelSortedWithShuffle(active);
 
     const topHalf = sorted.slice(0, activeCourts * 2);
@@ -164,15 +189,24 @@ export function precomputeAllRounds(entities, config) {
     const constraintsRelaxed = new Set();
     let maxAttemptUsed = 0;
 
+    // Consecutive indexing: clusters 2 M's per group so scoredSplit can pair them
+    // as opponents (M+P vs M+P). Then shuffle groups so advanced players aren't
+    // always assigned to courts 0,1 — any court can get the M vs M match.
+    const groups = [];
     for (let c = 0; c < activeCourts; c++) {
-      const group = [topHalf[c], topHalf[c + activeCourts], botHalf[c], botHalf[c + activeCourts]];
+      groups.push([topHalf[c * 2], topHalf[c * 2 + 1], botHalf[c * 2], botHalf[c * 2 + 1]]);
+    }
+    const shuffledGroups = shuffle(groups);
+
+    for (let c = 0; c < activeCourts; c++) {
+      const group = shuffledGroups[c];
 
       let accepted = null;
       let attemptUsed = 0;
 
       for (let attempt = 0; attempt < RELAX_CONFIGS.length; attempt++) {
         const { weights, threshold } = RELAX_CONFIGS[attempt];
-        const { pairs, score } = scoredSplit(group, c, { ph, courtHistory }, weights);
+        const { pairs, score } = scoredSplit(group, c, { ph, oh, courtHistory }, weights);
 
         if (score <= threshold || attempt === RELAX_CONFIGS.length - 1) {
           accepted = pairs;
@@ -216,6 +250,11 @@ export function precomputeAllRounds(entities, config) {
       ph[kA] = (ph[kA] || 0) + 1;
       ph[kB] = (ph[kB] || 0) + 1;
 
+      court.pairA.forEach((a) => court.pairB.forEach((b) => {
+        const k = pk(a.id, b.id);
+        oh[k] = (oh[k] || 0) + 1;
+      }));
+
       [...court.pairA, ...court.pairB].forEach((p) => {
         const key = `${p.id}_c${ci}`;
         courtHistory[key] = (courtHistory[key] || 0) + 1;
@@ -224,6 +263,10 @@ export function precomputeAllRounds(entities, config) {
 
     sittingOut.forEach((p) => {
       soh[p.id] = (soh[p.id] || 0) + 1;
+      streak[p.id] = 0;
+    });
+    active.forEach((p) => {
+      streak[p.id] = (streak[p.id] || 0) + 1;
     });
   }
 
@@ -306,8 +349,11 @@ export function buildFirstRoundAmericano(
   const sit = sorted.slice(activeCourts * units);
   const topH = act.slice(0, activeCourts * 2);
   const botH = act.slice(activeCourts * 2);
+  const groups = [];
   for (let c = 0; c < activeCourts; c++) {
-    const g = [topH[c], topH[c + activeCourts], botH[c], botH[c + activeCourts]];
+    groups.push([topH[c * 2], topH[c * 2 + 1], botH[c * 2], botH[c * 2 + 1]]);
+  }
+  for (const g of shuffle(groups)) {
     const [pA, pB] = bestSplit(g, {});
     cs.push({ pairA: pA, pairB: pB, scoreA: "", scoreB: "", saved: false });
   }
@@ -346,8 +392,11 @@ export function buildRoundAmericano(entities, n, ph, soh, mode = "individual") {
   } else {
     const topH = active.slice(0, activeCourts * 2);
     const botH = active.slice(activeCourts * 2);
+    const groups = [];
     for (let c = 0; c < activeCourts; c++) {
-      const g = [topH[c], topH[c + activeCourts], botH[c], botH[c + activeCourts]];
+      groups.push([topH[c * 2], topH[c * 2 + 1], botH[c * 2], botH[c * 2 + 1]]);
+    }
+    for (const g of shuffle(groups)) {
       const [pA, pB] = bestSplit(g, ph);
       cs.push({ pairA: pA, pairB: pB, scoreA: "", scoreB: "", saved: false });
     }
