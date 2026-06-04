@@ -956,7 +956,7 @@ function FutureRound({ round, matchesSearch, isAdmin, useLevels, showLevelsToggl
         const isHighlighted = highlightId && String(p.id) === String(highlightId);
         return (
           <span key={p.id} className="flex items-center gap-1 leading-snug">
-            <span className={`text-sm ${isHighlighted ? "font-black" : "font-bold"} text-gray-50`}>{p.name}</span>
+            <span className={`text-sm font-bold ${isHighlighted ? "font-black text-sky-300" : "text-gray-50"}`}>{p.name}</span>
             {showLevel && currentPlayer.level > 0 && lvl && (
               <span style={{ fontSize: 10, fontWeight: 700, background: lvl.color + "20", color: lvl.color, borderRadius: 4, padding: "1px 4px" }}>
                 {lvl.short}
@@ -967,54 +967,39 @@ function FutureRound({ round, matchesSearch, isAdmin, useLevels, showLevelsToggl
       });
     }
     const isHighlighted = highlightId && String(pair?.id) === String(highlightId);
-    return <span className={`text-sm ${isHighlighted ? "font-black" : "font-bold"} text-gray-50`}>{`${pair.p1} / ${pair.p2}`}</span>;
+    return <span className={`text-sm font-bold ${isHighlighted ? "font-black text-sky-300" : "text-gray-50"}`}>{`${pair.p1} / ${pair.p2}`}</span>;
   }
 
-  const visibleCourts = (round.courts || []).filter(matchesSearch);
+  const visibleCourts = (round.courts || [])
+    .map((court, i) => ({ court, i }))
+    .filter(({ court }) => matchesSearch(court));
 
   return (
-    <div className="max-w-lg mx-auto">
+    <div className="bg-[#1f2937] rounded-2xl border border-gray-700 overflow-hidden opacity-70">
+      <div className="px-4 py-2.5 border-b border-gray-700 flex items-center justify-between">
+        <span className="text-xs font-bold text-gray-500 tracking-widest">RONDA {round.num}</span>
+        <span className="text-xs text-gray-600 font-semibold">📅 próxima</span>
+      </div>
+
       {round.sittingOut?.length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2.5 bg-yellow-400/10 border border-yellow-400/20 rounded-xl text-sm mb-3">
-          <span>⏳</span>
-          <span className="text-yellow-400 font-semibold shrink-0">Descansarán:</span>
-          <span className="text-gray-400">
-            {round.sittingOut.map((p) => p.name || `${p.p1}/${p.p2}`).join(" · ")}
-          </span>
+        <div className="px-4 py-2.5 border-b border-yellow-400/20 bg-yellow-400/10 flex items-center gap-2 text-sm">
+          <span className="text-yellow-400 font-semibold">⏳ Descansarán:</span>
+          <span className="text-gray-400">{round.sittingOut.map((p) => p.name || `${p.p1}/${p.p2}`).join(", ")}</span>
         </div>
       )}
 
-      <div className="mb-3">
-        <span className="text-xs font-bold text-gray-600 bg-[#1e293b] border border-gray-800 rounded-md px-2 py-0.5">
-          📅 Emparejamientos tentativos
-        </span>
-      </div>
-
-      {visibleCourts.map((court, ci) => (
-        <div key={ci} className="bg-[#1f2937] rounded-2xl border border-gray-700 overflow-hidden mb-3 opacity-70">
-          <div className="flex items-center px-4 py-2.5 border-b border-gray-700">
-            <span className="text-xs font-bold text-gray-600 tracking-widest">PISTA {ci + 1}</span>
-          </div>
-
-          <div className="grid px-4 py-4" style={{ gridTemplateColumns: "1fr auto 1fr", gap: "10px" }}>
+      {visibleCourts.map(({ court, i }) => (
+        <div key={i} className="px-4 py-4 border-t border-gray-800 first:border-0">
+          <div className="text-xs font-bold text-gray-500 tracking-widest mb-3">PISTA {i + 1}</div>
+          <div className="grid" style={{ gridTemplateColumns: "1fr auto 1fr", gap: "10px" }}>
             <div className="flex flex-col items-end self-center">
               {renderPair(court.pairA)}
             </div>
 
             <div className="flex items-center gap-1.5 self-center">
-              <input
-                type="text"
-                value="–"
-                readOnly
-                className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-800 text-center text-xl font-black text-gray-700 outline-none cursor-default select-none"
-              />
+              <div className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-800 flex items-center justify-center text-xl font-black text-gray-700">–</div>
               <span className="text-gray-700 font-black text-lg">-</span>
-              <input
-                type="text"
-                value="–"
-                readOnly
-                className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-800 text-center text-xl font-black text-gray-700 outline-none cursor-default select-none"
-              />
+              <div className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-800 flex items-center justify-center text-xl font-black text-gray-700">–</div>
             </div>
 
             <div className="flex flex-col items-start self-center">
