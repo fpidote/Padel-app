@@ -21,7 +21,7 @@ export default function History({ rounds, matchesSearch }) {
           .filter(({ court }) => filterCourt(court));
         if (!visibleCourts.length && matchesSearch) return null;
         return (
-          <div key={ri} className="bg-[#1f2937] rounded-2xl border border-gray-700 overflow-hidden">
+          <div key={ri} className="bg-[#1e293b] rounded-2xl border border-gray-700 overflow-hidden">
 
             {/* Header de ronda */}
             <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-700">
@@ -62,7 +62,7 @@ export default function History({ rounds, matchesSearch }) {
                     <span className="text-xs font-bold text-gray-600 tracking-widest">
                       PISTA {idx + 1}
                     </span>
-                    <div className="flex items-center gap-1.5 bg-[#111827] border border-gray-700 rounded-lg px-3 py-1.5">
+                    <div className="flex items-center gap-1.5 bg-[#0f172a] border border-gray-700 rounded-lg px-3 py-1.5">
                       <span className={`text-base font-black ${aWon ? 'text-green-400' : 'text-gray-500'}`}>
                         {court.scoreA}
                       </span>
