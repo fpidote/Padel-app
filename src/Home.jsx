@@ -98,7 +98,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-[#111827] text-gray-50" style={{ fontFamily: "system-ui" }}>
+    <div className="min-h-screen bg-[#0f172a] text-gray-50">
 
       {/* ── Modal de selección de formato ── */}
       {showModal && (
@@ -112,7 +112,7 @@ export default function Home() {
         >
           <div
             ref={modalRef}
-            className="w-full max-w-sm bg-[#1f2937] rounded-2xl p-6"
+            className="w-full max-w-sm bg-[#1e293b] rounded-2xl p-6"
           >
             {/* Header del modal */}
             <div className="flex items-start justify-between mb-1">
@@ -183,19 +183,7 @@ export default function Home() {
               </button>
 
               {menuOpen && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "calc(100% + 8px)",
-                    right: 0,
-                    background: "#1f2937",
-                    border: "1px solid #374151",
-                    borderRadius: 12,
-                    minWidth: 180,
-                    zIndex: 50,
-                    overflow: "hidden",
-                  }}
-                >
+                <div className="absolute top-[calc(100%+8px)] right-0 bg-[#1e293b] border border-[#374151] rounded-xl min-w-[180px] z-50 overflow-hidden">
                   {[
                     { icon: "📋", label: "Mis torneos", action: () => { setMenuOpen(false); navigate("/panel"); } },
                     { icon: "👤", label: "Mi perfil",   action: () => { setMenuOpen(false); navigate("/perfil"); } },
@@ -203,29 +191,15 @@ export default function Home() {
                     <button
                       key={item.label}
                       onClick={item.action}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 10,
-                        width: "100%", padding: "10px 16px",
-                        background: "transparent", border: "none",
-                        color: "#f9fafb", fontSize: 14, cursor: "pointer", textAlign: "left",
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "#374151")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                      className="flex items-center gap-2.5 w-full px-4 py-2.5 bg-transparent border-0 text-gray-50 text-sm cursor-pointer text-left hover:bg-[#374151] transition-colors"
                     >
                       <span>{item.icon}</span>{item.label}
                     </button>
                   ))}
-                  <div style={{ borderTop: "1px solid #374151", margin: "4px 0" }} />
+                  <div className="border-t border-[#374151] my-1" />
                   <button
                     onClick={() => { setMenuOpen(false); signOut(auth); }}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 10,
-                      width: "100%", padding: "10px 16px",
-                      background: "transparent", border: "none",
-                      color: "#f9fafb", fontSize: 14, cursor: "pointer", textAlign: "left",
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "#374151")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                    className="flex items-center gap-2.5 w-full px-4 py-2.5 bg-transparent border-0 text-gray-50 text-sm cursor-pointer text-left hover:bg-[#374151] transition-colors"
                   >
                     <span>🚪</span>Salir
                   </button>
