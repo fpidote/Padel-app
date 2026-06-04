@@ -252,111 +252,128 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
               </div>
             )}
 
-            {/* ── Tabs de rondas ── */}
-            {(t.precomputedRounds || t.rounds?.length > 0) && (
-              <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, marginBottom: 16 }}>
-                {t.precomputedRounds
-                  ? t.precomputedRounds.map((_, i) => {
-                      const rNum = i + 1;
-                      const isCurrent = rNum === t.roundNum;
-                      const isFuture = rNum > t.roundNum;
-                      const isActive = isCurrent ? viewingRound === null : viewingRound === rNum;
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => setViewingRound(isCurrent ? null : rNum)}
-                          style={{
-                            flexShrink: 0,
-                            padding: "6px 12px",
-                            borderRadius: 8,
-                            fontSize: 13,
-                            fontWeight: 700,
-                            border: "none",
-                            cursor: "pointer",
-                            background: isActive ? "#0284c7" : isFuture ? "#111827" : "#1f2937",
-                            color: isActive ? "#fff" : isFuture ? "#334155" : "#64748b",
-                          }}
-                        >
-                          R{rNum}{isCurrent ? " ●" : ""}
-                        </button>
-                      );
-                    })
-                  : <>
-                      {t.rounds.map((r, i) => (
-                        <button
-                          key={i}
-                          onClick={() => setViewingRound(i + 1)}
-                          style={{
-                            flexShrink: 0,
-                            padding: "6px 12px",
-                            borderRadius: 8,
-                            fontSize: 13,
-                            fontWeight: 700,
-                            border: "none",
-                            cursor: "pointer",
-                            background: viewingRound === i + 1 ? "#0284c7" : "#1f2937",
-                            color: viewingRound === i + 1 ? "#fff" : "#64748b",
-                          }}
-                        >
-                          R{r.num || i + 1}
-                        </button>
-                      ))}
-                      <button
-                        onClick={() => setViewingRound(null)}
-                        style={{
-                          flexShrink: 0,
-                          padding: "6px 12px",
-                          borderRadius: 8,
-                          fontSize: 13,
-                          fontWeight: 700,
-                          border: "none",
-                          cursor: "pointer",
-                          background: viewingRound === null ? "#0284c7" : "#1f2937",
-                          color: viewingRound === null ? "#fff" : "#94a3b8",
-                        }}
-                      >
-                        R{t.roundNum} ●
-                      </button>
-                    </>
-                }
-              </div>
-            )}
-
-            {viewingRound !== null ? (
-              (t.precomputedRounds && viewingRound > t.roundNum) ? (
-                <FutureRound
-                  round={t.precomputedRounds[viewingRound - 1]}
-                  matchesSearch={matchesSearch}
-                  isAdmin={isAdmin}
-                  useLevels={!!t.config.useLevels}
-                  showLevelsToggle={showLevelsToggle}
-                  players={t.players}
-                />
-              ) : (
-                <HistoryRound
-                  round={t.rounds[viewingRound - 1]}
-                  matchesSearch={matchesSearch}
-                  isAdmin={isAdmin}
-                  useLevels={!!t.config.useLevels}
-                  showLevelsToggle={showLevelsToggle}
-                  players={t.players}
-                />
-              )
-            ) : (
-              <CourtsAmericano
+            {search ? (
+              <AllRoundsPlayerView
                 t={t}
                 isAdmin={isAdmin}
                 ls={ls}
                 setLs={setLs}
-                allSaved={allSaved}
                 onSave={onSave}
-                onNext={onNext}
                 onEdit={onEdit}
                 matchesSearch={matchesSearch}
-                persist={persist}
-                isFinished={isFinished}
+                useLevels={!!t.config.useLevels}
                 showLevelsToggle={showLevelsToggle}
+                search={search}
               />
+            ) : (
+              <>
+                {/* ── Tabs de rondas ── */}
+                {(t.precomputedRounds || t.rounds?.length > 0) && (
+                  <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, marginBottom: 16 }}>
+                    {t.precomputedRounds
+                      ? t.precomputedRounds.map((_, i) => {
+                          const rNum = i + 1;
+                          const isCurrent = rNum === t.roundNum;
+                          const isFuture = rNum > t.roundNum;
+                          const isActive = isCurrent ? viewingRound === null : viewingRound === rNum;
+                          return (
+                            <button
+                              key={i}
+                              onClick={() => setViewingRound(isCurrent ? null : rNum)}
+                              style={{
+                                flexShrink: 0,
+                                padding: "6px 12px",
+                                borderRadius: 8,
+                                fontSize: 13,
+                                fontWeight: 700,
+                                border: "none",
+                                cursor: "pointer",
+                                background: isActive ? "#0284c7" : isFuture ? "#111827" : "#1f2937",
+                                color: isActive ? "#fff" : isFuture ? "#334155" : "#64748b",
+                              }}
+                            >
+                              R{rNum}{isCurrent ? " ●" : ""}
+                            </button>
+                          );
+                        })
+                      : <>
+                          {t.rounds.map((r, i) => (
+                            <button
+                              key={i}
+                              onClick={() => setViewingRound(i + 1)}
+                              style={{
+                                flexShrink: 0,
+                                padding: "6px 12px",
+                                borderRadius: 8,
+                                fontSize: 13,
+                                fontWeight: 700,
+                                border: "none",
+                                cursor: "pointer",
+                                background: viewingRound === i + 1 ? "#0284c7" : "#1f2937",
+                                color: viewingRound === i + 1 ? "#fff" : "#64748b",
+                              }}
+                            >
+                              R{r.num || i + 1}
+                            </button>
+                          ))}
+                          <button
+                            onClick={() => setViewingRound(null)}
+                            style={{
+                              flexShrink: 0,
+                              padding: "6px 12px",
+                              borderRadius: 8,
+                              fontSize: 13,
+                              fontWeight: 700,
+                              border: "none",
+                              cursor: "pointer",
+                              background: viewingRound === null ? "#0284c7" : "#1f2937",
+                              color: viewingRound === null ? "#fff" : "#94a3b8",
+                            }}
+                          >
+                            R{t.roundNum} ●
+                          </button>
+                        </>
+                    }
+                  </div>
+                )}
+
+                {viewingRound !== null ? (
+                  (t.precomputedRounds && viewingRound > t.roundNum) ? (
+                    <FutureRound
+                      round={t.precomputedRounds[viewingRound - 1]}
+                      matchesSearch={matchesSearch}
+                      isAdmin={isAdmin}
+                      useLevels={!!t.config.useLevels}
+                      showLevelsToggle={showLevelsToggle}
+                      players={t.players}
+                    />
+                  ) : (
+                    <HistoryRound
+                      round={t.rounds[viewingRound - 1]}
+                      matchesSearch={matchesSearch}
+                      isAdmin={isAdmin}
+                      useLevels={!!t.config.useLevels}
+                      showLevelsToggle={showLevelsToggle}
+                      players={t.players}
+                    />
+                  )
+                ) : (
+                  <CourtsAmericano
+                    t={t}
+                    isAdmin={isAdmin}
+                    ls={ls}
+                    setLs={setLs}
+                    allSaved={allSaved}
+                    onSave={onSave}
+                    onNext={onNext}
+                    onEdit={onEdit}
+                    matchesSearch={matchesSearch}
+                    persist={persist}
+                    isFinished={isFinished}
+                    showLevelsToggle={showLevelsToggle}
+                  />
+                )}
+              </>
             )}
           </>
         )}
@@ -576,16 +593,18 @@ function AllRoundsPlayerView({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSea
           highlightId={search}
         />
       ))}
-      <FilteredCurrentRound
-        t={t}
-        isAdmin={isAdmin}
-        ls={ls}
-        setLs={setLs}
-        onSave={onSave}
-        onEdit={onEdit}
-        matchesSearch={matchesSearch}
-        highlightId={search}
-      />
+      {t.currentRound?.length > 0 && (
+        <FilteredCurrentRound
+          t={t}
+          isAdmin={isAdmin}
+          ls={ls}
+          setLs={setLs}
+          onSave={onSave}
+          onEdit={onEdit}
+          matchesSearch={matchesSearch}
+          highlightId={search}
+        />
+      )}
       {t.precomputedRounds && t.precomputedRounds
         .slice(t.roundNum)
         .map((round, i) => (
