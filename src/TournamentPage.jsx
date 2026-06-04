@@ -28,7 +28,7 @@ export default function TournamentPage() {
           </p>
           <button
             onClick={() => navigate("/")}
-            className="mt-2 w-full py-3 rounded-xl font-bold text-sm bg-[#0284c7] hover:bg-sky-500 text-white cursor-pointer transition-colors"
+            className="mt-2 w-full py-3 rounded-xl font-black text-sm bg-[#84cc16] hover:bg-lime-400 text-[#14532d] cursor-pointer transition-colors"
           >
             Volver al inicio
           </button>
@@ -47,7 +47,7 @@ export default function TournamentPage() {
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-2 w-full py-3 rounded-xl font-bold text-sm bg-[#0284c7] hover:bg-sky-500 text-white cursor-pointer transition-colors"
+            className="mt-2 w-full py-3 rounded-xl font-black text-sm bg-[#84cc16] hover:bg-lime-400 text-[#14532d] cursor-pointer transition-colors"
           >
             Reintentar
           </button>
@@ -57,8 +57,8 @@ export default function TournamentPage() {
 
   if (!t)
     return (
-      <div style={{ padding: 20, textAlign: "center", color: "#f1f5f9" }}>
-        Cargando...
+      <div className="min-h-screen flex items-center justify-center">
+        <span className="text-sm font-semibold text-[#64748b] animate-pulse">Cargando torneo...</span>
       </div>
     );
 
