@@ -115,7 +115,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
       delete n[`${ci}_B`];
       return n;
     });
-    await persist({ ...t, currentPozoRound: updated });
+    await persist({ ...t, currentPozoRound: updated, scoringStarted: true });
   }
 
   async function onEditCourt(ci) {
@@ -190,6 +190,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
       timerElapsed:     0,
       timerStartedAt:   null,
       status:           isLastRound ? "finished" : t.status,
+      scoringStarted:   true,
     });
   }
 
@@ -272,6 +273,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
       timerElapsed:     0,
       timerStartedAt:   null,
       status:           isLastRound ? "finished" : t.status,
+      scoringStarted:   true,
     });
   }
 

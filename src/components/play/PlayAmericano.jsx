@@ -677,7 +677,6 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEd
     const { type, id, field, value } = renameModal;
     const trimmed = value.trim();
     if (!trimmed) return;
-    setRenameModal(null);
     try {
       if (type === "player") {
         const renameInArr = (arr) => (arr || []).map(p => p.id === id ? { ...p, name: trimmed } : p);
@@ -719,8 +718,10 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEd
           precomputedRounds: (t.precomputedRounds || []).map(renameRound),
         });
       }
+      setRenameModal(null);
     } catch (err) {
       console.error("Error al renombrar jugador:", err);
+      setRenameModal(prev => prev ? { ...prev, error: "No se pudo guardar el nombre. Intenta de nuevo." } : null);
     }
   }
 
@@ -899,6 +900,9 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEd
               onKeyDown={e => { if (e.key === "Enter") handleRenameConfirm(); if (e.key === "Escape") setRenameModal(null); }}
               className="w-full bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-2 text-gray-50 text-sm font-bold outline-none focus:border-[#38bdf8] mb-3"
             />
+            {renameModal.error && (
+              <p className="text-xs text-red-400 mb-3">{renameModal.error}</p>
+            )}
             <p className="text-xs text-amber-400/80 mb-5">
               Este cambio se reflejará en todas las rondas y tablas del torneo.
             </p>

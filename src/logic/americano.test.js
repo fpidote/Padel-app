@@ -503,18 +503,20 @@ describe("bestSplit — separación de avanzados (level >= 3)", () => {
     ).toBe(true);
   });
 
-  // T29: posibilidades limpias agotadas → acepta avanzados juntos
-  test("T29: cuando todas las combinaciones sin clash ya fueron usadas, acepta avanzados en el mismo equipo", () => {
+  // T29: posibilidades repetidas agotadas → sin historial gana frente a historial+balance
+  test("T29: cuando todas las combinaciones ya fueron usadas, elige la sin historial aunque desequilibre", () => {
     const players = [p(1, 3, 3), p(2, 3, 2), p(3, 2, 1), p(4, 1, 0)];
-    // ph cubre todas las opciones limpias: 1+3, 2+4, 1+4, 2+3 (usado 1 vez cada una)
-    // [1+3] vs [2+4]: 12+12+0+2=26  [1+4] vs [2+3]: 12+12+0+2=26
-    // [1+2] vs [3+4]: 0+0+15+6=21  ← gana el clash
+    // ph cubre las 4 combos con repetición: 1+3, 2+4, 1+4, 2+3 (1 vez c/u)
+    // p(id, level, pts): p1=lv3, p2=lv3, p3=lv2, p4=lv1
+    // [1+2] vs [3+4]: ph=0+0, clash([1+2])=1(ambos lv≥3), balance|6-3|=3 → 15+3*w=27 ← gana
+    // [1+3] vs [2+4]: ph=12+12, balance|5-4|=1 → 24+1*w=28
+    // [1+4] vs [2+3]: ph=12+12, balance|4-5|=1 → 24+1*w=28
     const ph = { "1_3": 1, "2_4": 1, "1_4": 1, "2_3": 1 };
     const { courts } = buildRoundAmericano(players, 1, ph, {}, "individual");
 
     const pairA = courts[0].pairA.map((x) => x.id);
     const pairB = courts[0].pairB.map((x) => x.id);
-    // Ahora 1 y 2 deben estar en el mismo equipo (clash aceptado)
+    // Debe elegir [1+2] vs [3+4]: clash pero sin historial gana vs no-clash con historial
     const hasClash =
       (pairA.includes(1) && pairA.includes(2)) ||
       (pairB.includes(1) && pairB.includes(2));

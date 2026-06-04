@@ -133,7 +133,7 @@ export default function PlayMundialito({
       delete n[`${matchId}_B`];
       return n;
     });
-    await persist({ ...t, groups: updatedGroups });
+    await persist({ ...t, groups: updatedGroups, scoringStarted: true });
   }
 
   async function onEditGroupMatch(groupId, matchId) {
@@ -227,7 +227,7 @@ export default function PlayMundialito({
       delete n[`${matchId}_B`];
       return n;
     });
-    await persist({ ...t, knockoutBracket: updated });
+    await persist({ ...t, knockoutBracket: updated, scoringStarted: true });
   }
 
   async function onEditKnockoutMatch(matchId) {

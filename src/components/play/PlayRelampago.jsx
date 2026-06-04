@@ -276,7 +276,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
         gc: pairs[idx].gc + (pi === 0 ? b : a),
       };
     });
-    await persist({ ...t, bracket: updated, pairs });
+    await persist({ ...t, bracket: updated, pairs, scoringStarted: true });
   }
 
   async function onEditMatch(matchId) {

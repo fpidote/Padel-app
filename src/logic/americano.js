@@ -306,7 +306,7 @@ function bestSplit(g, ph) {
       (ph[pk(pB[0].id, pB[1].id)] || 0) * 12 +
       highLevelClash(pA) * 15 +
       highLevelClash(pB) * 15 +
-      matchBalance(pA, pB) * 2;
+      matchBalance(pA, pB) * Math.floor(12 * PENALTY.MATCH_IMBALANCE / PENALTY.PARTNER_REPEAT);
     if (sc < bs) {
       bs = sc;
       best = [pA, pB];
