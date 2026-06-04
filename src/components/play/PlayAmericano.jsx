@@ -1018,13 +1018,11 @@ function HistoryRound({ round, roundNum, matchesSearch, isAdmin, useLevels, show
           <span className="text-xs font-bold text-gray-500 tracking-widest">RONDA {roundNum}</span>
           <span className="text-xs text-green-400 font-semibold">✓ completada</span>
         </div>
-        {round.sittingOut?.length > 0 && (
-          <div className="px-4 py-2.5 border-b border-yellow-400/20 bg-yellow-400/10 flex items-center gap-2 text-sm">
-            <span className="text-yellow-400 font-semibold">⏳ Descansaron:</span>
-            <span className="text-gray-400">{round.sittingOut.map((p) => p.name || `${p.p1}/${p.p2}`).join(", ")}</span>
+        {visibleCourts.length === 0 ? (
+          <div className="px-4 py-3 flex items-center gap-2 text-sm bg-yellow-400/10">
+            <span className="text-yellow-400 font-semibold">⏳ Descansó esta ronda</span>
           </div>
-        )}
-        {courtContent}
+        ) : courtContent}
       </div>
     );
   }
@@ -1115,13 +1113,11 @@ function FutureRound({ round, roundNum, matchesSearch, isAdmin, useLevels, showL
           <span className="text-xs font-bold text-gray-500 tracking-widest">RONDA {roundNum}</span>
           <span className="text-xs text-gray-600 font-semibold">📅 próxima</span>
         </div>
-        {round.sittingOut?.length > 0 && (
-          <div className="px-4 py-2.5 border-b border-yellow-400/20 bg-yellow-400/10 flex items-center gap-2 text-sm">
-            <span className="text-yellow-400 font-semibold">⏳ Descansarán:</span>
-            <span className="text-gray-400">{round.sittingOut.map((p) => p.name || `${p.p1}/${p.p2}`).join(", ")}</span>
+        {visibleCourts.length === 0 ? (
+          <div className="px-4 py-3 flex items-center gap-2 text-sm bg-yellow-400/10">
+            <span className="text-yellow-400 font-semibold">⏳ Descansará esta ronda</span>
           </div>
-        )}
-        {courtItems}
+        ) : courtItems}
       </div>
     );
   }
