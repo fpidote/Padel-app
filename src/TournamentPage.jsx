@@ -65,7 +65,8 @@ export default function TournamentPage() {
   const props = { t, code, isAdmin, persist, copyCode };
   const typeInfo = TOURNAMENT_TYPES.find((x) => x.id === t.type) || TOURNAMENT_TYPES[0];
 
-  const onEditTournament = () => setEditMode(true);
+  const canEditTournament = (t.rounds?.length ?? 0) === 0 && !t.currentRound?.some(c => c.saved);
+  const onEditTournament = canEditTournament ? () => setEditMode(true) : undefined;
 
   return (
     <Suspense fallback={<div className="p-4 text-center text-[#f1f5f9]">Cargando torneo...</div>}>
