@@ -107,7 +107,7 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
 
   const scoringLabel  = scoring === "timed" ? "Por tiempo" : scoring === "rally" ? "Rally scoring" : "Por games";
   const scoringDetail = scoring === "timed"
-    ? `${t.config.matchMinutes ?? 10} min por partido`
+    ? `${t.config.matchMinutes ?? 10} min · ${(t.config.timedMetric ?? "games") === "games" ? "Games ganados" : "Puntos acumulados"}`
     : scoring === "rally"
     ? `${t.config.rallyPoints ?? 24} puntos por partido`
     : `${t.config.targetGames ?? 6} games para ganar`;
