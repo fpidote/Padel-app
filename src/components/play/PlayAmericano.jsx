@@ -491,9 +491,9 @@ function FilteredCurrentRound({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSe
   }
 
   return (
-    <div className="bg-[#1f2937] rounded-2xl border border-sky-800 overflow-hidden">
-      <div className="px-4 py-2.5 border-b border-gray-700 flex items-center gap-2">
-        <span className="text-xs font-bold text-sky-400 tracking-widest">RONDA {t.roundNum}</span>
+    <div className="bg-[#1f2937] rounded-2xl border border-gray-700 overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-gray-700 flex items-center justify-between">
+        <span className="text-xs font-bold text-gray-500 tracking-widest">RONDA {t.roundNum}</span>
         <span className="text-xs text-sky-400 font-semibold">● EN CURSO</span>
       </div>
       {courts.length === 0 ? (
@@ -874,7 +874,7 @@ function HistoryRound({ round, matchesSearch, isAdmin, useLevels, showLevelsTogg
         const lvl = LEVELS[currentPlayer.level || 0];
         const isHighlighted = highlightId && String(p.id) === String(highlightId);
         return (
-          <span key={p.id} className={isHighlighted ? "font-black" : undefined}>
+          <span key={p.id} className={isHighlighted ? "font-black text-sky-300" : undefined}>
             {i > 0 && <span style={{ color: "#94a3b8" }}> & </span>}
             {p.name}
             {showLevel && (
@@ -887,49 +887,44 @@ function HistoryRound({ round, matchesSearch, isAdmin, useLevels, showLevelsTogg
       });
     }
     const isHighlighted = highlightId && String(pair?.id) === String(highlightId);
-    return <span className={isHighlighted ? "font-black" : undefined}>{pair?.p1} / {pair?.p2}</span>;
+    return <span className={isHighlighted ? "font-black text-sky-300" : undefined}>{pair?.p1} / {pair?.p2}</span>;
   };
-  const visibleCourts = (round.courts || []).filter(matchesSearch);
+  const visibleCourts = (round.courts || [])
+    .map((court, i) => ({ court, i }))
+    .filter(({ court }) => matchesSearch(court));
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div>
-        <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", background: "#1e293b", border: "1px solid #334155", borderRadius: 6, padding: "2px 8px" }}>
-          👁 Solo lectura — Ronda {round.num}
-        </span>
+    <div className="bg-[#1f2937] rounded-2xl border border-gray-700 overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-gray-700 flex items-center justify-between">
+        <span className="text-xs font-bold text-gray-500 tracking-widest">RONDA {round.num}</span>
+        <span className="text-xs text-green-400 font-semibold">✓ completada</span>
       </div>
 
       {round.sittingOut?.length > 0 && (
-        <div style={{ background: "#fbbf2422", border: "1px solid #fbbf2455", color: "#fbbf24", padding: 12, borderRadius: 8, fontSize: 14 }}>
-          <span style={{ fontWeight: 700 }}>⏳ Descansaron: </span>
-          <span style={{ fontWeight: 500 }}>
-            {round.sittingOut.map((p) => p.name || `${p.p1}/${p.p2}`).join(", ")}
-          </span>
+        <div className="px-4 py-2.5 border-b border-yellow-400/20 bg-yellow-400/10 flex items-center gap-2 text-sm">
+          <span className="text-yellow-400 font-semibold">⏳ Descansaron:</span>
+          <span className="text-gray-400">{round.sittingOut.map((p) => p.name || `${p.p1}/${p.p2}`).join(", ")}</span>
         </div>
       )}
 
-      {visibleCourts.map((court, ci) => {
+      {visibleCourts.map(({ court, i }) => {
         const a = parseInt(court.scoreA), b = parseInt(court.scoreB);
         const wonA = !isNaN(a) && !isNaN(b) && a > b;
         const wonB = !isNaN(a) && !isNaN(b) && b > a;
         return (
-          <div key={ci} style={{ background: "#1e293b", borderRadius: 12, padding: 16, borderLeft: "4px solid #334155" }}>
-            <div style={{ fontSize: 13, color: "#94a3b8", fontWeight: 700, marginBottom: 12 }}>
-              Pista {ci + 1}
-            </div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-              <div style={{ flex: 1, textAlign: "right" }}>
-                <div style={{ fontSize: 11, color: "#64748b", marginBottom: 4, textTransform: "uppercase", fontWeight: 700 }}>Pareja A</div>
-                <div style={{ fontWeight: 700, color: wonA ? "#4ade80" : "#f1f5f9", fontSize: 14 }}>
+          <div key={i} className="px-4 py-4 border-t border-gray-800 first:border-0">
+            <div className="text-xs font-bold text-gray-500 tracking-widest mb-3">PISTA {i + 1}</div>
+            <div className="grid" style={{ gridTemplateColumns: "1fr auto 1fr", gap: "10px" }}>
+              <div className="flex flex-col items-end self-center">
+                <div style={{ fontWeight: 700, color: wonA ? "#4ade80" : "#f1f5f9", fontSize: 14, textAlign: "right" }}>
                   {renderPairName(court.pairA)}
                   {wonA && <span style={{ marginLeft: 6 }}>🏆</span>}
                 </div>
               </div>
-              <div style={{ background: "#0f172a", padding: "8px 14px", borderRadius: 8, fontSize: 24, fontWeight: 900, color: "#f1f5f9" }}>
+              <div className="flex items-center self-center" style={{ background: "#0f172a", padding: "8px 14px", borderRadius: 8, fontSize: 24, fontWeight: 900, color: "#f1f5f9" }}>
                 {court.scoreA}-{court.scoreB}
               </div>
-              <div style={{ flex: 1, textAlign: "left" }}>
-                <div style={{ fontSize: 11, color: "#64748b", marginBottom: 4, textTransform: "uppercase", fontWeight: 700 }}>Pareja B</div>
+              <div className="flex flex-col items-start self-center">
                 <div style={{ fontWeight: 700, color: wonB ? "#4ade80" : "#f1f5f9", fontSize: 14 }}>
                   {wonB && <span style={{ marginRight: 6 }}>🏆</span>}
                   {renderPairName(court.pairB)}
