@@ -464,7 +464,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
   );
 }
 
-function FilteredCurrentRound({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSearch, highlightId }) {
+function FilteredCurrentRound({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSearch, highlightId, useLevels, showLevelsToggle }) {
   const courts = (t.currentRound || [])
     .map((court, ci) => ({ court, ci }))
     .filter(({ court }) => matchesSearch(court));
@@ -473,13 +473,27 @@ function FilteredCurrentRound({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSe
     (p) => String(p.id ?? p) === String(highlightId)
   );
 
+  const showLevel = useLevels && isAdmin && showLevelsToggle;
+  const playersDict = useMemo(() => {
+    const dict = {};
+    t.players?.forEach(p => { dict[p.id] = p; });
+    return dict;
+  }, [t.players]);
+
   function renderName(pair) {
     if (Array.isArray(pair)) {
       return pair.map((p) => {
         const isHighlighted = highlightId && String(p.id) === String(highlightId);
+        const currentPlayer = playersDict[p.id] || p;
+        const lvl = LEVELS[currentPlayer.level || 0];
         return (
-          <span key={p.id} className={`text-sm leading-snug block ${isHighlighted ? "font-black text-sky-300" : "font-bold text-gray-50"}`}>
+          <span key={p.id} className={`text-sm leading-snug flex items-center gap-1 ${isHighlighted ? "font-black text-sky-300" : "font-bold text-gray-50"}`}>
             {p.name}
+            {showLevel && currentPlayer.level > 0 && lvl && (
+              <span style={{ fontSize: 10, fontWeight: 700, background: lvl.color + "20", color: lvl.color, borderRadius: 4, padding: "1px 4px" }}>
+                {lvl.short}
+              </span>
+            )}
           </span>
         );
       });
@@ -573,7 +587,7 @@ function FilteredCurrentRound({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSe
   );
 }
 
-function AllRoundsPlayerView({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSearch, useLevels, showLevelsToggle, search }) {
+function AllRoundsPlayerView({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSearch, useLevels, showLevelsToggle, search, isPairs }) {
   const hasPast = (t.rounds || []).length > 0;
   const hasFuture = t.precomputedRounds && t.precomputedRounds.length > t.roundNum;
 
@@ -606,6 +620,8 @@ function AllRoundsPlayerView({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSea
           onEdit={onEdit}
           matchesSearch={matchesSearch}
           highlightId={search}
+          useLevels={useLevels}
+          showLevelsToggle={showLevelsToggle}
         />
       )}
       {t.precomputedRounds && t.precomputedRounds
