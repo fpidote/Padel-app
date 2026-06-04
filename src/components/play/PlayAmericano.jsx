@@ -646,8 +646,7 @@ function AllRoundsPlayerView({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSea
 }
 
 function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEdit, matchesSearch, persist, isFinished, showLevelsToggle }) {
-  const [editingName, setEditingName] = useState(null);
-  const debName = useRef(null);
+  const [renameModal, setRenameModal] = useState(null);
   const showLevel = t.config.useLevels && isAdmin && showLevelsToggle;
   const isPairs = t.config.mode === "pairs";
 
@@ -668,41 +667,64 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEd
     return a !== undefined && b !== undefined && a !== "" && b !== "" && Number(a) !== Number(b);
   }
 
-  function handleNameChange(type, id, field, val) {
-    setEditingName(prev => prev ? { ...prev, value: val } : null);
-    clearTimeout(debName.current);
-    debName.current = setTimeout(async () => {
-      try {
-        if (type === "player") {
-          const updatedPlayers = (t.players || []).map(p => p.id === id ? { ...p, name: val } : p);
-          const updatedRound = (t.currentRound || []).map(c => ({
-            ...c,
-            pairA: Array.isArray(c.pairA) ? c.pairA.map(p => p.id === id ? { ...p, name: val } : p) : c.pairA,
-            pairB: Array.isArray(c.pairB) ? c.pairB.map(p => p.id === id ? { ...p, name: val } : p) : c.pairB,
-          }));
-          await persist({ ...t, players: updatedPlayers, currentRound: updatedRound });
-        } else {
-          const updatedPairs = (t.pairs || []).map(p => p.id === id ? { ...p, [field]: val } : p);
-          const updatedRound = (t.currentRound || []).map(c => ({
-            ...c,
-            pairA: c.pairA?.id === id ? { ...c.pairA, [field]: val } : c.pairA,
-            pairB: c.pairB?.id === id ? { ...c.pairB, [field]: val } : c.pairB,
-          }));
-          await persist({ ...t, pairs: updatedPairs, currentRound: updatedRound });
-        }
-      } catch (err) {
-        console.error("Error al guardar nombre:", err);
-      }
-    }, 800);
-  }
-
   function getCurrentName(type, id, field) {
     if (type === "player") return (t.players || []).find(p => p.id === id)?.[field] ?? "";
     return (t.pairs || []).find(p => p.id === id)?.[field] ?? "";
   }
 
+  async function handleRenameConfirm() {
+    if (!renameModal) return;
+    const { type, id, field, value } = renameModal;
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    setRenameModal(null);
+    try {
+      if (type === "player") {
+        const renameInArr = (arr) => (arr || []).map(p => p.id === id ? { ...p, name: trimmed } : p);
+        const renameCourt = (c) => ({
+          ...c,
+          pairA: Array.isArray(c.pairA) ? renameInArr(c.pairA) : c.pairA,
+          pairB: Array.isArray(c.pairB) ? renameInArr(c.pairB) : c.pairB,
+        });
+        const renameRound = (round) => ({
+          ...round,
+          courts: (round.courts || []).map(renameCourt),
+          sittingOut: renameInArr(round.sittingOut),
+        });
+        await persist({
+          ...t,
+          players: renameInArr(t.players),
+          currentRound: (t.currentRound || []).map(renameCourt),
+          sittingOut: renameInArr(t.sittingOut),
+          rounds: (t.rounds || []).map(renameRound),
+          precomputedRounds: (t.precomputedRounds || []).map(renameRound),
+        });
+      } else {
+        const renameCourt = (c) => ({
+          ...c,
+          pairA: c.pairA?.id === id ? { ...c.pairA, [field]: trimmed } : c.pairA,
+          pairB: c.pairB?.id === id ? { ...c.pairB, [field]: trimmed } : c.pairB,
+        });
+        const renameRound = (round) => ({
+          ...round,
+          courts: (round.courts || []).map(renameCourt),
+          sittingOut: (round.sittingOut || []).map(p => p.id === id ? { ...p, [field]: trimmed } : p),
+        });
+        await persist({
+          ...t,
+          pairs: (t.pairs || []).map(p => p.id === id ? { ...p, [field]: trimmed } : p),
+          currentRound: (t.currentRound || []).map(renameCourt),
+          sittingOut: (t.sittingOut || []).map(p => p.id === id ? { ...p, [field]: trimmed } : p),
+          rounds: (t.rounds || []).map(renameRound),
+          precomputedRounds: (t.precomputedRounds || []).map(renameRound),
+        });
+      }
+    } catch (err) {
+      console.error("Error al renombrar jugador:", err);
+    }
+  }
+
   function renderEditableName(type, id, field, displayName, lvl, levelPosition) {
-    const isEditingThis = editingName?.type === type && editingName?.id === id && editingName?.field === field;
     return (
       <div key={`${type}-${id}-${field}`} className="leading-snug flex items-center gap-1">
         {levelPosition === "before" && showLevel && lvl && (
@@ -710,24 +732,13 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEd
             {lvl.short}
           </span>
         )}
-        {isAdmin && isEditingThis ? (
-          <input
-            autoFocus
-            value={editingName.value}
-            onChange={e => handleNameChange(type, id, field, e.target.value)}
-            onBlur={() => setEditingName(null)}
-            onKeyDown={e => e.key === "Enter" && setEditingName(null)}
-            style={{ background: "transparent", border: "none", borderBottom: "1px solid #0284c7", fontSize: 14, fontWeight: 700, color: "#f1f5f9", outline: "none", width: 90 }}
-          />
-        ) : (
-          <span
-            className="text-sm font-bold text-gray-50"
-            onClick={() => isAdmin && setEditingName({ type, id, field, value: getCurrentName(type, id, field) })}
-            style={isAdmin ? { cursor: "pointer" } : undefined}
-          >
-            {displayName}
-          </span>
-        )}
+        <span
+          className="text-sm font-bold text-gray-50"
+          onClick={() => isAdmin && setRenameModal({ type, id, field, value: getCurrentName(type, id, field) })}
+          style={isAdmin ? { cursor: "pointer" } : undefined}
+        >
+          {displayName}
+        </span>
         {levelPosition === "after" && showLevel && lvl && (
           <span style={{ fontSize: 10, fontWeight: 700, background: lvl.color + "20", color: lvl.color, borderRadius: 4, padding: "1px 4px" }}>
             {lvl.short}
@@ -875,6 +886,37 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEd
       {!isAdmin && !allSaved && (
         <div className="text-center text-gray-600 py-5 text-sm">
           👀 Modo vista · Esperando resultados
+        </div>
+      )}
+      {renameModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4" onClick={() => setRenameModal(null)}>
+          <div className="bg-[#1e293b] rounded-2xl border border-[#334155] p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <h3 className="text-gray-50 font-bold text-base mb-4">Cambiar nombre</h3>
+            <input
+              autoFocus
+              value={renameModal.value}
+              onChange={e => setRenameModal(prev => ({ ...prev, value: e.target.value }))}
+              onKeyDown={e => { if (e.key === "Enter") handleRenameConfirm(); if (e.key === "Escape") setRenameModal(null); }}
+              className="w-full bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-2 text-gray-50 text-sm font-bold outline-none focus:border-[#38bdf8] mb-3"
+            />
+            <p className="text-xs text-amber-400/80 mb-5">
+              Este cambio se reflejará en todas las rondas y tablas del torneo.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setRenameModal(null)}
+                className="flex-1 py-2 rounded-lg border border-[#334155] text-gray-400 text-sm font-bold cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleRenameConfirm}
+                className="flex-1 py-2 rounded-lg bg-[#38bdf8] text-[#0f172a] text-sm font-black cursor-pointer"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
