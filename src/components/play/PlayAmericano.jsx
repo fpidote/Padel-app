@@ -696,7 +696,7 @@ function HistoryRound({ round, matchesSearch, isAdmin, useLevels, showLevelsTogg
         const lvl = LEVELS[currentPlayer.level || 0];
         const isHighlighted = highlightId && String(p.id) === String(highlightId);
         return (
-          <span key={p.id} style={isHighlighted ? { fontWeight: 900 } : undefined}>
+          <span key={p.id} className={isHighlighted ? "font-black" : undefined}>
             {i > 0 && <span style={{ color: "#94a3b8" }}> & </span>}
             {p.name}
             {showLevel && (
@@ -709,7 +709,7 @@ function HistoryRound({ round, matchesSearch, isAdmin, useLevels, showLevelsTogg
       });
     }
     const isHighlighted = highlightId && String(pair?.id) === String(highlightId);
-    return <span style={isHighlighted ? { fontWeight: 900 } : undefined}>{pair?.p1} / {pair?.p2}</span>;
+    return <span className={isHighlighted ? "font-black" : undefined}>{pair?.p1} / {pair?.p2}</span>;
   };
   const visibleCourts = (round.courts || []).filter(matchesSearch);
 
