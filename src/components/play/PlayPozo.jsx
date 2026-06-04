@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { collection, addDoc, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "../../firebase";
 import { B, TOURNAMENT_RULES } from "../../logic/constants";
@@ -357,7 +357,9 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {/* ── Filtro por jugador ── */}
             <div className="w-full sm:max-w-xs">
-              <label className="text-xs text-gray-500 font-semibold block mb-1.5">🔍 Filtrar por jugador</label>
+              <label className="text-xs text-gray-500 font-semibold block mb-1.5">
+                {isMixer ? "🔍 Filtrar por jugador" : "🔍 Filtrar por pareja"}
+              </label>
               <select
                 value={search ?? ""}
                 onChange={(e) => setSearch(e.target.value === "" ? null : e.target.value)}
@@ -709,7 +711,7 @@ function PozoAllRoundsView({ t, isAdmin, ls, setLs, onSaveCourt, onEditCourt, ma
     const wonA = !isNaN(a) && !isNaN(b) && a > b;
     const wonB = !isNaN(a) && !isNaN(b) && b > a;
     return (
-      <div key={ci} className="px-4 py-4 border-t border-gray-800 first:border-0">
+      <div className="px-4 py-4 border-t border-gray-800 first:border-0">
         <div className="grid" style={{ gridTemplateColumns: "1fr auto 1fr", gap: "10px" }}>
           <div className="flex flex-col items-end self-center">
             {renderPair(court.pairA, getHighlight(court.pairA))}
@@ -735,7 +737,7 @@ function PozoAllRoundsView({ t, isAdmin, ls, setLs, onSaveCourt, onEditCourt, ma
     const wonA = court.saved && parseInt(court.scoreA) > parseInt(court.scoreB);
     const wonB = court.saved && parseInt(court.scoreB) > parseInt(court.scoreA);
     return (
-      <div key={ci} className="px-4 py-4 border-t border-gray-800 first:border-0">
+      <div className="px-4 py-4 border-t border-gray-800 first:border-0">
         <div className="grid" style={{ gridTemplateColumns: "1fr auto 1fr", gap: "10px" }}>
           <div className="flex flex-col items-end self-center">
             {renderPair(court.pairA, getHighlight(court.pairA))}
@@ -794,7 +796,9 @@ function PozoAllRoundsView({ t, isAdmin, ls, setLs, onSaveCourt, onEditCourt, ma
             {filteredCourts.length === 0 ? (
               <div className="px-4 py-4 text-center text-sm text-amber-400 font-semibold">⏳ Descansó</div>
             ) : (
-              filteredCourts.map(({ court, ci }) => renderHistoricalCourt(court, ci))
+              filteredCourts.map(({ court, ci }) => (
+                <React.Fragment key={ci}>{renderHistoricalCourt(court, ci)}</React.Fragment>
+              ))
             )}
           </div>
         );
@@ -813,7 +817,9 @@ function PozoAllRoundsView({ t, isAdmin, ls, setLs, onSaveCourt, onEditCourt, ma
             {filteredCourts.length === 0 ? (
               <div className="px-4 py-4 text-center text-sm text-amber-400 font-semibold">⏳ Descansa esta ronda</div>
             ) : (
-              filteredCourts.map(({ court, ci }) => renderCurrentCourt(court, ci))
+              filteredCourts.map(({ court, ci }) => (
+                <React.Fragment key={ci}>{renderCurrentCourt(court, ci)}</React.Fragment>
+              ))
             )}
           </div>
         );
