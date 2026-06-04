@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { collection, query, where, orderBy, onSnapshot, deleteDoc, doc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { db, auth } from "./firebase";
-import { TOURNAMENT_TYPES, B } from "./logic/constants";
+import { TOURNAMENT_TYPES } from "./logic/constants";
 import { SimpleModal } from "./components/shared/Components";
 
 const STATUS = {
@@ -63,83 +63,79 @@ export default function Panel() {
     });
   }
 
-  if (user === undefined) return null; // espera auth
+  if (user === undefined) return null;
 
   return (
     <>
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#0f172a",
-        color: "#f1f5f9",
-        fontFamily: "system-ui",
-        padding: "24px 16px",
-      }}
-    >
-      <div style={{ maxWidth: 560, margin: "0 auto" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28 }}>
-          <button
-            onClick={() => navigate("/")}
-            style={{
-              background: "none",
-              border: "none",
-              color: "#64748b",
-              fontSize: 20,
-              cursor: "pointer",
-              padding: 0,
-              lineHeight: 1,
-            }}
-          >
-            ←
-          </button>
-          <h1 style={{ fontSize: 20, fontWeight: 800, color: "#f1f5f9", margin: 0 }}>
-            Mis torneos
-          </h1>
-        </div>
+      <div className="min-h-screen bg-[#0f172a] text-[#f1f5f9] px-4 py-6">
+        <div className="max-w-lg mx-auto">
 
-        {loading && (
-          <p style={{ color: "#64748b", textAlign: "center" }}>Cargando...</p>
-        )}
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-7">
+            <button
+              onClick={() => navigate("/")}
+              className="w-8 h-8 rounded-lg bg-[#1e293b] border border-[#334155] flex items-center justify-center text-sm text-[#94a3b8] hover:text-[#f1f5f9] cursor-pointer transition-colors flex-shrink-0"
+            >
+              ←
+            </button>
+            <h1 className="text-xl font-black text-[#f1f5f9]">Mis torneos</h1>
+            {!loading && torneos.length > 0 && (
+              <span className="ml-auto text-sm font-semibold text-[#64748b]">
+                {torneos.length} {torneos.length === 1 ? "torneo" : "torneos"}
+              </span>
+            )}
+          </div>
 
-        {!loading && torneos.length === 0 && (
-          <p style={{ color: "#64748b", textAlign: "center" }}>
-            Todavía no creaste ningún torneo.
-          </p>
-        )}
+          {/* Loading */}
+          {loading && (
+            <p className="text-[#64748b] text-center text-sm animate-pulse">Cargando...</p>
+          )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {torneos.map((t) => {
-            const typeInfo = TOURNAMENT_TYPES.find((x) => x.id === t.type);
-            const s = STATUS[t.status] ?? STATUS.finished;
-            return (
-              <div
-                key={t.code}
-                style={{
-                  background: "#1e293b",
-                  borderRadius: 12,
-                  padding: "14px 16px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 10,
-                }}
+          {/* Empty state */}
+          {!loading && torneos.length === 0 && (
+            <div className="flex flex-col items-center gap-4 py-12 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-[#1e293b] border border-[#334155] flex items-center justify-center text-3xl">
+                🏓
+              </div>
+              <div>
+                <p className="text-base font-bold text-[#f1f5f9] mb-1">Sin torneos todavía</p>
+                <p className="text-sm text-[#64748b] leading-relaxed">
+                  Creá tu primer torneo y compartilo con tus jugadores.
+                </p>
+              </div>
+              <button
+                onClick={() => navigate("/")}
+                className="bg-[#84cc16] text-[#14532d] font-black rounded-xl px-6 py-2.5 text-sm cursor-pointer border-0 mt-1"
               >
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                    <span style={{ fontSize: 20, flexShrink: 0 }}>{typeInfo?.icon ?? "🏓"}</span>
-                    <div style={{ minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontWeight: 700,
-                          fontSize: 15,
-                          color: "#f1f5f9",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                      >
-                        {t.name}
-                      </div>
-                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                + Crear torneo
+              </button>
+            </div>
+          )}
+
+          {/* Lista de torneos */}
+          <div className="flex flex-col gap-3">
+            {torneos.map((t) => {
+              const typeInfo = TOURNAMENT_TYPES.find((x) => x.id === t.type);
+              const s = STATUS[t.status] ?? STATUS.finished;
+              return (
+                <div
+                  key={t.code}
+                  className="bg-[#1e293b] border border-[#334155] rounded-2xl overflow-hidden"
+                >
+                  {/* Card body */}
+                  <div
+                    className="flex items-center gap-3 px-4 py-3.5"
+                    style={{ borderLeft: `3px solid ${typeInfo?.color ?? "#334155"}` }}
+                  >
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                      style={{ background: `${typeInfo?.color ?? "#334155"}18` }}
+                    >
+                      {typeInfo?.icon ?? "🏓"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-sm text-[#f1f5f9] truncate">{t.name}</div>
+                      <div className="text-xs text-[#64748b] mt-0.5">
                         {typeInfo?.name ?? t.type}
                         {t.createdAt && (
                           <>
@@ -153,67 +149,53 @@ export default function Panel() {
                         )}
                       </div>
                     </div>
+                    <span
+                      className="text-[11px] font-bold rounded-full px-2.5 py-0.5 border flex items-center gap-1.5 flex-shrink-0 whitespace-nowrap"
+                      style={{ color: s.color, background: s.bg, borderColor: s.border }}
+                    >
+                      {t.status === "playing" && (
+                        <span
+                          className="animate-pulse w-1.5 h-1.5 rounded-full flex-shrink-0"
+                          style={{ background: s.color }}
+                        />
+                      )}
+                      {s.label}
+                    </span>
                   </div>
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 4,
-                      fontSize: 11,
-                      fontWeight: 700,
-                      color: s.color,
-                      background: s.bg,
-                      border: `1px solid ${s.border}`,
-                      borderRadius: 99,
-                      padding: "3px 10px",
-                      flexShrink: 0,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {t.status === "playing" && (
-                      <span className="animate-pulse" style={{
-                        width: 6, height: 6, borderRadius: "50%",
-                        background: "#22c55e", flexShrink: 0,
-                      }} />
-                    )}
-                    {s.label}
-                  </span>
-                </div>
 
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    onClick={() => navigate(`/torneo/${t.code}`)}
-                    style={B("#0284c7", { flex: 1, padding: "8px 0", borderRadius: 8 })}
-                  >
-                    Entrar
-                  </button>
-                  <button
-                    onClick={() => onDelete(t.code)}
-                    style={B("#7f1d1d", {
-                      padding: "8px 14px",
-                      borderRadius: 8,
-                      background: "#1e293b",
-                      border: "1px solid #ef444444",
-                      color: "#ef4444",
-                    })}
-                  >
-                    Borrar
-                  </button>
+                  {/* Card footer */}
+                  <div className="flex border-t border-[#334155]">
+                    <button
+                      onClick={() => navigate(`/torneo/${t.code}`)}
+                      className="flex-1 py-2.5 text-sm font-bold cursor-pointer bg-transparent border-0 transition-colors hover:bg-[#263349]"
+                      style={{ color: typeInfo?.color ?? "#94a3b8" }}
+                    >
+                      Entrar →
+                    </button>
+                    <div className="w-px bg-[#334155]" />
+                    <button
+                      onClick={() => onDelete(t.code)}
+                      className="px-4 py-2.5 text-sm text-[#64748b] hover:text-[#ef4444] hover:bg-[#ef4444]/5 cursor-pointer bg-transparent border-0 transition-colors"
+                    >
+                      🗑
+                    </button>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+
         </div>
       </div>
-    </div>
 
-    {modalMsg && (
-      <SimpleModal
-        message={modalMsg.message}
-        onClose={() => setModalMsg(null)}
-        onConfirm={modalMsg.onConfirm}
-      />
-    )}
+      {modalMsg && (
+        <SimpleModal
+          message={modalMsg.message}
+          onClose={() => setModalMsg(null)}
+          onConfirm={modalMsg.onConfirm}
+          icon="🗑️"
+        />
+      )}
     </>
   );
 }
