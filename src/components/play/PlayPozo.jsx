@@ -32,6 +32,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
   const [localTimer, setLocalTimer] = useState(0);
   const [matches, setMatches] = useState(null);
   const [showFinishModal, setShowFinishModal] = useState(false);
+  const [search, setSearch] = useState(null);
   const timerRef = useRef(null);
 
   async function loadStats() {
@@ -276,6 +277,22 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
 
   const allSaved   = t.currentPozoRound?.every((c) => c.saved);
   const isFinished = t.status === "finished";
+
+  const isMixer = t.config?.pozoMode === "mixer";
+  const allPozoEntities = isMixer
+    ? [...(t.players || [])].sort((a, b) => a.name.localeCompare(b.name))
+        .map((p) => ({ id: p.id, label: p.name }))
+    : [...(t.pairs || [])].sort((a, b) => `${a.p1} ${a.p2}`.localeCompare(`${b.p1} ${b.p2}`))
+        .map((p) => ({ id: p.id, label: `${p.p1} / ${p.p2}` }));
+
+  function matchesPozoSearch(court) {
+    if (!search) return true;
+    if (isMixer) {
+      return (court.pairA?._playerIds || []).map(String).includes(String(search)) ||
+             (court.pairB?._playerIds || []).map(String).includes(String(search));
+    }
+    return String(court.pairA?.id) === String(search) || String(court.pairB?.id) === String(search);
+  }
   const roundLabel = t.config.targetRounds
     ? `Ronda ${isFinished ? t.roundNum - 1 : t.roundNum} / ${t.config.targetRounds}`
     : `Ronda ${isFinished ? t.roundNum - 1 : t.roundNum}`;
@@ -338,201 +355,231 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
       <div style={{ padding: "0 16px" }}>
         {tab === "courts" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {/* Timer */}
-            <div style={{ background: "#1e293b", padding: 16, borderRadius: 12, textAlign: "center" }}>
-              <div style={{ color: "#94a3b8", fontSize: 13, fontWeight: 700, marginBottom: 8, textTransform: "uppercase" }}>
-                Tiempo de ronda
-              </div>
-              <div style={{ fontSize: 48, fontWeight: 900, color: timeExpired ? "#ef4444" : "#f1f5f9", fontFamily: "monospace", lineHeight: 1 }}>
-                {fmtTime(remaining)}
-              </div>
-              <div style={{ background: "#334155", height: 4, borderRadius: 2, marginTop: 12, overflow: "hidden" }}>
-                <div style={{
-                  background: timeExpired ? "#ef4444" : "#38bdf8",
-                  height: "100%", width: `${pct}%`, transition: "width 0.5s linear",
-                }} />
-              </div>
-              {timeExpired && (
-                <div style={{ color: "#ef4444", fontWeight: 700, marginTop: 12 }}>
-                  ⏳ ¡Tiempo! Guarda los resultados y rota
-                </div>
-              )}
-              {isAdmin && (
-                <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 16 }}>
-                  <button onClick={toggleTimer} style={B(t.timerRunning ? "#f59e0b" : "#10b981", { padding: "8px 24px", fontSize: 16 })}>
-                    {t.timerRunning ? "⏸ Pausar" : "▶️ Iniciar"}
-                  </button>
-                  <button
-                    onClick={() => persist({ ...t, timerRunning: false, timerElapsed: 0, timerStartedAt: null })}
-                    style={B("#334155", { padding: "8px 14px" })}
-                  >
-                    Reset
-                  </button>
-                </div>
-              )}
+            {/* ── Filtro por jugador ── */}
+            <div className="w-full sm:max-w-xs">
+              <label className="text-xs text-gray-500 font-semibold block mb-1.5">🔍 Filtrar por jugador</label>
+              <select
+                value={search ?? ""}
+                onChange={(e) => setSearch(e.target.value === "" ? null : e.target.value)}
+                className="w-full bg-[#1f2937] border border-gray-700 rounded-xl text-gray-50 px-4 py-2.5 text-sm outline-none"
+              >
+                <option value="">{isMixer ? "👥 Todos los jugadores" : "👥 Todas las parejas"}</option>
+                {allPozoEntities.map((p) => (
+                  <option key={p.id} value={p.id}>{p.label}</option>
+                ))}
+              </select>
             </div>
 
-            {/* Jugador que descansa (mixer con impar) */}
-            {t.sittingOut?.length > 0 && (
-              <div style={{
-                background: "#f59e0b22", border: "1px solid #f59e0b44",
-                borderRadius: 10, padding: "10px 14px", fontSize: 13,
-                color: "#fbbf24", fontWeight: 600,
-              }}>
-                ⏳ Descansa esta ronda:{" "}
-                {t.sittingOut
-                  .map((id) => (t.players || []).find((p) => p.id === id)?.name || id)
-                  .join(", ")}
-              </div>
-            )}
-
-            {/* Pistas */}
-            {(t.currentPozoRound || []).map((court, ci) => {
-              const sA    = ls[`${ci}_A`] ?? (court.scoreA != null ? String(court.scoreA) : "");
-              const sB    = ls[`${ci}_B`] ?? (court.scoreB != null ? String(court.scoreB) : "");
-              const a     = parseInt(sA);
-              const b     = parseInt(sB);
-              const valid = !isNaN(a) && !isNaN(b) && a >= 0 && b >= 0 && a !== b;
-              const isTop         = court.courtNum === 1;
-              const isBottom      = court.courtNum === t.config.courts;
-              const hasSittingOut = (t.sittingOut?.length ?? 0) > 0;
-
-              return (
-                <div
-                  key={ci}
-                  className="bg-[#1f2937] rounded-2xl border overflow-hidden"
-                  style={{ borderColor: isTop ? "#f59e0b" : "#374151" }}
-                >
-                  {/* Header */}
-                  <div className="flex justify-between items-center px-4 py-2.5 border-b border-gray-700">
-                    <span className="text-xs font-bold text-gray-500 tracking-widest">
-                      {isTop ? "👑 " : ""}PISTA {court.courtNum}
-                      {isTop && <span className="ml-2 text-yellow-400 normal-case tracking-normal font-semibold text-xs">Rey</span>}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      {!isTop && <span className="text-xs text-sky-400 font-semibold">↑ Ganador sube</span>}
-                      {court.saved && <span className="text-xs text-green-400 font-semibold">✅ Guardado</span>}
-                      {court.saved && isAdmin && (
-                        <button
-                          onClick={() => onEditCourt(ci)}
-                          className="text-xs font-semibold text-gray-500 hover:text-sky-400 bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded-lg cursor-pointer transition-colors"
-                        >
-                          ✏️ Editar
-                        </button>
-                      )}
-                    </div>
+            {search ? (
+              <PozoAllRoundsView
+                t={t}
+                isAdmin={isAdmin}
+                ls={ls}
+                setLs={setLs}
+                onSaveCourt={onSaveCourt}
+                onEditCourt={onEditCourt}
+                matchesSearch={matchesPozoSearch}
+                highlightId={search}
+              />
+            ) : (
+              <>
+                {/* Timer */}
+                <div style={{ background: "#1e293b", padding: 16, borderRadius: 12, textAlign: "center" }}>
+                  <div style={{ color: "#94a3b8", fontSize: 13, fontWeight: 700, marginBottom: 8, textTransform: "uppercase" }}>
+                    Tiempo de ronda
                   </div>
-
-                  {/* Body — grid 3 columnas */}
-                  <div className="grid px-4 py-4" style={{ gridTemplateColumns: "1fr auto 1fr", gap: "10px" }}>
-                    {/* Pareja A — derecha */}
-                    <div className="flex flex-col items-end self-center">
-                      <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Pareja A</div>
-                      <div className="text-sm font-bold text-gray-50 text-right">
-                        {court.pairA ? `${court.pairA.p1} / ${court.pairA.p2}` : "TBD"}
-                      </div>
-                      {court.saved && (() => {
-                        const { text, cls } = resultBadge(
-                          parseInt(court.scoreA) > parseInt(court.scoreB),
-                          isTop, isBottom, hasSittingOut
-                        );
-                        return <div className={`text-xs font-bold mt-0.5 ${cls}`}>{text}</div>;
-                      })()}
-                    </div>
-
-                    {/* Score centro */}
-                    <div className="flex items-center gap-1.5 self-center">
-                      {court.saved ? (
-                        <>
-                          <div
-                            onClick={() => isAdmin && onEditCourt(ci)}
-                            title={isAdmin ? "Click para editar" : undefined}
-                            className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl font-black ${parseInt(court.scoreA) > parseInt(court.scoreB) ? "bg-green-500/10 border border-green-500/40 text-green-400" : "bg-gray-800 border border-gray-600 text-gray-400"} ${isAdmin ? "cursor-pointer" : ""}`}
-                          >
-                            {court.scoreA}
-                          </div>
-                          <span className="text-gray-600 font-black text-lg">-</span>
-                          <div
-                            onClick={() => isAdmin && onEditCourt(ci)}
-                            title={isAdmin ? "Click para editar" : undefined}
-                            className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl font-black ${parseInt(court.scoreB) > parseInt(court.scoreA) ? "bg-green-500/10 border border-green-500/40 text-green-400" : "bg-gray-800 border border-gray-600 text-gray-400"} ${isAdmin ? "cursor-pointer" : ""}`}
-                          >
-                            {court.scoreB}
-                          </div>
-                        </>
-                      ) : isAdmin ? (
-                        <>
-                          <input
-                            type="number" min="0"
-                            value={sA}
-                            onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
-                            onChange={(e) => setLs((p) => ({ ...p, [`${ci}_A`]: e.target.value }))}
-                            className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-700 text-center text-xl font-black text-sky-400 outline-none focus:border-sky-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          />
-                          <span className="text-gray-600 font-black text-lg">-</span>
-                          <input
-                            type="number" min="0"
-                            value={sB}
-                            onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
-                            onChange={(e) => setLs((p) => ({ ...p, [`${ci}_B`]: e.target.value }))}
-                            className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-700 text-center text-xl font-black text-sky-400 outline-none focus:border-sky-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          />
-                        </>
-                      ) : (
-                        <span className="text-gray-600 font-black text-lg">–</span>
-                      )}
-                    </div>
-
-                    {/* Pareja B — izquierda */}
-                    <div className="flex flex-col items-start self-center">
-                      <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Pareja B</div>
-                      <div className="text-sm font-bold text-gray-50">
-                        {court.pairB ? `${court.pairB.p1} / ${court.pairB.p2}` : "TBD"}
-                      </div>
-                      {court.saved && (() => {
-                        const { text, cls } = resultBadge(
-                          parseInt(court.scoreB) > parseInt(court.scoreA),
-                          isTop, isBottom, hasSittingOut
-                        );
-                        return <div className={`text-xs font-bold mt-0.5 ${cls}`}>{text}</div>;
-                      })()}
-                    </div>
+                  <div style={{ fontSize: 48, fontWeight: 900, color: timeExpired ? "#ef4444" : "#f1f5f9", fontFamily: "monospace", lineHeight: 1 }}>
+                    {fmtTime(remaining)}
                   </div>
-
-                  {isAdmin && !court.saved && valid && (
-                    <div className="px-4 pb-3">
+                  <div style={{ background: "#334155", height: 4, borderRadius: 2, marginTop: 12, overflow: "hidden" }}>
+                    <div style={{
+                      background: timeExpired ? "#ef4444" : "#38bdf8",
+                      height: "100%", width: `${pct}%`, transition: "width 0.5s linear",
+                    }} />
+                  </div>
+                  {timeExpired && (
+                    <div style={{ color: "#ef4444", fontWeight: 700, marginTop: 12 }}>
+                      ⏳ ¡Tiempo! Guarda los resultados y rota
+                    </div>
+                  )}
+                  {isAdmin && (
+                    <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 16 }}>
+                      <button onClick={toggleTimer} style={B(t.timerRunning ? "#f59e0b" : "#10b981", { padding: "8px 24px", fontSize: 16 })}>
+                        {t.timerRunning ? "⏸ Pausar" : "▶️ Iniciar"}
+                      </button>
                       <button
-                        onClick={() => onSaveCourt(ci)}
-                        className="w-full py-2.5 rounded-xl text-sm font-bold bg-[#d97706] hover:bg-[#b45309] text-white cursor-pointer transition-colors"
+                        onClick={() => persist({ ...t, timerRunning: false, timerElapsed: 0, timerStartedAt: null })}
+                        style={B("#334155", { padding: "8px 14px" })}
                       >
-                        Guardar resultado
+                        Reset
                       </button>
                     </div>
                   )}
                 </div>
-              );
-            })}
 
-            {allSaved && isAdmin && (
-              <button
-                onClick={t.config?.pozoMode === "mixer" ? onNextRoundMixer : onNextRound}
-                style={B("#10b981", { width: "100%", padding: 16, fontSize: 16 })}
-              >
-                Rotar Pistas - Siguiente Ronda ➔
-              </button>
-            )}
-            {isAdmin && (
-              <button
-                onClick={onForceEnd}
-                style={B("#334155", { width: "100%", padding: 12, fontSize: 13, marginTop: 4 })}
-              >
-                🏁 Finalizar Torneo
-              </button>
-            )}
-            {!isAdmin && !allSaved && (
-              <div style={{ textAlign: "center", color: "#64748b", padding: 20, fontSize: 14 }}>
-                👀 Modo vista · Esperando resultados
-              </div>
+                {/* Jugador que descansa (mixer con impar) */}
+                {t.sittingOut?.length > 0 && (
+                  <div style={{
+                    background: "#f59e0b22", border: "1px solid #f59e0b44",
+                    borderRadius: 10, padding: "10px 14px", fontSize: 13,
+                    color: "#fbbf24", fontWeight: 600,
+                  }}>
+                    ⏳ Descansa esta ronda:{" "}
+                    {t.sittingOut
+                      .map((id) => (t.players || []).find((p) => p.id === id)?.name || id)
+                      .join(", ")}
+                  </div>
+                )}
+
+                {/* Pistas */}
+                {(t.currentPozoRound || []).map((court, ci) => {
+                  const sA    = ls[`${ci}_A`] ?? (court.scoreA != null ? String(court.scoreA) : "");
+                  const sB    = ls[`${ci}_B`] ?? (court.scoreB != null ? String(court.scoreB) : "");
+                  const a     = parseInt(sA);
+                  const b     = parseInt(sB);
+                  const valid = !isNaN(a) && !isNaN(b) && a >= 0 && b >= 0 && a !== b;
+                  const isTop         = court.courtNum === 1;
+                  const isBottom      = court.courtNum === t.config.courts;
+                  const hasSittingOut = (t.sittingOut?.length ?? 0) > 0;
+
+                  return (
+                    <div
+                      key={ci}
+                      className="bg-[#1f2937] rounded-2xl border overflow-hidden"
+                      style={{ borderColor: isTop ? "#f59e0b" : "#374151" }}
+                    >
+                      {/* Header */}
+                      <div className="flex justify-between items-center px-4 py-2.5 border-b border-gray-700">
+                        <span className="text-xs font-bold text-gray-500 tracking-widest">
+                          {isTop ? "👑 " : ""}PISTA {court.courtNum}
+                          {isTop && <span className="ml-2 text-yellow-400 normal-case tracking-normal font-semibold text-xs">Rey</span>}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          {!isTop && <span className="text-xs text-sky-400 font-semibold">↑ Ganador sube</span>}
+                          {court.saved && <span className="text-xs text-green-400 font-semibold">✅ Guardado</span>}
+                          {court.saved && isAdmin && (
+                            <button
+                              onClick={() => onEditCourt(ci)}
+                              className="text-xs font-semibold text-gray-500 hover:text-sky-400 bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded-lg cursor-pointer transition-colors"
+                            >
+                              ✏️ Editar
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Body — grid 3 columnas */}
+                      <div className="grid px-4 py-4" style={{ gridTemplateColumns: "1fr auto 1fr", gap: "10px" }}>
+                        {/* Pareja A — derecha */}
+                        <div className="flex flex-col items-end self-center">
+                          <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Pareja A</div>
+                          <div className="text-sm font-bold text-gray-50 text-right">
+                            {court.pairA ? `${court.pairA.p1} / ${court.pairA.p2}` : "TBD"}
+                          </div>
+                          {court.saved && (() => {
+                            const { text, cls } = resultBadge(
+                              parseInt(court.scoreA) > parseInt(court.scoreB),
+                              isTop, isBottom, hasSittingOut
+                            );
+                            return <div className={`text-xs font-bold mt-0.5 ${cls}`}>{text}</div>;
+                          })()}
+                        </div>
+
+                        {/* Score centro */}
+                        <div className="flex items-center gap-1.5 self-center">
+                          {court.saved ? (
+                            <>
+                              <div
+                                onClick={() => isAdmin && onEditCourt(ci)}
+                                title={isAdmin ? "Click para editar" : undefined}
+                                className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl font-black ${parseInt(court.scoreA) > parseInt(court.scoreB) ? "bg-green-500/10 border border-green-500/40 text-green-400" : "bg-gray-800 border border-gray-600 text-gray-400"} ${isAdmin ? "cursor-pointer" : ""}`}
+                              >
+                                {court.scoreA}
+                              </div>
+                              <span className="text-gray-600 font-black text-lg">-</span>
+                              <div
+                                onClick={() => isAdmin && onEditCourt(ci)}
+                                title={isAdmin ? "Click para editar" : undefined}
+                                className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl font-black ${parseInt(court.scoreB) > parseInt(court.scoreA) ? "bg-green-500/10 border border-green-500/40 text-green-400" : "bg-gray-800 border border-gray-600 text-gray-400"} ${isAdmin ? "cursor-pointer" : ""}`}
+                              >
+                                {court.scoreB}
+                              </div>
+                            </>
+                          ) : isAdmin ? (
+                            <>
+                              <input
+                                type="number" min="0"
+                                value={sA}
+                                onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
+                                onChange={(e) => setLs((p) => ({ ...p, [`${ci}_A`]: e.target.value }))}
+                                className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-700 text-center text-xl font-black text-sky-400 outline-none focus:border-sky-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              />
+                              <span className="text-gray-600 font-black text-lg">-</span>
+                              <input
+                                type="number" min="0"
+                                value={sB}
+                                onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
+                                onChange={(e) => setLs((p) => ({ ...p, [`${ci}_B`]: e.target.value }))}
+                                className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-700 text-center text-xl font-black text-sky-400 outline-none focus:border-sky-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              />
+                            </>
+                          ) : (
+                            <span className="text-gray-600 font-black text-lg">–</span>
+                          )}
+                        </div>
+
+                        {/* Pareja B — izquierda */}
+                        <div className="flex flex-col items-start self-center">
+                          <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Pareja B</div>
+                          <div className="text-sm font-bold text-gray-50">
+                            {court.pairB ? `${court.pairB.p1} / ${court.pairB.p2}` : "TBD"}
+                          </div>
+                          {court.saved && (() => {
+                            const { text, cls } = resultBadge(
+                              parseInt(court.scoreB) > parseInt(court.scoreA),
+                              isTop, isBottom, hasSittingOut
+                            );
+                            return <div className={`text-xs font-bold mt-0.5 ${cls}`}>{text}</div>;
+                          })()}
+                        </div>
+                      </div>
+
+                      {isAdmin && !court.saved && valid && (
+                        <div className="px-4 pb-3">
+                          <button
+                            onClick={() => onSaveCourt(ci)}
+                            className="w-full py-2.5 rounded-xl text-sm font-bold bg-[#d97706] hover:bg-[#b45309] text-white cursor-pointer transition-colors"
+                          >
+                            Guardar resultado
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {allSaved && isAdmin && (
+                  <button
+                    onClick={t.config?.pozoMode === "mixer" ? onNextRoundMixer : onNextRound}
+                    style={B("#10b981", { width: "100%", padding: 16, fontSize: 16 })}
+                  >
+                    Rotar Pistas - Siguiente Ronda ➔
+                  </button>
+                )}
+                {isAdmin && (
+                  <button
+                    onClick={onForceEnd}
+                    style={B("#334155", { width: "100%", padding: 12, fontSize: 13, marginTop: 4 })}
+                  >
+                    🏁 Finalizar Torneo
+                  </button>
+                )}
+                {!isAdmin && !allSaved && (
+                  <div style={{ textAlign: "center", color: "#64748b", padding: 20, fontSize: 14 }}>
+                    👀 Modo vista · Esperando resultados
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -635,6 +682,142 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
           onConfirm={async () => { setShowFinishModal(false); await finishTournament(); }}
         />
       )}
+    </div>
+  );
+}
+
+function PozoAllRoundsView({ t, isAdmin, ls, setLs, onSaveCourt, onEditCourt, matchesSearch, highlightId }) {
+  const isMixer = t.config?.pozoMode === "mixer";
+
+  function renderPair(pair, highlight) {
+    const name = pair ? `${pair.p1} / ${pair.p2}` : "TBD";
+    return (
+      <span className={`text-sm leading-snug ${highlight ? "font-black text-sky-300" : "font-bold text-gray-50"}`}>
+        {name}
+      </span>
+    );
+  }
+
+  function getHighlight(pair) {
+    if (!highlightId) return false;
+    if (isMixer) return (pair?._playerIds || []).map(String).includes(String(highlightId));
+    return String(pair?.id) === String(highlightId);
+  }
+
+  function renderHistoricalCourt(court, ci) {
+    const a = parseInt(court.scoreA), b = parseInt(court.scoreB);
+    const wonA = !isNaN(a) && !isNaN(b) && a > b;
+    const wonB = !isNaN(a) && !isNaN(b) && b > a;
+    return (
+      <div key={ci} className="px-4 py-4 border-t border-gray-800 first:border-0">
+        <div className="grid" style={{ gridTemplateColumns: "1fr auto 1fr", gap: "10px" }}>
+          <div className="flex flex-col items-end self-center">
+            {renderPair(court.pairA, getHighlight(court.pairA))}
+          </div>
+          <div className="flex items-center gap-1.5 self-center">
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl font-black ${wonA ? "bg-green-500/10 border border-green-500/40 text-green-400" : "bg-gray-800 border border-gray-600 text-gray-400"}`}>{court.scoreA}</div>
+            <span className="text-gray-600 font-black text-lg">-</span>
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl font-black ${wonB ? "bg-green-500/10 border border-green-500/40 text-green-400" : "bg-gray-800 border border-gray-600 text-gray-400"}`}>{court.scoreB}</div>
+          </div>
+          <div className="flex flex-col items-start self-center">
+            {renderPair(court.pairB, getHighlight(court.pairB))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderCurrentCourt(court, ci) {
+    const sA = ls[`${ci}_A`] ?? (court.scoreA != null ? String(court.scoreA) : "");
+    const sB = ls[`${ci}_B`] ?? (court.scoreB != null ? String(court.scoreB) : "");
+    const a = parseInt(sA), b = parseInt(sB);
+    const valid = !isNaN(a) && !isNaN(b) && a >= 0 && b >= 0 && a !== b;
+    const wonA = court.saved && parseInt(court.scoreA) > parseInt(court.scoreB);
+    const wonB = court.saved && parseInt(court.scoreB) > parseInt(court.scoreA);
+    return (
+      <div key={ci} className="px-4 py-4 border-t border-gray-800 first:border-0">
+        <div className="grid" style={{ gridTemplateColumns: "1fr auto 1fr", gap: "10px" }}>
+          <div className="flex flex-col items-end self-center">
+            {renderPair(court.pairA, getHighlight(court.pairA))}
+          </div>
+          <div className="flex items-center gap-1.5 self-center">
+            {court.saved ? (
+              <>
+                <div onClick={() => isAdmin && onEditCourt(ci)} className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl font-black ${wonA ? "bg-green-500/10 border border-green-500/40 text-green-400" : "bg-gray-800 border border-gray-600 text-gray-400"} ${isAdmin ? "cursor-pointer" : ""}`}>{court.scoreA}</div>
+                <span className="text-gray-600 font-black text-lg">-</span>
+                <div onClick={() => isAdmin && onEditCourt(ci)} className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl font-black ${wonB ? "bg-green-500/10 border border-green-500/40 text-green-400" : "bg-gray-800 border border-gray-600 text-gray-400"} ${isAdmin ? "cursor-pointer" : ""}`}>{court.scoreB}</div>
+              </>
+            ) : isAdmin ? (
+              <>
+                <input type="number" min="0" value={sA} onKeyDown={(e) => ["-","e",".",","].includes(e.key) && e.preventDefault()} onChange={(e) => setLs((p) => ({ ...p, [`${ci}_A`]: e.target.value }))} className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-700 text-center text-xl font-black text-sky-400 outline-none focus:border-sky-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                <span className="text-gray-600 font-black text-lg">-</span>
+                <input type="number" min="0" value={sB} onKeyDown={(e) => ["-","e",".",","].includes(e.key) && e.preventDefault()} onChange={(e) => setLs((p) => ({ ...p, [`${ci}_B`]: e.target.value }))} className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-700 text-center text-xl font-black text-sky-400 outline-none focus:border-sky-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+              </>
+            ) : (
+              <span className="text-gray-600 font-black text-lg">–</span>
+            )}
+          </div>
+          <div className="flex flex-col items-start self-center">
+            {renderPair(court.pairB, getHighlight(court.pairB))}
+          </div>
+        </div>
+        {isAdmin && !court.saved && valid && (
+          <div className="pt-3">
+            <button onClick={() => onSaveCourt(ci)} className="w-full py-2.5 rounded-xl text-sm font-bold bg-[#d97706] hover:bg-[#b45309] text-white cursor-pointer transition-colors">
+              Guardar resultado
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const pastRounds = t.pozoRounds || [];
+  const hasAnyContent = pastRounds.length > 0 || (t.currentPozoRound?.length > 0);
+
+  if (!hasAnyContent) {
+    return <div className="text-center text-gray-600 py-8 text-sm">Aún no hay rondas</div>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {pastRounds.map((round, ri) => {
+        const filteredCourts = (round.courts || [])
+          .map((court, ci) => ({ court, ci }))
+          .filter(({ court }) => matchesSearch(court));
+        return (
+          <div key={ri} className="bg-[#1f2937] rounded-2xl border border-gray-700 overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-gray-700">
+              <span className="text-xs font-bold text-gray-500 tracking-widest">RONDA {round.num}</span>
+              <span className="ml-2 text-xs text-green-400 font-semibold">✓ completada</span>
+            </div>
+            {filteredCourts.length === 0 ? (
+              <div className="px-4 py-4 text-center text-sm text-amber-400 font-semibold">⏳ Descansó</div>
+            ) : (
+              filteredCourts.map(({ court, ci }) => renderHistoricalCourt(court, ci))
+            )}
+          </div>
+        );
+      })}
+
+      {t.currentPozoRound?.length > 0 && (() => {
+        const filteredCourts = (t.currentPozoRound || [])
+          .map((court, ci) => ({ court, ci }))
+          .filter(({ court }) => matchesSearch(court));
+        return (
+          <div className="bg-[#1f2937] rounded-2xl border border-sky-800 overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-gray-700 flex items-center gap-2">
+              <span className="text-xs font-bold text-sky-400 tracking-widest">RONDA {t.roundNum}</span>
+              <span className="text-xs text-sky-400 font-semibold">● EN CURSO</span>
+            </div>
+            {filteredCourts.length === 0 ? (
+              <div className="px-4 py-4 text-center text-sm text-amber-400 font-semibold">⏳ Descansa esta ronda</div>
+            ) : (
+              filteredCourts.map(({ court, ci }) => renderCurrentCourt(court, ci))
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
