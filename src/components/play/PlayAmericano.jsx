@@ -681,7 +681,7 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEd
   );
 }
 
-function HistoryRound({ round, matchesSearch, isAdmin, useLevels, showLevelsToggle, players }) {
+function HistoryRound({ round, matchesSearch, isAdmin, useLevels, showLevelsToggle, players, highlightId }) {
   if (!round) return null;
   const showLevel = useLevels && isAdmin && showLevelsToggle;
   const playersDict = useMemo(() => {
@@ -694,8 +694,9 @@ function HistoryRound({ round, matchesSearch, isAdmin, useLevels, showLevelsTogg
       return pair.map((p, i) => {
         const currentPlayer = playersDict[p.id] || p;
         const lvl = LEVELS[currentPlayer.level || 0];
+        const isHighlighted = highlightId && String(p.id) === String(highlightId);
         return (
-          <span key={p.id}>
+          <span key={p.id} style={isHighlighted ? { fontWeight: 900 } : undefined}>
             {i > 0 && <span style={{ color: "#94a3b8" }}> & </span>}
             {p.name}
             {showLevel && (
@@ -707,7 +708,8 @@ function HistoryRound({ round, matchesSearch, isAdmin, useLevels, showLevelsTogg
         );
       });
     }
-    return `${pair?.p1} / ${pair?.p2}`;
+    const isHighlighted = highlightId && String(pair?.id) === String(highlightId);
+    return <span style={isHighlighted ? { fontWeight: 900 } : undefined}>{pair?.p1} / {pair?.p2}</span>;
   };
   const visibleCourts = (round.courts || []).filter(matchesSearch);
 
@@ -763,7 +765,7 @@ function HistoryRound({ round, matchesSearch, isAdmin, useLevels, showLevelsTogg
   );
 }
 
-function FutureRound({ round, matchesSearch, isAdmin, useLevels, showLevelsToggle, players }) {
+function FutureRound({ round, matchesSearch, isAdmin, useLevels, showLevelsToggle, players, highlightId }) {
   if (!round) return null;
   const showLevel = useLevels && isAdmin && showLevelsToggle;
   const playersDict = useMemo(() => {
@@ -778,9 +780,10 @@ function FutureRound({ round, matchesSearch, isAdmin, useLevels, showLevelsToggl
       return pair.map((p) => {
         const currentPlayer = playersDict[p.id] || p;
         const lvl = LEVELS[currentPlayer.level || 0];
+        const isHighlighted = highlightId && String(p.id) === String(highlightId);
         return (
           <span key={p.id} className="flex items-center gap-1 leading-snug">
-            <span className="text-sm font-bold text-gray-50">{p.name}</span>
+            <span className={`text-sm ${isHighlighted ? "font-black" : "font-bold"} text-gray-50`}>{p.name}</span>
             {showLevel && currentPlayer.level > 0 && lvl && (
               <span style={{ fontSize: 10, fontWeight: 700, background: lvl.color + "20", color: lvl.color, borderRadius: 4, padding: "1px 4px" }}>
                 {lvl.short}
@@ -790,7 +793,8 @@ function FutureRound({ round, matchesSearch, isAdmin, useLevels, showLevelsToggl
         );
       });
     }
-    return <span className="text-sm font-bold text-gray-50">{`${pair.p1} / ${pair.p2}`}</span>;
+    const isHighlighted = highlightId && String(pair?.id) === String(highlightId);
+    return <span className={`text-sm ${isHighlighted ? "font-black" : "font-bold"} text-gray-50`}>{`${pair.p1} / ${pair.p2}`}</span>;
   }
 
   const visibleCourts = (round.courts || []).filter(matchesSearch);
