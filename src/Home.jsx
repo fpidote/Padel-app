@@ -155,7 +155,7 @@ export default function Home() {
       )}
 
       {/* ── Header ── */}
-      <header className="sticky top-0 z-10 w-full bg-[#111827]/90 backdrop-blur-sm border-b border-gray-800">
+      <header className="sticky top-0 z-10 w-full bg-[#0f172a]/90 backdrop-blur-sm border-b border-gray-800">
         <div className="w-full max-w-lg mx-auto px-6 py-4 flex items-center justify-between">
           <span className="text-xl font-black text-lime-500 tracking-tight">Padeldesk</span>
 
@@ -250,7 +250,7 @@ export default function Home() {
             onKeyDown={(e) => e.key === "Enter" && onJoin()}
             maxLength={6}
             placeholder="CÓDIGO"
-            className="flex-1 min-w-0 bg-[#1f2937] border border-gray-700 focus:border-lime-600 rounded-xl text-gray-50 text-xl font-bold tracking-[0.35em] text-center py-3 outline-none transition-colors placeholder:text-gray-600 placeholder:tracking-widest placeholder:text-sm placeholder:font-normal"
+            className="flex-1 min-w-0 bg-[#1e293b] border border-gray-700 focus:border-lime-600 rounded-xl text-gray-50 text-xl font-bold tracking-[0.35em] text-center py-3 outline-none transition-colors placeholder:text-gray-600 placeholder:tracking-widest placeholder:text-sm placeholder:font-normal"
           />
           <button
             onClick={onJoin}
