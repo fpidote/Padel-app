@@ -929,8 +929,14 @@ function HistoryRound({ round, roundNum, matchesSearch, isAdmin, useLevels, show
                 {renderPairName(court.pairA)}{wonA && <span style={{ marginLeft: 6 }}>🏆</span>}
               </div>
             </div>
-            <div className="flex items-center self-center" style={{ background: "#0f172a", padding: "8px 14px", borderRadius: 8, fontSize: 24, fontWeight: 900, color: "#f1f5f9" }}>
-              {court.scoreA}-{court.scoreB}
+            <div className="flex items-center gap-1.5 self-center">
+              <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl font-black ${wonA ? "bg-green-500/10 border border-green-500/40 text-green-400" : "bg-gray-800 border border-gray-600 text-gray-400"}`}>
+                {court.scoreA}
+              </div>
+              <span className="text-gray-600 font-black text-lg">-</span>
+              <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl font-black ${wonB ? "bg-green-500/10 border border-green-500/40 text-green-400" : "bg-gray-800 border border-gray-600 text-gray-400"}`}>
+                {court.scoreB}
+              </div>
             </div>
             <div className="flex flex-col items-start self-center">
               <div style={{ fontWeight: 700, color: wonB ? "#4ade80" : "#f1f5f9", fontSize: 14 }}>
