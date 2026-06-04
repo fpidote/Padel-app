@@ -57,8 +57,13 @@ export default function Panel() {
     setModalMsg({
       message: "¿Eliminar este torneo? Esta acción no se puede deshacer.",
       onConfirm: async () => {
-        setModalMsg(null);
-        await deleteDoc(doc(db, "torneos", code));
+        try {
+          setModalMsg(null);
+          await deleteDoc(doc(db, "torneos", code));
+        } catch (err) {
+          console.error("Error al eliminar torneo:", err);
+          setModalMsg({ message: "No se pudo eliminar el torneo. Intentá de nuevo." });
+        }
       },
     });
   }
