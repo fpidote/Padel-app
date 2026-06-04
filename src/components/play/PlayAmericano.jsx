@@ -341,6 +341,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                   (t.precomputedRounds && viewingRound > t.roundNum) ? (
                     <FutureRound
                       round={t.precomputedRounds[viewingRound - 1]}
+                      roundNum={viewingRound}
                       matchesSearch={matchesSearch}
                       isAdmin={isAdmin}
                       useLevels={!!t.config.useLevels}
@@ -350,6 +351,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                   ) : (
                     <HistoryRound
                       round={t.rounds[viewingRound - 1]}
+                      roundNum={viewingRound}
                       matchesSearch={matchesSearch}
                       isAdmin={isAdmin}
                       useLevels={!!t.config.useLevels}
@@ -585,6 +587,7 @@ function AllRoundsPlayerView({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSea
         <HistoryRound
           key={i}
           round={round}
+          roundNum={round.num || i + 1}
           matchesSearch={matchesSearch}
           isAdmin={isAdmin}
           useLevels={useLevels}
@@ -611,6 +614,7 @@ function AllRoundsPlayerView({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSea
           <FutureRound
             key={`future-${t.roundNum + i}`}
             round={round}
+            roundNum={t.roundNum + 1 + i}
             matchesSearch={matchesSearch}
             isAdmin={isAdmin}
             useLevels={useLevels}
@@ -859,7 +863,7 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEd
   );
 }
 
-function HistoryRound({ round, matchesSearch, isAdmin, useLevels, showLevelsToggle, players, highlightId }) {
+function HistoryRound({ round, roundNum, matchesSearch, isAdmin, useLevels, showLevelsToggle, players, highlightId }) {
   if (!round) return null;
   const showLevel = useLevels && isAdmin && showLevelsToggle;
   const playersDict = useMemo(() => {
@@ -896,7 +900,7 @@ function HistoryRound({ round, matchesSearch, isAdmin, useLevels, showLevelsTogg
   return (
     <div className="bg-[#1f2937] rounded-2xl border border-gray-700 overflow-hidden">
       <div className="px-4 py-2.5 border-b border-gray-700 flex items-center justify-between">
-        <span className="text-xs font-bold text-gray-500 tracking-widest">RONDA {round.num}</span>
+        <span className="text-xs font-bold text-gray-500 tracking-widest">RONDA {roundNum}</span>
         <span className="text-xs text-green-400 font-semibold">✓ completada</span>
       </div>
 
@@ -938,7 +942,7 @@ function HistoryRound({ round, matchesSearch, isAdmin, useLevels, showLevelsTogg
   );
 }
 
-function FutureRound({ round, matchesSearch, isAdmin, useLevels, showLevelsToggle, players, highlightId }) {
+function FutureRound({ round, roundNum, matchesSearch, isAdmin, useLevels, showLevelsToggle, players, highlightId }) {
   if (!round) return null;
   const showLevel = useLevels && isAdmin && showLevelsToggle;
   const playersDict = useMemo(() => {
@@ -977,7 +981,7 @@ function FutureRound({ round, matchesSearch, isAdmin, useLevels, showLevelsToggl
   return (
     <div className="bg-[#1f2937] rounded-2xl border border-gray-700 overflow-hidden opacity-70">
       <div className="px-4 py-2.5 border-b border-gray-700 flex items-center justify-between">
-        <span className="text-xs font-bold text-gray-500 tracking-widest">RONDA {round.num}</span>
+        <span className="text-xs font-bold text-gray-500 tracking-widest">RONDA {roundNum}</span>
         <span className="text-xs text-gray-600 font-semibold">📅 próxima</span>
       </div>
 
