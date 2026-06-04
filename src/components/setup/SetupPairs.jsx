@@ -801,19 +801,24 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
 
         {/* ── Botón iniciar ── */}
         {isAdmin && (
-          <button
-            onClick={onStart}
-            disabled={!ok}
-            className="w-full mt-8 py-4 rounded-2xl font-black text-lg transition-colors"
-            style={{
-              background: ok ? color  : "#374151",
-              color:      ok ? "#fff" : "#64748b",
-              cursor:     ok ? "pointer" : "not-allowed",
-              opacity:    ok ? 1 : 0.5,
-            }}
-          >
-            🎾 Iniciar Torneo
-          </button>
+          <>
+            <button
+              onClick={onStart}
+              disabled={!ok}
+              className="w-full mt-8 py-4 rounded-2xl font-black text-lg transition-colors"
+              style={{
+                background: ok ? color  : "#374151",
+                color:      ok ? "#fff" : "#64748b",
+                cursor:     ok ? "pointer" : "not-allowed",
+                opacity:    ok ? 1 : 0.5,
+              }}
+            >
+              🎾 Iniciar Torneo
+            </button>
+            <p className="text-center text-xs text-gray-600 mt-3">
+              Una vez guardado el primer resultado no podrás modificar la configuración del torneo.
+            </p>
+          </>
         )}
 
       </div>
