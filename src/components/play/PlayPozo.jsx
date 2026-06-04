@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { collection, addDoc, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "../../firebase";
-import { B, TOURNAMENT_RULES } from "../../logic/constants";
+import { TOURNAMENT_RULES } from "../../logic/constants";
 import {
   buildPozoRound,
   applyPozoRoundResults,
@@ -408,12 +408,16 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
                   )}
                   {isAdmin && (
                     <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 16 }}>
-                      <button onClick={toggleTimer} style={B(t.timerRunning ? "#f59e0b" : "#10b981", { padding: "8px 24px", fontSize: 16 })}>
+                      <button
+                        onClick={toggleTimer}
+                        className="font-bold rounded-lg px-6 py-2 text-base text-white cursor-pointer border-0 transition-colors"
+                        style={{ background: t.timerRunning ? "#f59e0b" : "#10b981" }}
+                      >
                         {t.timerRunning ? "⏸ Pausar" : "▶️ Iniciar"}
                       </button>
                       <button
                         onClick={() => persist({ ...t, timerRunning: false, timerElapsed: 0, timerStartedAt: null })}
-                        style={B("#334155", { padding: "8px 14px" })}
+                        className="bg-[#334155] text-white font-bold rounded-lg px-3.5 py-2 cursor-pointer border-0"
                       >
                         Reset
                       </button>
@@ -565,7 +569,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
                 {allSaved && isAdmin && (
                   <button
                     onClick={t.config?.pozoMode === "mixer" ? onNextRoundMixer : onNextRound}
-                    style={B("#10b981", { width: "100%", padding: 16, fontSize: 16 })}
+                    className="w-full bg-[#10b981] text-white font-bold rounded-lg py-4 text-base cursor-pointer border-0"
                   >
                     Rotar Pistas - Siguiente Ronda ➔
                   </button>
@@ -573,7 +577,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
                 {isAdmin && (
                   <button
                     onClick={onForceEnd}
-                    style={B("#334155", { width: "100%", padding: 12, fontSize: 13, marginTop: 4 })}
+                    className="w-full mt-1 bg-[#334155] text-white font-bold rounded-lg py-3 text-sm cursor-pointer border-0"
                   >
                     🏁 Finalizar Torneo
                   </button>

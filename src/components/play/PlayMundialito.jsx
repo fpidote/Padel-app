@@ -1,6 +1,6 @@
 // src/components/play/PlayMundialito.jsx
 import { useState } from "react";
-import { B, TOURNAMENT_RULES } from "../../logic/constants";
+import { TOURNAMENT_RULES } from "../../logic/constants";
 import { advanceBracket } from "../../logic/relampago";
 import { buildKnockoutFromGroups } from "../../logic/mundialito";
 import { THeader, Tabs } from "../shared/Components";
@@ -474,11 +474,7 @@ export default function PlayMundialito({
             {allGroupsDone && t.phase === "groups" && isAdmin && (
               <button
                 onClick={onStartKnockout}
-                style={B("#10b981", {
-                  width: "100%",
-                  padding: 16,
-                  fontSize: 16,
-                })}
+                className="w-full bg-[#10b981] text-white font-bold rounded-lg py-4 text-base cursor-pointer border-0"
               >
                 Iniciar Fase Eliminatoria ⚡
               </button>
