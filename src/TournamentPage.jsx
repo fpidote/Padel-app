@@ -65,7 +65,7 @@ export default function TournamentPage() {
   const props = { t, code, isAdmin, persist, copyCode };
   const typeInfo = TOURNAMENT_TYPES.find((x) => x.id === t.type) || TOURNAMENT_TYPES[0];
 
-  const canEditTournament = (t.rounds?.length ?? 0) === 0 && !t.currentRound?.some(c => c.saved);
+  const canEditTournament = !t.scoringStarted;
   const onEditTournament = canEditTournament ? () => setEditMode(true) : undefined;
 
   return (

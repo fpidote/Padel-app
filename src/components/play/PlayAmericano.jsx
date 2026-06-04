@@ -56,7 +56,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
       return n;
     });
     try {
-      await persist({ ...t, currentRound: cr });
+      await persist({ ...t, currentRound: cr, scoringStarted: true });
     } catch (err) {
       console.error("Error al guardar resultado:", err);
       // Revertir estado local para que el admin pueda reintentar
