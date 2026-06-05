@@ -112,7 +112,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-gray-50">
+    <div className="min-h-screen bg-app bg-grid text-gray-50">
 
       {/* ── Modal de selección de formato ── */}
       {showModal && (
@@ -169,9 +169,11 @@ export default function Home() {
       )}
 
       {/* ── Header ── */}
-      <header className="sticky top-0 z-10 w-full bg-[#0f172a]/90 backdrop-blur-sm border-b border-gray-800">
+      <header className="sticky top-0 z-10 w-full bg-[#0f172a]/85 backdrop-blur-md border-b border-white/5">
         <div className="w-full max-w-lg mx-auto px-6 py-4 flex items-center justify-between">
-          <span className="text-xl font-black text-lime-500 tracking-tight">Padeldesk</span>
+          <span className="text-[18px] font-black tracking-tight text-[#f1f5f9]">
+            Padeldesk<span className="text-[#84cc16]">•</span>
+          </span>
 
           {user && (
             <div className="relative" ref={menuRef}>
@@ -229,21 +231,30 @@ export default function Home() {
 
         {/* Hero */}
         <section className="pt-10 pb-8 text-center">
-          <div className="inline-flex items-center gap-1.5 bg-green-900/60 text-lime-400 border border-green-800 text-xs font-semibold px-3 py-1.5 rounded-full mb-6 select-none">
-            ✅ 100% gratis · ⚡ Tiempo real
+          <div className="inline-flex items-center gap-2 bg-[#84cc16]/8 border border-[#84cc16]/20 text-[#84cc16] text-[10px] font-bold tracking-[0.5px] px-3.5 py-1.5 rounded-full mb-5 select-none">
+            <span
+              className="w-1.5 h-1.5 rounded-full bg-[#84cc16] flex-shrink-0"
+              style={{ animation: 'pulse-dot 2s ease-in-out infinite' }}
+            />
+            100% gratis · Tiempo real
           </div>
 
-          <h1 className="text-3xl font-black leading-tight mb-4 text-gray-50">
-            Organiza. Comparte. Juega.
+          <h1 className="text-[42px] font-black leading-[1.0] tracking-[-0.05em] mb-4">
+            Organiza.<br />
+            Comparte.<br />
+            <span className="text-[#84cc16]">Juega.</span>
           </h1>
 
-          <p className="text-gray-400 text-sm leading-relaxed mb-8 max-w-xs mx-auto">
+          <p className="text-[#4a5568] text-sm font-medium leading-relaxed mb-8 max-w-xs mx-auto">
             Monta tu torneo en 2 minutos, comparte el link y que empiece el juego.
           </p>
 
           <button
             onClick={handleCreateClick}
-            className="w-full bg-lime-500 hover:bg-lime-400 text-green-950 font-black py-4 rounded-2xl text-base transition-colors cursor-pointer shadow-lg shadow-lime-500/20"
+            className="w-full bg-[#84cc16] hover:bg-lime-400 text-[#14532d] font-black py-4 rounded-2xl text-base transition-colors cursor-pointer"
+            style={{
+              boxShadow: '0 0 0 1px rgba(132,204,22,0.4), 0 4px 20px rgba(132,204,22,0.25), 0 12px 40px rgba(132,204,22,0.1)',
+            }}
           >
             + Crear torneo gratis
           </button>
@@ -271,7 +282,9 @@ export default function Home() {
             onKeyDown={(e) => e.key === "Enter" && onJoin()}
             maxLength={6}
             placeholder="CÓDIGO"
-            className="flex-1 min-w-0 bg-[#1e293b] border border-gray-700 focus:border-lime-600 rounded-xl text-gray-50 text-xl font-bold tracking-[0.35em] text-center py-3 outline-none transition-colors placeholder:text-gray-600 placeholder:tracking-widest placeholder:text-sm placeholder:font-normal"
+            className="flex-1 min-w-0 font-data bg-white/[0.03] border border-white/[0.07] focus:border-[#84cc16]/30 rounded-2xl text-[#f1f5f9] text-xl font-bold tracking-[0.35em] text-center py-3 outline-none transition-all placeholder:text-[#1e2a3a] placeholder:tracking-[4px] placeholder:text-sm placeholder:font-medium"
+            onFocus={(e) => { e.target.style.boxShadow = '0 0 0 3px rgba(132,204,22,0.06)'; }}
+            onBlur={(e) => { e.target.style.boxShadow = 'none'; }}
           />
           <button
             onClick={onJoin}
@@ -314,7 +327,7 @@ export default function Home() {
           <div className="flex flex-col gap-5">
             {BENEFITS.map((b) => (
               <div key={b.title} className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-lg bg-[#14532d] flex items-center justify-center shrink-0 text-xl leading-none">
+                <div className="w-9 h-9 rounded-lg bg-[#84cc16]/7 border border-[#84cc16]/10 flex items-center justify-center shrink-0 text-xl leading-none">
                   {b.icon}
                 </div>
                 <div>
