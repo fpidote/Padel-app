@@ -57,9 +57,9 @@ export default function MatchCard({
   if (!match.pairA && !match.pairB) return null;
 
   return (
-    <div className="bg-[#1f2937] rounded-2xl border border-gray-700 overflow-hidden mb-3">
+    <div className="bg-white/[0.03] rounded-2xl border border-white/[0.07] overflow-hidden mb-3">
       {/* Cabecera */}
-      <div className="flex justify-between items-center px-4 py-2.5 border-b border-gray-700">
+      <div className="flex justify-between items-center px-4 py-2.5 border-b border-white/5 bg-black/15">
         <span className="text-xs font-bold text-gray-500 tracking-widest">
           {match.bracket === "winners"
             ? "⚡ CUADRO PRINCIPAL"
@@ -100,7 +100,7 @@ export default function MatchCard({
             if (tempSetsA === setsNeededToWin || tempSetsB === setsNeededToWin) return null;
 
             return (
-              <div key={idx} className="flex items-center justify-between bg-[#0f172a]/20 px-3 py-1.5 rounded-lg">
+              <div key={idx} className="flex items-center justify-between bg-black/20 px-3 py-1.5 rounded-lg border border-white/[0.04]">
                 <span className="text-xs font-bold text-gray-500 w-11">SET {idx + 1}</span>
                 <span className="font-semibold text-gray-400 flex-1 text-right mr-3 text-sm">
                   {match.pairA.p1} / {match.pairA.p2}
@@ -110,7 +110,7 @@ export default function MatchCard({
                   onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
                   value={ls[`${match.id}_set${idx}_A`] ?? ""}
                   onChange={(e) => setLs((p) => ({ ...p, [`${match.id}_set${idx}_A`]: e.target.value }))}
-                  className="w-11 h-9 rounded-lg bg-[#0f172a] border-2 border-[#334155] text-center text-base font-black text-gray-50 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="font-data w-11 h-9 rounded-lg bg-white/[0.04] border-[1.5px] border-white/10 text-center text-base font-bold text-[#f1f5f9] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all"
                 />
                 <span className="text-gray-500 font-bold mx-2">-</span>
                 <input
@@ -118,7 +118,7 @@ export default function MatchCard({
                   onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
                   value={ls[`${match.id}_set${idx}_B`] ?? ""}
                   onChange={(e) => setLs((p) => ({ ...p, [`${match.id}_set${idx}_B`]: e.target.value }))}
-                  className="w-11 h-9 rounded-lg bg-[#0f172a] border-2 border-[#334155] text-center text-base font-black text-gray-50 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="font-data w-11 h-9 rounded-lg bg-white/[0.04] border-[1.5px] border-white/10 text-center text-base font-bold text-[#f1f5f9] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all"
                 />
                 <span className="font-semibold text-gray-400 flex-1 text-left ml-3 text-sm">
                   {match.pairB.p1} / {match.pairB.p2}
@@ -146,7 +146,14 @@ export default function MatchCard({
                   onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
                   value={sA_games}
                   onChange={(e) => setLs((p) => ({ ...p, [`${match.id}_A`]: e.target.value }))}
-                  className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-700 text-center text-xl font-black text-sky-400 outline-none focus:border-sky-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="font-data w-11 h-11 rounded-xl bg-white/[0.04] border-[1.5px] border-white/10 text-center text-[22px] font-bold text-[#f1f5f9] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all"
+                  style={{
+                    ...(ls[`${match.id}_A`] && {
+                      borderColor: `${accentColor}80`,
+                      boxShadow: `0 0 0 3px ${accentColor}10`,
+                      color: accentColor,
+                    }),
+                  }}
                 />
                 <span className="text-gray-600 font-black text-lg">–</span>
                 <input
@@ -154,7 +161,14 @@ export default function MatchCard({
                   onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
                   value={sB_games}
                   onChange={(e) => setLs((p) => ({ ...p, [`${match.id}_B`]: e.target.value }))}
-                  className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-700 text-center text-xl font-black text-sky-400 outline-none focus:border-sky-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="font-data w-11 h-11 rounded-xl bg-white/[0.04] border-[1.5px] border-white/10 text-center text-[22px] font-bold text-[#f1f5f9] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all"
+                  style={{
+                    ...(ls[`${match.id}_B`] && {
+                      borderColor: `${accentColor}80`,
+                      boxShadow: `0 0 0 3px ${accentColor}10`,
+                      color: accentColor,
+                    }),
+                  }}
                 />
               </>
             ) : isSetFormat && match.saved ? (
@@ -171,7 +185,15 @@ export default function MatchCard({
                 <div
                   onClick={() => isAdmin && onEdit && onEdit(match.id)}
                   title={isAdmin ? "Click para editar" : undefined}
-                  className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl font-black ${parseInt(match.scoreA) > parseInt(match.scoreB) ? "bg-green-500/10 border border-green-500/40 text-green-400" : "bg-gray-800 border border-gray-600 text-gray-400"} ${isAdmin ? "cursor-pointer" : ""}`}
+                  className={`font-data w-11 h-11 rounded-[12px] flex items-center justify-center text-[22px] font-bold transition-all ${parseInt(match.scoreA) > parseInt(match.scoreB)
+                    ? "bg-green-500/10 border border-green-500/25 text-green-400"
+                    : "bg-white/[0.04] border border-white/7 text-[#334155]"
+                  } ${isAdmin ? "cursor-pointer" : ""}`}
+                  style={
+                    parseInt(match.scoreA) > parseInt(match.scoreB)
+                      ? { animation: 'score-pop 0.3s ease-out' }
+                      : undefined
+                  }
                 >
                   {match.scoreA}
                 </div>
@@ -179,7 +201,15 @@ export default function MatchCard({
                 <div
                   onClick={() => isAdmin && onEdit && onEdit(match.id)}
                   title={isAdmin ? "Click para editar" : undefined}
-                  className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl font-black ${parseInt(match.scoreB) > parseInt(match.scoreA) ? "bg-green-500/10 border border-green-500/40 text-green-400" : "bg-gray-800 border border-gray-600 text-gray-400"} ${isAdmin ? "cursor-pointer" : ""}`}
+                  className={`font-data w-11 h-11 rounded-[12px] flex items-center justify-center text-[22px] font-bold transition-all ${parseInt(match.scoreB) > parseInt(match.scoreA)
+                    ? "bg-green-500/10 border border-green-500/25 text-green-400"
+                    : "bg-white/[0.04] border border-white/7 text-[#334155]"
+                  } ${isAdmin ? "cursor-pointer" : ""}`}
+                  style={
+                    parseInt(match.scoreB) > parseInt(match.scoreA)
+                      ? { animation: 'score-pop 0.3s ease-out' }
+                      : undefined
+                  }
                 >
                   {match.scoreB}
                 </div>
@@ -200,7 +230,11 @@ export default function MatchCard({
 
       {/* Indicador de Ganador */}
       {isValidFinal && !match.saved && (
-        <div className="text-center px-4 pb-2 text-sm text-green-400 font-bold">
+        <div className="flex items-center justify-center gap-1.5 px-4 pb-2 text-[12px] text-green-400 font-bold">
+          <span
+            className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0"
+            style={{ animation: 'pulse-dot 1.8s ease-in-out infinite' }}
+          />
           ✓ Gana{" "}
           {finalScoreA > finalScoreB
             ? `${match.pairA?.p1} / ${match.pairA?.p2}`
@@ -243,8 +277,13 @@ export default function MatchCard({
               }
             }}
             disabled={!isValidFinal}
-            className={`${isEditing ? "flex-1" : "w-full"} py-2.5 rounded-xl text-sm font-bold text-white cursor-pointer transition-colors`}
-            style={{ background: isValidFinal ? accentColor : "#334155", opacity: isValidFinal ? 1 : 0.5 }}
+            className={`${isEditing ? "flex-1" : "w-full"} py-3 rounded-xl text-[13px] font-black text-white cursor-pointer transition-all`}
+            style={{
+              background: isValidFinal ? accentColor : 'rgba(255,255,255,0.04)',
+              color: isValidFinal ? 'white' : '#334155',
+              boxShadow: isValidFinal ? `0 4px 16px ${accentColor}4d` : 'none',
+              opacity: 1,
+            }}
           >
             Guardar resultado
           </button>
