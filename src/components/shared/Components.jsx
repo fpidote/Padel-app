@@ -45,19 +45,24 @@ export function THeader({ t, code, isAdmin, copyCode, subtitle, onEdit }) {
 export function Tabs({ tabs, active, setActive }) {
   return (
     <div className="flex border-b border-[#1e293b]">
-      {tabs.map(([tb, lbl]) => (
-        <button
-          key={tb}
-          onClick={() => setActive(tb)}
-          className={`flex-1 py-3 text-sm cursor-pointer bg-transparent border-0 border-b-2 transition-colors ${
-            active === tb
-              ? 'text-[#f1f5f9] font-bold border-[#84cc16]'
-              : 'text-[#64748b] font-semibold border-transparent'
-          }`}
-        >
-          {lbl}
-        </button>
-      ))}
+      {tabs.map(([tb, lbl]) => {
+        const [icon, ...rest] = lbl.split(' ');
+        const label = rest.join(' ');
+        return (
+          <button
+            key={tb}
+            onClick={() => setActive(tb)}
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 cursor-pointer bg-transparent border-0 border-b-2 transition-colors ${
+              active === tb
+                ? 'text-[#f1f5f9] font-bold border-[#84cc16]'
+                : 'text-[#64748b] font-semibold border-transparent'
+            }`}
+          >
+            <span className="text-base leading-none">{icon}</span>
+            <span className="text-[10px] leading-tight">{label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

@@ -81,6 +81,20 @@ export default function Home() {
     }
   }
 
+  async function handleGoToPanel() {
+    try {
+      if (!auth.currentUser) {
+        await signInWithPopup(auth, googleProvider);
+      }
+      navigate("/panel");
+    } catch (err) {
+      if (err.code !== "auth/popup-closed-by-user") {
+        console.error("Error al iniciar sesión:", err);
+        setModalMsg("No se pudo iniciar sesión con Google.");
+      }
+    }
+  }
+
   async function onJoin() {
     try {
       const code = joinVal.trim().toUpperCase();
@@ -232,6 +246,13 @@ export default function Home() {
             className="w-full bg-lime-500 hover:bg-lime-400 text-green-950 font-black py-4 rounded-2xl text-base transition-colors cursor-pointer shadow-lg shadow-lime-500/20"
           >
             + Crear torneo gratis
+          </button>
+
+          <button
+            onClick={handleGoToPanel}
+            className="w-full text-gray-400 hover:text-gray-200 text-sm font-semibold py-2 transition-colors cursor-pointer"
+          >
+            {user ? "Mis torneos →" : "Ya tengo torneos →"}
           </button>
         </section>
 

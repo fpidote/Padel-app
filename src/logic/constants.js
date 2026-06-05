@@ -71,9 +71,6 @@ export function generateRules(type, config) {
           : "Sin límite de rondas fijo; el organizador decide cuándo terminar.",
         `${config.courts ?? 2} ${(config.courts ?? 2) === 1 ? "pista" : "pistas"} en juego simultáneamente.`,
       ];
-      if (config.useLevels) {
-        rules.push("Los jugadores están divididos por nivel (N1/N2). Las rotaciones respetan los niveles.");
-      }
       return rules;
     }
     case "relampago":

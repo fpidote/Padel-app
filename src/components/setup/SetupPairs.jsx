@@ -409,18 +409,6 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
               {t.type === "pozo" && (
                 <>
                   <div>
-                    <label className="text-xs text-gray-400 font-semibold block mb-2">Duración de ronda</label>
-                    <div className="flex gap-2">
-                      {[5,10,15,20,30].map(n => (
-                        <button key={n}
-                          onClick={() => persist({ ...t, timerSeconds: n * 60 })}
-                          className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer"
-                          style={{ background: t.timerSeconds === n * 60 ? color : "#1f2937", color: t.timerSeconds === n * 60 ? "#fff" : "#94a3b8" }}
-                        >{n}m</button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
                     <label className="text-xs text-gray-400 font-semibold block mb-2">
                       Número de rondas <span className="font-normal text-gray-500">(opcional — vacío = sin límite)</span>
                     </label>
