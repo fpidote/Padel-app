@@ -13,6 +13,13 @@ const STATUS = {
   finished: { label: "Finalizado",   color: "#64748b", bg: "#64748b15", border: "#64748b30" },
 };
 
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `${r}, ${g}, ${b}`;
+}
+
 export default function Panel() {
   const navigate = useNavigate();
   const [user, setUser] = useState(undefined); // undefined = todavía cargando
@@ -72,18 +79,18 @@ export default function Panel() {
 
   return (
     <>
-      <div className="min-h-screen bg-[#0f172a] text-[#f1f5f9] px-4 py-6">
+      <div className="min-h-screen bg-app bg-grid text-[#f1f5f9] px-4 py-6">
         <div className="max-w-lg mx-auto">
 
           {/* Header */}
           <div className="flex items-center gap-3 mb-7">
             <button
               onClick={() => navigate("/")}
-              className="w-8 h-8 rounded-lg bg-[#1e293b] border border-[#334155] flex items-center justify-center text-sm text-[#94a3b8] hover:text-[#f1f5f9] cursor-pointer transition-colors flex-shrink-0"
+              className="w-8 h-8 rounded-[10px] bg-white/5 border border-white/8 flex items-center justify-center text-sm text-[#64748b] hover:text-[#f1f5f9] cursor-pointer transition-colors flex-shrink-0"
             >
               ←
             </button>
-            <h1 className="text-xl font-black text-[#f1f5f9]">Mis torneos</h1>
+            <h1 className="text-[18px] font-black text-[#f1f5f9] tracking-[-0.5px]">Mis torneos</h1>
             {!loading && torneos.length > 0 && (
               <span className="ml-auto text-sm font-semibold text-[#64748b]">
                 {torneos.length} {torneos.length === 1 ? "torneo" : "torneos"}
@@ -99,18 +106,19 @@ export default function Panel() {
           {/* Empty state */}
           {!loading && torneos.length === 0 && (
             <div className="flex flex-col items-center gap-4 py-12 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-[#1e293b] border border-[#334155] flex items-center justify-center text-3xl">
+              <div className="w-[60px] h-[60px] rounded-[20px] bg-white/[0.03] border border-white/7 flex items-center justify-center text-3xl">
                 🏓
               </div>
               <div>
-                <p className="text-base font-bold text-[#f1f5f9] mb-1">Sin torneos todavía</p>
-                <p className="text-sm text-[#64748b] leading-relaxed">
+                <p className="text-[16px] font-black text-[#f1f5f9] mb-1.5">Sin torneos todavía</p>
+                <p className="text-[13px] text-[#334155] leading-[1.55] max-w-[220px] mx-auto">
                   Creá tu primer torneo y compartilo con tus jugadores.
                 </p>
               </div>
               <button
                 onClick={() => navigate("/")}
-                className="bg-[#84cc16] text-[#14532d] font-black rounded-xl px-6 py-2.5 text-sm cursor-pointer border-0 mt-1"
+                className="bg-[#84cc16] text-[#14532d] font-black rounded-[12px] px-6 py-2.5 text-[13px] cursor-pointer border-0 mt-1"
+                style={{ boxShadow: '0 4px 16px rgba(132,204,22,0.2)' }}
               >
                 + Crear torneo
               </button>
@@ -125,31 +133,47 @@ export default function Panel() {
               return (
                 <div
                   key={t.code}
-                  className="bg-[#1e293b] border border-[#334155] rounded-2xl overflow-hidden"
+                  className="rounded-[18px] overflow-hidden border border-white/7 relative"
+                  style={{ background: `rgba(${hexToRgb(typeInfo?.color ?? "#334155")}, 0.06)` }}
                 >
+                  {/* Glow radial izquierda */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      borderRadius: 18,
+                      background: `radial-gradient(ellipse 80% 60% at 0% 50%, ${typeInfo?.color ?? "#334155"}1a 0%, transparent 70%)`,
+                      pointerEvents: 'none',
+                    }}
+                  />
+
                   {/* Card body */}
                   <div
-                    className="flex items-center gap-3 px-4 py-3.5"
-                    style={{ borderLeft: `3px solid ${typeInfo?.color ?? "#334155"}` }}
+                    className="flex items-center gap-3 px-4 py-3.5 relative"
+                    style={{ borderLeft: `3px solid ${typeInfo?.color ?? "#334155"}b3` }}
                   >
                     <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-                      style={{ background: `${typeInfo?.color ?? "#334155"}18` }}
+                      className="w-[42px] h-[42px] rounded-[13px] flex items-center justify-center text-xl flex-shrink-0"
+                      style={{ background: `${typeInfo?.color ?? "#334155"}12` }}
                     >
                       {typeInfo?.icon ?? "🏓"}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-sm text-[#f1f5f9] truncate">{t.name}</div>
-                      <div className="text-xs text-[#64748b] mt-0.5">
-                        {typeInfo?.name ?? t.type}
+                      <div className="text-[11px] text-[#3d5070] mt-0.5 font-medium flex items-center gap-1.5">
+                        <span style={{ color: `${typeInfo?.color ?? "#334155"}99` }}>
+                          {typeInfo?.name ?? t.type}
+                        </span>
                         {t.createdAt && (
                           <>
-                            {" · "}
-                            {t.createdAt.toLocaleDateString("es-AR", {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                            })}
+                            <span className="text-[#1e3040]">·</span>
+                            <span className="font-data text-[10px] text-[#2d3f55]">
+                              {t.createdAt.toLocaleDateString("es-AR", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </span>
                           </>
                         )}
                       </div>
@@ -169,18 +193,18 @@ export default function Panel() {
                   </div>
 
                   {/* Card footer */}
-                  <div className="flex border-t border-[#334155]">
+                  <div className="flex border-t border-white/5 bg-black/15">
                     <button
                       onClick={() => navigate(`/torneo/${t.code}`)}
-                      className="flex-1 py-2.5 text-sm font-bold cursor-pointer bg-transparent border-0 transition-colors hover:bg-[#263349]"
+                      className="flex-1 py-2.5 text-[12px] font-bold cursor-pointer bg-transparent border-0 transition-colors text-left px-4 hover:bg-white/[0.03]"
                       style={{ color: typeInfo?.color ?? "#94a3b8" }}
                     >
                       Entrar →
                     </button>
-                    <div className="w-px bg-[#334155]" />
+                    <div className="w-px bg-white/5" />
                     <button
                       onClick={() => onDelete(t.code)}
-                      className="px-4 py-2.5 text-sm text-[#64748b] hover:text-[#ef4444] hover:bg-[#ef4444]/5 cursor-pointer bg-transparent border-0 transition-colors"
+                      className="px-4 py-2.5 text-[14px] text-[#334155] hover:text-[#ef4444] hover:bg-[#ef4444]/5 cursor-pointer bg-transparent border-0 transition-colors"
                     >
                       🗑
                     </button>
