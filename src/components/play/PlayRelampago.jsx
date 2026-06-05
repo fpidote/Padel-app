@@ -1,6 +1,6 @@
 // src/components/play/PlayRelampago.jsx
 import { useState, Fragment } from "react";
-import { TOURNAMENT_RULES } from "../../logic/constants";
+import { generateRules } from "../../logic/constants";
 import { advanceBracket } from "../../logic/relampago";
 import { THeader, Tabs } from "../shared/Components";
 import PairStandings from "../shared/PairStandings";
@@ -424,7 +424,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
               Reglas del Torneo Relámpago
             </h3>
             <ul style={{ color: "#cbd5e1", fontSize: 14, lineHeight: "1.6", paddingLeft: 20, listStyleType: "disc" }}>
-              {TOURNAMENT_RULES.relampago.map((rule, i) => (
+              {generateRules(t.type, t.config).map((rule, i) => (
                 <li key={i} style={{ marginBottom: 10 }}>{rule}</li>
               ))}
             </ul>

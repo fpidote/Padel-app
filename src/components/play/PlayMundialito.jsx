@@ -1,6 +1,6 @@
 // src/components/play/PlayMundialito.jsx
 import { useState } from "react";
-import { TOURNAMENT_RULES } from "../../logic/constants";
+import { generateRules } from "../../logic/constants";
 import { advanceBracket } from "../../logic/relampago";
 import { buildKnockoutFromGroups } from "../../logic/mundialito";
 import { THeader, Tabs } from "../shared/Components";
@@ -693,7 +693,7 @@ export default function PlayMundialito({
                 listStyleType: "disc",
               }}
             >
-              {TOURNAMENT_RULES.mundialito.map((rule, i) => (
+              {generateRules(t.type, t.config).map((rule, i) => (
                 <li key={i} style={{ marginBottom: 10 }}>
                   {rule}
                 </li>

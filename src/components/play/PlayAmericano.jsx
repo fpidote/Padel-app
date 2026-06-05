@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo } from "react";
-import { TOURNAMENT_RULES } from "../../logic/constants";
+import { generateRules } from "../../logic/constants";
 import { pk } from "../../logic/utils";
 import { buildRoundAmericano } from "../../logic/americano";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
@@ -421,7 +421,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                 listStyleType: "disc",
               }}
             >
-              {TOURNAMENT_RULES.americano.map((rule, i) => (
+              {generateRules(t.type, t.config).map((rule, i) => (
                 <li key={i} style={{ marginBottom: 10 }}>
                   {rule}
                 </li>

@@ -43,29 +43,69 @@ export const TOURNAMENT_TYPES = [
   },
 ];
 
-export const TOURNAMENT_RULES = {
-  americano: [
-    "Los partidos se juegan por minijuegos cortos (ej. a terminar 2-1 o 3-2).",
-    "En caso de llegar a un empate en juegos (ej. 2-2), se define con un Punto de Oro.",
-    "El jugador o pareja que gana suma 1 punto en la tabla general, además de acumular la diferencia de juegos (GF y GC).",
-    "Al terminar la ronda, los jugadores cambian de pista y de pareja según su clasificación (los mejores suben, los de abajo bajan).",
-  ],
-  relampago: [
-    "Eliminación directa. El que gana avanza, el que pierde queda eliminado (o pasa al cuadro de Revancha).",
-    "En caso de empate al límite de tiempo, se juega un Punto de Oro.",
-    "El cuadro se genera automáticamente.",
-  ],
-  mundialito: [
-    "Fase de grupos inicial: Todos juegan contra todos dentro de su grupo.",
-    "Victoria suma 3 puntos, empate suma 1 punto, derrota 0 puntos.",
-    "Los mejores de cada grupo avanzan a la fase eliminatoria (cuadro final).",
-    "El desempate en la tabla se define por la diferencia de juegos (GF - GC).",
-  ],
-  pozo: [
-    "La Pista 1 es la 'Pista Rey' o 'El Pozo'. Las demás van en orden descendente.",
-    "Partidos por tiempo estricto. Al sonar la campana, se anota el resultado y se detiene el juego.",
-    "Los ganadores de cada pista SUBEN una pista (hacia la Pista 1).",
-    "Los perdedores de cada pista BAJAN una pista.",
-    "El objetivo es terminar en la Pista 1 al final del tiempo total del torneo.",
-  ],
-};
+export function generateRules(type, config) {
+  function scoringDesc() {
+    const s = config.scoringSystem || "timed";
+    if (s === "rally") return `Partidos en rally scoring a ${config.rallyPoints ?? 24} puntos.`;
+    if (s === "games") return `Partidos al primero en llegar a ${config.targetGames ?? 6} juegos.`;
+    const metric = (config.timedMetric ?? "games") === "games" ? "juegos" : "puntos acumulados";
+    return `Partidos de ${config.matchMinutes ?? 10} minutos. Se cuentan ${metric}.`;
+  }
+
+  function goldenPointDesc() {
+    return config.goldenPoint !== false
+      ? "En caso de empate se define con un Punto de Oro."
+      : "Los empates cuentan como 1 punto para cada participante.";
+  }
+
+  switch (type) {
+    case "americano": {
+      const rules = [
+        scoringDesc(),
+        goldenPointDesc(),
+        (config.mode === "individual" || !config.mode)
+          ? "Modo individual: cada jugador rota solo según su clasificación."
+          : "Modo parejas: las parejas rotan juntas según su clasificación.",
+        config.maxRounds
+          ? `El torneo tiene ${config.maxRounds} rondas en total.`
+          : "Sin límite de rondas fijo; el organizador decide cuándo terminar.",
+        `${config.courts ?? 2} ${(config.courts ?? 2) === 1 ? "pista" : "pistas"} en juego simultáneamente.`,
+      ];
+      if (config.useLevels) {
+        rules.push("Los jugadores están divididos por nivel (N1/N2). Las rotaciones respetan los niveles.");
+      }
+      return rules;
+    }
+    case "relampago":
+      return [
+        "Eliminación directa. El que pierde pasa al cuadro de revancha y sigue jugando.",
+        scoringDesc(),
+        goldenPointDesc(),
+        `${config.courts ?? 2} ${(config.courts ?? 2) === 1 ? "pista" : "pistas"} en juego. El cuadro se genera automáticamente.`,
+      ];
+    case "mundialito":
+      return [
+        `${config.groupCount ?? 2} ${(config.groupCount ?? 2) === 1 ? "grupo" : "grupos"} en fase inicial. Los ${config.advancePerGroup ?? 2} mejores de cada grupo avanzan a eliminatorias.`,
+        "Victoria = 3 puntos · Empate = 1 punto · Derrota = 0 puntos.",
+        "El desempate en tabla se define por diferencia de juegos (GF − GC).",
+        scoringDesc(),
+        goldenPointDesc(),
+      ];
+    case "pozo": {
+      const courts = config.courts ?? 2;
+      const rules = [
+        `${courts} ${courts === 1 ? "pista" : "pistas"} en juego. La Pista 1 es El Pozo — el objetivo es llegar y mantenerse ahí.`,
+        scoringDesc(),
+        "Al sonar la campana: ganadores suben una pista, perdedores bajan una pista.",
+      ];
+      if (config.pozoMode === "fixed" && config.targetRounds) {
+        rules.push(`El torneo tiene ${config.targetRounds} rondas en total.`);
+      } else {
+        rules.push("Sin límite de rondas fijo; el organizador para el torneo cuando lo decide.");
+      }
+      return rules;
+    }
+    default:
+      return [];
+  }
+}

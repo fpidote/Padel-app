@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { collection, addDoc, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "../../firebase";
-import { TOURNAMENT_RULES } from "../../logic/constants";
+import { generateRules } from "../../logic/constants";
 import {
   buildPozoRound,
   applyPozoRoundResults,
@@ -674,7 +674,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
               Reglas de El Pozo
             </h3>
             <ul style={{ color: "#cbd5e1", fontSize: 14, lineHeight: "1.6", paddingLeft: 20, listStyleType: "disc" }}>
-              {TOURNAMENT_RULES.pozo.map((rule, i) => (
+              {generateRules(t.type, t.config).map((rule, i) => (
                 <li key={i} style={{ marginBottom: 10 }}>{rule}</li>
               ))}
             </ul>
