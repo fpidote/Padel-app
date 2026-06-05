@@ -5,37 +5,66 @@ export function THeader({ t, code, isAdmin, copyCode, subtitle, onEdit }) {
   const typeInfo = TOURNAMENT_TYPES.find((x) => x.id === t.type) || TOURNAMENT_TYPES[0];
   return (
     <div
-      className="px-4 py-3.5 flex items-start justify-between"
+      className="px-4 py-3.5 flex items-start justify-between relative overflow-hidden"
       style={{
-        background: `linear-gradient(135deg, ${typeInfo.color}22 0%, #0f172a 70%)`,
-        borderBottom: `1px solid ${typeInfo.color}30`,
+        background: `linear-gradient(135deg, ${typeInfo.color}2e 0%, ${typeInfo.color}0a 40%, #0f172a 80%)`,
+        borderBottom: `1px solid ${typeInfo.color}26`,
       }}
     >
-      <div>
-        <div className="text-lg font-black text-[#f1f5f9]">
-          {typeInfo.icon} {t.config.name}
+      {/* Glow blob ambiental */}
+      <div
+        style={{
+          position: 'absolute',
+          top: -30,
+          left: -20,
+          width: 140,
+          height: 100,
+          borderRadius: '50%',
+          background: typeInfo.color,
+          filter: 'blur(25px)',
+          opacity: 0.35,
+          pointerEvents: 'none',
+        }}
+      />
+
+      <div className="relative z-10">
+        {/* Etiqueta del formato */}
+        <div
+          className="text-[10px] font-bold tracking-[1.5px] uppercase mb-1.5 opacity-70"
+          style={{ color: typeInfo.color }}
+        >
+          {typeInfo.icon} {typeInfo.name}
         </div>
-        <div className="text-xs text-[#64748b] mt-0.5">{subtitle}</div>
+
+        {/* Nombre del torneo */}
+        <div className="text-[20px] font-black text-[#f1f5f9] tracking-[-0.5px] leading-tight">
+          {t.config.name}
+        </div>
+
+        <div className="text-xs text-[#4a5568] mt-0.5 font-medium">{subtitle}</div>
+
         {onEdit && (
           <button
             onClick={onEdit}
-            className="text-xs text-[#64748b] hover:text-[#f1f5f9] bg-transparent border-0 cursor-pointer underline p-0 mt-1 transition-colors"
+            className="text-xs text-[#4a5568] hover:text-[#f1f5f9] bg-transparent border-0 cursor-pointer underline p-0 mt-1 transition-colors"
           >
             ✏️ Editar torneo
           </button>
         )}
       </div>
-      <div className="flex gap-1.5 items-center flex-shrink-0 ml-3">
+
+      <div className="flex gap-1.5 items-center flex-shrink-0 ml-3 relative z-10 mt-0.5">
         {isAdmin && (
-          <span className="bg-[#f59e0b]/10 text-[#fbbf24] border border-[#f59e0b]/30 rounded-full px-2 py-0.5 text-[11px] font-bold whitespace-nowrap">
+          <span className="bg-[#f59e0b]/10 text-[#fbbf24] border border-[#f59e0b]/25 rounded-full px-2 py-0.5 text-[10px] font-bold whitespace-nowrap">
             👑 Admin
           </span>
         )}
         <button
           onClick={copyCode}
-          className="bg-[#1e293b] border border-[#334155] text-[#94a3b8] rounded-lg px-2.5 py-1 text-xs font-semibold cursor-pointer hover:text-[#f1f5f9] transition-colors whitespace-nowrap"
+          className="flex items-center gap-1.5 bg-white/5 border border-white/[0.09] text-[#64748b] rounded-lg px-2.5 py-1.5 cursor-pointer hover:text-[#f1f5f9] transition-colors whitespace-nowrap"
         >
-          🔗 {code}
+          <span className="text-[11px]">🔗</span>
+          <span className="font-data text-[11px] font-bold tracking-[1px]">{code}</span>
         </button>
       </div>
     </div>
@@ -44,7 +73,7 @@ export function THeader({ t, code, isAdmin, copyCode, subtitle, onEdit }) {
 
 export function Tabs({ tabs, active, setActive }) {
   return (
-    <div className="flex border-b border-[#1e293b]">
+    <div className="flex border-b border-white/5 bg-black/20">
       {tabs.map(([tb, lbl]) => {
         const [icon, ...rest] = lbl.split(' ');
         const label = rest.join(' ');
@@ -55,11 +84,11 @@ export function Tabs({ tabs, active, setActive }) {
             className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 cursor-pointer bg-transparent border-0 border-b-2 transition-colors ${
               active === tb
                 ? 'text-[#f1f5f9] font-bold border-[#84cc16]'
-                : 'text-[#64748b] font-semibold border-transparent'
+                : 'text-[#334155] font-semibold border-transparent'
             }`}
           >
-            <span className="text-base leading-none">{icon}</span>
-            <span className="text-[10px] leading-tight">{label}</span>
+            <span className="text-[15px] leading-none">{icon}</span>
+            <span className="text-[9px] font-bold tracking-[0.3px]">{label}</span>
           </button>
         );
       })}
