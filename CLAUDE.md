@@ -1,8 +1,29 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Padeldesk — Guía de Desarrollo para Claude
 
 > Este archivo define los estándares, convenciones y contexto técnico del proyecto.
 > Trátalo como si fuera el handbook de ingeniería de una empresa de producto seria.
 > Cada decisión aquí existe por una razón — respétala o justifica el cambio antes de modificarla.
+
+---
+
+## 0. Comandos
+
+```bash
+npm run dev          # Servidor de desarrollo (Vite, puerto 5173)
+npm run build        # Build de producción (dist/)
+npm run preview      # Previsualizar el build de producción
+npm run lint         # ESLint sobre todo el proyecto
+npm run test         # Ejecutar todos los tests con Vitest
+npx vitest run src/logic/americano.test.js   # Ejecutar un archivo de test individual
+npx vitest run --reporter=verbose            # Tests con output detallado
+npm run test:rules   # Tests de Firestore Security Rules (requiere emulador)
+```
+
+Los tests usan **Vitest**. Para mockear dependencias no-deterministas (como `shuffle`) usar `vi.mock('./utils.js', ...)`.
 
 ---
 
@@ -54,7 +75,8 @@ src/
     ├── mundialito.js        # Lógica de grupos + KO
     ├── pozo.js              # Lógica de King of the Hill
     ├── initTournament.js    # buildInitialTournament(type, ownerUid)
-    ├── constants.js         # TOURNAMENT_TYPES, TOURNAMENT_RULES, B()
+    ├── constants.js         # TOURNAMENT_TYPES, generateRules(type, config), B() (legacy)
+    ├── stats.js             # calculateStats(matches) — estadísticas agregadas por jugador
     └── utils.js             # shuffle, pk, genCode
 ```
 
@@ -66,6 +88,14 @@ src/
 | `/torneo/:code` | `TournamentPage` | Vista del torneo (admin + espectador) |
 | `/panel` | `Panel` | Panel del organizador (requiere auth) |
 | `/perfil` | Perfil (pendiente) | Perfil del usuario |
+
+### TournamentPage — lógica de dispatch
+
+`TournamentPage` hace lazy loading de todos los componentes Play/Setup con `React.lazy` + `Suspense`. El dispatch sigue esta lógica:
+
+- Si `t.status === "setup"` **o** `editMode === true` → renderiza Setup
+- Si no → renderiza Play según `t.type`
+- `editMode` se bloquea cuando `t.scoringStarted === true` (el organizador no puede editar una vez que hay resultados)
 
 ---
 
