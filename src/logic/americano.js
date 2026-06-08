@@ -143,6 +143,7 @@ export function precomputeAllRounds(entities, config) {
   const ph = {};            // historial de parejas: { "0_1": 2, ... }
   const oh = {};            // historial de rivales: { "0_1": 3, ... }
   const courtHistory = {};  // historial de canchas: { "3_c0": 1, ... }
+  const gmh = {};           // historial de compañeros de cancha: { "0_1": 2, ... }
   const soh = {};           // historial de descanso: { 5: 1, ... }
   const streak = {};        // rondas consecutivas jugadas sin descanso: { 5: 3, ... }
 
@@ -179,24 +180,39 @@ export function precomputeAllRounds(entities, config) {
   for (let r = 0; r < totalRounds; r++) {
     // Variables locales al loop de ronda (D-08 — las banderas de relajación no se filtran entre rondas)
     const { active, sittingOut } = selectSittingOut(entities, courts, soh, streak);
-    const sorted = levelSortedWithShuffle(active);
-
-    const topHalf = sorted.slice(0, activeCourts * 2);
-    const botHalf = sorted.slice(activeCourts * 2);
 
     const cs = [];
-    // Set de restricciones que dispararon relaxación en esta ronda (colapsado por tipo — Open Question 2)
     const constraintsRelaxed = new Set();
     let maxAttemptUsed = 0;
 
-    // Consecutive indexing: clusters 2 M's per group so scoredSplit can pair them
-    // as opponents (M+P vs M+P). Then shuffle groups so advanced players aren't
-    // always assigned to courts 0,1 — any court can get the M vs M match.
-    const groups = [];
-    for (let c = 0; c < activeCourts; c++) {
-      groups.push([topHalf[c * 2], topHalf[c * 2 + 1], botHalf[c * 2], botHalf[c * 2 + 1]]);
+    // Probar 20 agrupamientos candidatos y elegir el que minimiza el overlap de gmh
+    // (cuántas veces los jugadores de un grupo ya compartieron cancha).
+    // Cada candidato usa un shuffle distinto de levelSortedWithShuffle.
+    // Cortar antes si encontramos score 0 (ningún jugador repite grupo).
+    const GROUPING_CANDIDATES = 20;
+    let bestGroups = null;
+    let bestGroupScore = Infinity;
+    for (let attempt = 0; attempt < GROUPING_CANDIDATES; attempt++) {
+      const sorted = levelSortedWithShuffle(active);
+      const topH = sorted.slice(0, activeCourts * 2);
+      const botH = sorted.slice(activeCourts * 2);
+      const candidate = [];
+      for (let c = 0; c < activeCourts; c++) {
+        candidate.push([topH[c * 2], topH[c * 2 + 1], botH[c * 2], botH[c * 2 + 1]]);
+      }
+      let score = 0;
+      candidate.forEach((group) => {
+        for (let i = 0; i < 4; i++)
+          for (let j = i + 1; j < 4; j++)
+            score += gmh[pk(group[i].id, group[j].id)] || 0;
+      });
+      if (score < bestGroupScore) {
+        bestGroupScore = score;
+        bestGroups = candidate;
+      }
+      if (score === 0) break;
     }
-    const shuffledGroups = shuffle(groups);
+    const shuffledGroups = shuffle(bestGroups);
 
     for (let c = 0; c < activeCourts; c++) {
       const group = shuffledGroups[c];
@@ -259,6 +275,13 @@ export function precomputeAllRounds(entities, config) {
         const key = `${p.id}_c${ci}`;
         courtHistory[key] = (courtHistory[key] || 0) + 1;
       });
+
+      const four = [...court.pairA, ...court.pairB];
+      for (let i = 0; i < 4; i++)
+        for (let j = i + 1; j < 4; j++) {
+          const k = pk(four[i].id, four[j].id);
+          gmh[k] = (gmh[k] || 0) + 1;
+        }
     });
 
     sittingOut.forEach((p) => {
