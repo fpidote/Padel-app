@@ -5,25 +5,26 @@ import { precomputeAllRounds } from "./americano.js";
 import { pk } from "./utils.js";
 
 describe("Simulación — algoritmo de emparejamiento", () => {
-  // T-SIM-01: escenario donde 0 repeticiones es matemáticamente fácil y el algoritmo
-  // debe lograrlo siempre. C(8,2)=28 pares posibles, solo 6 usados en 3 rondas.
-  test("T-SIM-01: cero repeticiones de pareja — 8 jugadores, 2 canchas, 3 rondas", () => {
-    const players = Array.from({ length: 8 }, (_, i) => ({
+  // T-SIM-01: escenario real de producción — 20 jugadores con niveles mixtos.
+  // Con el fix de groupmate history, el algoritmo debe lograr 0 repeticiones de pareja.
+  // C(20,2)=190 pares posibles, solo 50 usados en 5 rondas — matemáticamente holgado.
+  test("T-SIM-01: cero repeticiones de pareja — 20 jugadores, nivel mixto, 5 rondas", () => {
+    const players = Array.from({ length: 20 }, (_, i) => ({
       id: i,
       name: `J${i}`,
-      level: 0,
+      level: (i % 3) + 1,
       pts: 0,
       gf: 0,
       gc: 0,
     }));
 
     const { rounds } = precomputeAllRounds(players, {
-      courts: 2,
+      courts: 5,
       mode: "individual",
-      maxRounds: 3,
+      maxRounds: 5,
     });
 
-    expect(rounds).toHaveLength(3);
+    expect(rounds).toHaveLength(5);
 
     const partnerCounts = {};
     rounds.forEach((round) => {
