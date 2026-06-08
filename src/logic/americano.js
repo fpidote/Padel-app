@@ -18,6 +18,8 @@ export const PENALTY = {
 // index 2 = relax partner repeat, attempt 3 uses Infinity (always accept).
 export const RELAX_THRESHOLDS = [2000, 6000, 15000];
 
+const GROUPING_CANDIDATES = 20;
+
 // ── scoredSplit ───────────────────────────────────────────────
 // Evaluates the 3 possible pair-splits for a group of 4 players and
 // returns the split with the lowest penalty score given current state and weights.
@@ -143,7 +145,7 @@ export function precomputeAllRounds(entities, config) {
   const ph = {};            // historial de parejas: { "0_1": 2, ... }
   const oh = {};            // historial de rivales: { "0_1": 3, ... }
   const courtHistory = {};  // historial de canchas: { "3_c0": 1, ... }
-  const gmh = {};           // historial de compañeros de cancha: { "0_1": 2, ... }
+  const gmh = {};           // co-cancha: los 6 pares C(4,2) de cada grupo — { "0_1": 2, ... }
   const soh = {};           // historial de descanso: { 5: 1, ... }
   const streak = {};        // rondas consecutivas jugadas sin descanso: { 5: 3, ... }
 
@@ -185,12 +187,10 @@ export function precomputeAllRounds(entities, config) {
     const constraintsRelaxed = new Set();
     let maxAttemptUsed = 0;
 
-    // Probar 20 agrupamientos candidatos y elegir el que minimiza el overlap de gmh
-    // (cuántas veces los jugadores de un grupo ya compartieron cancha).
-    // Cada candidato usa un shuffle distinto de levelSortedWithShuffle.
-    // Cortar antes si encontramos score 0 (ningún jugador repite grupo).
-    const GROUPING_CANDIDATES = 20;
-    let bestGroups = null;
+    // Probar GROUPING_CANDIDATES shuffles y elegir el agrupamiento con menor overlap de gmh.
+    // Nota: gmh optimiza quién comparte cancha — scoredSplit optimiza las parejas dentro del grupo.
+    // Son dos pasos independientes; gmh no tiene visión de ph/oh.
+    let bestGroups = [];
     let bestGroupScore = Infinity;
     for (let attempt = 0; attempt < GROUPING_CANDIDATES; attempt++) {
       const sorted = levelSortedWithShuffle(active);
