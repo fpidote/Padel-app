@@ -100,11 +100,10 @@ export function buildBracket(pairs) {
       let loserMatchId = null;
       let loserMatchSlot = null;
       if (roundNum === 2) {
-        const isGuaranteed = guaranteed_bye_r2.includes(i);
+        const consR2Idx = guaranteed_bye_r2.indexOf(i);
+        const isGuaranteed = consR2Idx !== -1;
         const isConditional = conditionalRoutedToR1 && conditionalRoutedToR1.w2MatchIdx === i;
         if (isGuaranteed) {
-          // bye-loser garantizado → consolación R2
-          const consR2Idx = guaranteed_bye_r2.indexOf(i);
           loserMatchId = `c_r2_g${consR2Idx}`;
           loserMatchSlot = "B";
         } else if (isConditional) {
