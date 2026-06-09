@@ -121,6 +121,41 @@ function levelSortedWithShuffle(active) {
   return levels.flatMap((l) => shuffle(byLevel[l]));
 }
 
+// ── optimalCourtsAssignment ───────────────────────────────────
+// Assigns groups to physical courts to minimise total court-repetition cost.
+// Tries all n! permutations (n ≤ 5 courts → max 120 iterations).
+// Uses shuffle for random tie-breaking when history is empty (round 1).
+export function optimalCourtsAssignment(groups, courtHistory) {
+  const n = groups.length;
+  if (n <= 1) return [...groups];
+  if (n > 5) return shuffle([...groups]);
+
+  const base = shuffle([...groups]);
+
+  function permCost(perm) {
+    return perm.reduce((total, groupIdx, courtIdx) =>
+      total + base[groupIdx].reduce((s, p) =>
+        s + (courtHistory[`${p.id}_c${courtIdx}`] || 0), 0), 0);
+  }
+
+  function allPerms(arr) {
+    if (arr.length <= 1) return [arr];
+    return arr.flatMap((v, i) =>
+      allPerms(arr.filter((_, j) => j !== i)).map(perm => [v, ...perm]));
+  }
+
+  const indices = Array.from({ length: n }, (_, i) => i);
+  let bestPerm = indices;
+  let bestCost = Infinity;
+
+  for (const perm of allPerms(indices)) {
+    const c = permCost(perm);
+    if (c < bestCost) { bestCost = c; bestPerm = perm; }
+  }
+
+  return bestPerm.map(i => base[i]);
+}
+
 // Returns { rounds: Array<{courts, sittingOut}>, warnings: Array<{round, constraint, message}> }
 export function precomputeAllRounds(entities, config) {
   const { courts, mode = "individual", maxRounds } = config;
@@ -212,7 +247,7 @@ export function precomputeAllRounds(entities, config) {
       }
       if (score === 0) break;
     }
-    const shuffledGroups = shuffle(bestGroups);
+    const shuffledGroups = optimalCourtsAssignment(bestGroups, courtHistory);
 
     for (let c = 0; c < activeCourts; c++) {
       const group = shuffledGroups[c];
