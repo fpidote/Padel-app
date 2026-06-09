@@ -27,6 +27,31 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
   const wonA = match.saved && match.winner?.id === match.pairA?.id;
   const wonB = match.saved && match.winner?.id === match.pairB?.id;
 
+  const realPairName = isByeA
+    ? (match.pairB ? `${match.pairB.p1} / ${match.pairB.p2}` : "TBD")
+    : (match.pairA ? `${match.pairA.p1} / ${match.pairA.p2}` : "TBD");
+
+  if (isBye) {
+    return (
+      <div
+        style={{
+          background: "#1e293b",
+          borderRadius: 10,
+          borderLeft: `3px solid ${accentColor}`,
+          padding: "10px 14px",
+          userSelect: "none",
+        }}
+      >
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#f1f5f9", marginBottom: 4 }}>
+          {realPairName}
+        </div>
+        <div style={{ fontSize: 11, color: "#64748b" }}>
+          Exento — pasa directo
+        </div>
+      </div>
+    );
+  }
+
   function handleCardClick() {
     if (!isAdmin || isTBD || isBye || match.saved) return;
     setExpanded((e) => !e);
