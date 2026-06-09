@@ -27,11 +27,10 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
   const wonA = match.saved && match.winner?.id === match.pairA?.id;
   const wonB = match.saved && match.winner?.id === match.pairB?.id;
 
-  const realPairName = isByeA
-    ? (match.pairB ? `${match.pairB.p1} / ${match.pairB.p2}` : "TBD")
-    : (match.pairA ? `${match.pairA.p1} / ${match.pairA.p2}` : "TBD");
-
-  if (isBye) {
+  if (isBye && !isTBD) {
+    const realPairName = isByeA
+      ? `${match.pairB.p1} / ${match.pairB.p2}`
+      : `${match.pairA.p1} / ${match.pairA.p2}`;
     return (
       <div
         style={{
