@@ -270,11 +270,19 @@ export function advanceBracket(matches, savedId, scoreA, scoreB) {
     }
   }
   // Advance loser to consolation
-  if (match.loserMatchId && match.loser) {
-    const cons = updated.find((m) => m.id === match.loserMatchId);
-    if (cons) {
-      if (!cons.pairA) cons.pairA = match.loser;
-      else cons.pairB = match.loser;
+  if (match.loserMatchId && match.loser && match.loser.id !== "bye") {
+    // Para W_R2 con bye-tracking: solo enrutar si el loser tuvo bye en R1.
+    // Para W_R1 real (sin flags) y W_R2 guaranteed (ambos son bye): siempre enrutar.
+    const loserIsA = a < b; // a < b → pairA perdió
+    const loserHadBye = loserIsA ? (match.pairAByeInR1 ?? false) : (match.pairBByeInR1 ?? false);
+    const hasByeTracking = match.pairAByeInR1 != null || match.pairBByeInR1 != null;
+    const shouldRoute = !hasByeTracking || loserHadBye;
+    if (shouldRoute) {
+      const cons = updated.find((m) => m.id === match.loserMatchId);
+      if (cons) {
+        if (match.loserMatchSlot === "A") cons.pairA = match.loser;
+        else cons.pairB = match.loser;
+      }
     }
   }
 
@@ -318,10 +326,10 @@ function rippleByes(matches) {
               else next.pairB = m.winner;
             }
           }
-          if (m.loserMatchId && m.loser) {
+          if (m.loserMatchId && m.loser && m.loser.id !== "bye") {
             const cons = matches.find((nx) => nx.id === m.loserMatchId);
             if (cons) {
-              if (!cons.pairA) cons.pairA = m.loser;
+              if (m.loserMatchSlot === "A") cons.pairA = m.loser;
               else cons.pairB = m.loser;
             }
           }
