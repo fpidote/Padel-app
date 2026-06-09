@@ -10,7 +10,7 @@ function makePairs(n) {
 }
 
 describe("buildBracket — sin byes (potencia de 2)", () => {
-  it("T-REL-06: 4 parejas — consolación R1 tiene 2 partidos reales, 0 BYEs", () => {
+  it("T-REL-06: 4 parejas — consolación R1 tiene 1 match, 0 BYEs en slots", () => {
     const bracket = buildBracket(makePairs(4));
     const consR1 = bracket.filter((m) => m.bracket === "consolation" && m.round === 1);
     expect(consR1).toHaveLength(1);
