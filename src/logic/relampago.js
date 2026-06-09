@@ -6,6 +6,7 @@ export function buildBracket(pairs) {
 
   const BYE = { id: "bye", p1: "BYE", p2: "BYE" };
   const distributed = Array(size).fill(null).map((_, i) => (i < n ? pairs[i] : BYE));
+  // Interleave seeds so no two BYEs face each other in R1
   const interleaved = [];
   let lo = 0, hi = size - 1;
   while (lo <= hi) {
@@ -80,8 +81,8 @@ export function buildBracket(pairs) {
       loser: null,
       nextMatchId: size > 2 ? `w_r2_m${Math.floor(i / 2)}` : null,
       nextMatchSlot: i % 2 === 0 ? "A" : "B",
-      loserMatchId: routing ? routing.consolMatchId : null,
-      loserMatchSlot: routing ? routing.consolSlot : null,
+      loserMatchId: (routing && size > 2) ? routing.consolMatchId : null,
+      loserMatchSlot: (routing && size > 2) ? routing.consolSlot : null,
     });
   }
 
@@ -136,8 +137,8 @@ export function buildBracket(pairs) {
     roundNum++;
   }
 
-  // 3. Consolation Bracket
-  if (total_consol_r1 > 0) {
+  // 3. Consolation Bracket (2-pair tournaments have no consolation — single match is the final)
+  if (total_consol_r1 > 0 && size > 2) {
     // Consolation R1
     for (let i = 0; i < total_consol_r1; i++) {
       const nextConsId = total_consol_r1 > 1 || guaranteed_bye_r2.length > 0
@@ -256,6 +257,7 @@ export function advanceBracket(matches, savedId, scoreA, scoreB) {
   if (!match) return updated;
   const a = parseInt(scoreA),
     b = parseInt(scoreB);
+  if (a === b) return updated;
   match.scoreA = String(a);
   match.scoreB = String(b);
   match.saved = true;
@@ -275,6 +277,8 @@ export function advanceBracket(matches, savedId, scoreA, scoreB) {
     // Para W_R1 real (sin flags) y W_R2 guaranteed (ambos son bye): siempre enrutar.
     const loserIsA = a < b; // a < b → pairA perdió
     const loserHadBye = loserIsA ? (match.pairAByeInR1 ?? false) : (match.pairBByeInR1 ?? false);
+    // W_R1 matches have NO pairAByeInR1/pairBByeInR1 (undefined → hasByeTracking=false → always route).
+    // Do NOT set these to false on W_R1 — that would silently block consolation routing.
     const hasByeTracking = match.pairAByeInR1 != null || match.pairBByeInR1 != null;
     const shouldRoute = !hasByeTracking || loserHadBye;
     if (shouldRoute) {
@@ -297,28 +301,30 @@ function rippleByes(matches) {
     changed = false;
     matches.forEach((m) => {
       if (!m.saved && m.pairA && m.pairB) {
+        let matchChanged = false;
         if (m.pairA.id === "bye" && m.pairB.id === "bye") {
           m.saved = true;
           m.winner = m.pairA;
           m.loser = m.pairB;
-          changed = true;
+          matchChanged = true;
         } else if (m.pairA.id === "bye") {
           m.saved = true;
           m.scoreA = "0";
           m.scoreB = "1";
           m.winner = m.pairB;
           m.loser = m.pairA;
-          changed = true;
+          matchChanged = true;
         } else if (m.pairB.id === "bye") {
           m.saved = true;
           m.scoreA = "1";
           m.scoreB = "0";
           m.winner = m.pairA;
           m.loser = m.pairB;
-          changed = true;
+          matchChanged = true;
         }
 
-        if (changed) {
+        if (matchChanged) {
+          changed = true;
           if (m.nextMatchId) {
             const next = matches.find((nx) => nx.id === m.nextMatchId);
             if (next) {
