@@ -290,7 +290,7 @@ export default function Home() {
               onKeyDown={(e) => e.key === "Enter" && onJoin()}
               maxLength={6}
               placeholder="CÓDIGO"
-              className="flex-1 min-w-0 font-data bg-white/[0.03] border border-white/[0.07] focus:border-[#84cc16]/30 rounded-2xl text-[#f1f5f9] text-xl font-bold tracking-[0.35em] text-center py-3 outline-none transition-all placeholder:text-[#1e2a3a] placeholder:tracking-[4px] placeholder:text-sm placeholder:font-medium"
+              className="flex-1 min-w-0 font-data bg-white/[0.03] border border-white/[0.07] focus:border-[#84cc16]/30 rounded-2xl text-[#f1f5f9] text-xl font-bold tracking-[0.35em] text-center py-3 outline-none transition-all placeholder:text-[#475569] placeholder:tracking-[4px] placeholder:text-sm placeholder:font-medium"
               onFocus={(e) => { e.target.style.boxShadow = '0 0 0 3px rgba(132,204,22,0.06)'; }}
               onBlur={(e) => { e.target.style.boxShadow = 'none'; }}
             />
