@@ -1,6 +1,8 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { buildFirstRoundAmericano, precomputeAllRounds } from "../../logic/americano";
+import { calcularDescansos, isCourtComplete } from "../../logic/manualRounds";
+import ManualRoundBuilder from "./ManualRoundBuilder";
 import { buildShareMessage } from "../../logic/utils";
 
 const COLOR = "#0284c7";
@@ -63,6 +65,9 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
   const [localRoundWarnings,     setLocalRoundWarnings]     = useState([]);
   const [showLaunchModal,        setShowLaunchModal]        = useState(false);
   const [launchModalTab,         setLaunchModalTab]         = useState("emparejamientos");
+  const [localManualRounds,  setLocalManualRounds]  = useState([]);
+  const [showManualBuilder,  setShowManualBuilder]   = useState(false);
+  const [manualResetMsg,     setManualResetMsg]      = useState(false);
 
   const debName     = useRef(null);
   const debDesc     = useRef(null);
@@ -88,9 +93,17 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
   const statusMsg = `${tot} ${isPairs ? "parejas" : "jugadores"} · ${t.config.courts} pistas · ${Math.min(tot, act)} juegan` +
     (sit > 0 ? ` · ⏳ ${sit} descansan` : need > 0 ? ` · ⚠️ faltan ${need}` : " · ✓ listo");
 
-  const ok = isPairs
+  const isManual = !isPairs && (t.config.matchmaking || "americano") === "manual";
+
+  const manualReady = !isManual || (
+    localManualRounds.length >= 1 &&
+    localManualRounds.every((r) => r.courts.every(isCourtComplete))
+  );
+
+  const ok = (isPairs
     ? tot >= 2 && (t.pairInputs || []).every(p => p.p1.trim() && p.p2.trim())
-    : tot >= 4 && (t.playerInputs || []).every(p => p.name.trim().length > 0);
+    : tot >= 4 && (t.playerInputs || []).every(p => p.name.trim().length > 0))
+    && manualReady;
 
   const scoring   = t.config.scoringSystem || "timed";
   const useLevels = !!t.config.useLevels;
@@ -104,6 +117,9 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
     (t.config.matchmaking || "americano") === "americano" &&
     t.status !== "playing" &&
     ok;
+
+  const canShowMatchmakingTab = canReshuffle || (isManual && localManualRounds.length > 0);
+  const roundsToPreview = isManual ? localManualRounds : localPrecomputedRounds;
 
   const scoringLabel  = scoring === "timed" ? "Por tiempo" : scoring === "rally" ? "Rally scoring" : "Por games";
   const scoringDetail = scoring === "timed"
@@ -143,6 +159,27 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
     if (!isNaN(num) && num >= 1) debMinutes.current = setTimeout(() => persist({ ...t, config: { ...t.config, matchMinutes: num } }), 600);
   }
 
+  function handleMatchmakingChange(val) {
+    if (val !== "manual") {
+      setLocalManualRounds([]);
+      setManualResetMsg(false);
+    } else {
+      setLocalPrecomputedRounds(null);
+      setLocalRoundWarnings([]);
+    }
+    persist({ ...t, config: { ...t.config, matchmaking: val } });
+  }
+
+  function handleCourtsChange(n) {
+    if (isManual && localManualRounds.length > 0) {
+      setLocalManualRounds([]);
+      setManualResetMsg(true);
+    }
+    setLocalPrecomputedRounds(null);
+    setLocalRoundWarnings([]);
+    persist({ ...t, config: { ...t.config, courts: n } });
+  }
+
   function handleReshuffle() {
     if (isPairs) return;
     const entities = (t.playerInputs || []).map((p, i) => ({ id: i, name: p.name.trim(), level: p.level || 0, pts: 0, gf: 0, gc: 0 }));
@@ -152,7 +189,9 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
   }
 
   function handleOpenLaunchModal() {
-    if (canReshuffle) {
+    if (isManual && localManualRounds.length > 0) {
+      setLaunchModalTab("emparejamientos");
+    } else if (canReshuffle) {
       if (localPrecomputedRounds === null) {
         const entities = (t.playerInputs || []).map((p, i) => ({ id: i, name: p.name.trim(), level: p.level || 0, pts: 0, gf: 0, gc: 0 }));
         const result = precomputeAllRounds(entities, t.config);
@@ -194,7 +233,15 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
       let currentRound, sittingOut;
       let precomputedRounds = null;
       let roundWarnings = [];
-      if (!isPairs && (t.config.matchmaking || "americano") === "americano") {
+      if (isManual) {
+        precomputedRounds = localManualRounds.map((r) => ({
+          ...r,
+          sittingOut: calcularDescansos(entities, r.courts),
+        }));
+        const firstRound = precomputedRounds[0];
+        currentRound = firstRound.courts.map((c) => ({ ...c, scoreA: "", scoreB: "", saved: false }));
+        sittingOut = firstRound.sittingOut;
+      } else if (!isPairs && (t.config.matchmaking || "americano") === "americano") {
         if (localPrecomputedRounds !== null) {
           precomputedRounds = localPrecomputedRounds;
           roundWarnings = localRoundWarnings;
@@ -235,6 +282,8 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
   }
 
   function commitEdit(i) {
+    setLocalPrecomputedRounds(null);
+    setLocalRoundWarnings([]);
     if (isPairs) {
       const arr = [...(t.pairInputs || [])];
       arr[i] = { ...arr[i], p1: editP1.trim() || arr[i].p1, p2: editP2.trim() || arr[i].p2 };
@@ -258,6 +307,21 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
 
   const inputCls    = "w-full bg-[#1f2937] border border-gray-700 focus:border-sky-600 rounded-xl text-gray-50 px-4 py-3 text-sm outline-none transition-colors";
   const addInputCls = "flex-1 bg-[#1f2937] border border-gray-700 focus:border-sky-600 rounded-xl text-gray-50 px-4 py-2.5 text-sm outline-none transition-colors min-w-0";
+
+  if (showManualBuilder && isAdmin) {
+    const players = (t.playerInputs || [])
+      .map((p, i) => ({ id: i, name: p.name.trim(), level: p.level || 0, pts: 0, gf: 0, gc: 0 }))
+      .filter((p) => p.name);
+    return (
+      <ManualRoundBuilder
+        players={players}
+        courts={t.config.courts}
+        rounds={localManualRounds}
+        onChange={setLocalManualRounds}
+        onBack={() => setShowManualBuilder(false)}
+      />
+    );
+  }
 
   return (
     <>
@@ -393,7 +457,7 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
                           <button
                             onClick={() => {
                               if (editingIdx === i) { setEditLvl(l => (l + 1) % 4); }
-                              else { const arr = [...t.playerInputs]; arr[i] = { ...arr[i], level: ((arr[i].level || 0) + 1) % 4 }; persist({ ...t, playerInputs: arr }); }
+                              else { setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); const arr = [...t.playerInputs]; arr[i] = { ...arr[i], level: ((arr[i].level || 0) + 1) % 4 }; persist({ ...t, playerInputs: arr }); }
                             }}
                             className="w-6 h-6 flex items-center justify-center text-xs font-bold rounded-md shrink-0 cursor-pointer"
                             style={{ background: lvl.color + "20", color: lvl.color }}
@@ -453,7 +517,7 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
             <div className="flex gap-2">
               {[1,2,3,4,5,6].map(n => (
                 <button key={n}
-                  onClick={() => { setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); persist({ ...t, config: { ...t.config, courts: n } }); }}
+                  onClick={() => handleCourtsChange(n)}
                   className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer"
                   style={{ background: t.config.courts === n ? COLOR : "#1f2937", color: t.config.courts === n ? "#fff" : "#94a3b8" }}
                 >{n}</button>
@@ -526,18 +590,55 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
               </div>
             )}
 
-            {/* ── 6. Rondas ── */}
-            <SectionHeader>🔄 Rondas</SectionHeader>
-            <div className="flex gap-2 flex-wrap">
-              {[null, 4, 6, 8, 10, 12].map(n => (
-                <button key={n ?? "ilim"}
-                  onClick={() => { setRoundsCustom(""); setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); persist({ ...t, config: { ...t.config, maxRounds: n } }); }}
-                  className="px-3 py-2 rounded-xl text-sm font-bold cursor-pointer transition-colors"
-                  style={{ background: (t.config.maxRounds ?? null) === n ? COLOR : "#374151", color: (t.config.maxRounds ?? null) === n ? "#fff" : "#94a3b8" }}
-                >{n === null ? "Ilimitadas" : n}</button>
-              ))}
-              <input type="number" value={roundsCustom} onChange={e => handleRoundsCustom(e.target.value)} placeholder="Otro" min={1} max={30} className="w-16 py-2 rounded-lg text-sm text-center font-bold outline-none bg-[#374151] text-gray-300 placeholder:text-gray-600 shrink-0" />
-            </div>
+            {/* ── 6. Rondas — ocultar en modo manual ── */}
+            {!isManual && (
+              <>
+                <SectionHeader>🔄 Rondas</SectionHeader>
+                <div className="flex gap-2 flex-wrap">
+                  {[null, 4, 6, 8, 10, 12].map(n => (
+                    <button key={n ?? "ilim"}
+                      onClick={() => { setRoundsCustom(""); setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); persist({ ...t, config: { ...t.config, maxRounds: n } }); }}
+                      className="px-3 py-2 rounded-xl text-sm font-bold cursor-pointer transition-colors"
+                      style={{ background: (t.config.maxRounds ?? null) === n ? COLOR : "#374151", color: (t.config.maxRounds ?? null) === n ? "#fff" : "#94a3b8" }}
+                    >{n === null ? "Ilimitadas" : n}</button>
+                  ))}
+                  <input type="number" value={roundsCustom} onChange={e => handleRoundsCustom(e.target.value)} placeholder="Otro" min={1} max={30} className="w-16 py-2 rounded-lg text-sm text-center font-bold outline-none bg-[#374151] text-gray-300 placeholder:text-gray-600 shrink-0" />
+                </div>
+              </>
+            )}
+
+            {/* ── Rondas manuales ── */}
+            {isManual && (
+              <>
+                <SectionHeader>✏️ Rondas manuales</SectionHeader>
+
+                {manualResetMsg && (
+                  <div className="mb-3 px-4 py-2.5 rounded-xl bg-yellow-400/10 border border-yellow-400/20 text-xs text-yellow-400 font-semibold">
+                    ⚠️ Cambiaste las pistas — el armado manual se reinició.
+                  </div>
+                )}
+
+                <button
+                  onClick={() => { setManualResetMsg(false); setShowManualBuilder(true); }}
+                  className="w-full py-3 rounded-xl font-bold text-sm cursor-pointer transition-colors mb-3"
+                  style={{ background: "#1f2937", border: `1px solid ${COLOR}50`, color: COLOR }}
+                >
+                  ✏️ Armar rondas
+                </button>
+
+                {localManualRounds.length === 0 ? (
+                  <p className="text-xs text-gray-600 text-center">Sin rondas armadas todavía</p>
+                ) : manualReady ? (
+                  <p className="text-xs text-green-400 font-bold text-center">
+                    ✓ {localManualRounds.length} {localManualRounds.length === 1 ? "ronda lista" : "rondas listas"}
+                  </p>
+                ) : (
+                  <p className="text-xs text-yellow-400 font-semibold text-center">
+                    {localManualRounds.filter((r) => r.courts.every(isCourtComplete)).length} de {localManualRounds.length} rondas completas
+                  </p>
+                )}
+              </>
+            )}
 
             {/* ── 7. Configuración avanzada ── */}
             <div className="mt-7">
@@ -558,11 +659,21 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
                   <div>
                     <div className="text-sm font-semibold text-gray-200 mb-2">Emparejamiento</div>
                     <div className="flex gap-2">
-                      {[{ id: "americano", label: "Americano" }, { id: "mexicano", label: "Mexicano" }].map(opt => (
-                        <button key={opt.id} onClick={() => persist({ ...t, config: { ...t.config, matchmaking: opt.id } })} className="flex-1 py-2 rounded-xl text-sm font-bold cursor-pointer transition-colors" style={{ background: (t.config.matchmaking || "americano") === opt.id ? COLOR : "#374151", color: (t.config.matchmaking || "americano") === opt.id ? "#fff" : "#94a3b8" }}>{opt.label}</button>
+                      {[
+                        { id: "americano", label: "Americano" },
+                        { id: "mexicano", label: "Mexicano" },
+                        ...(isPairs ? [] : [{ id: "manual", label: "Manual" }]),
+                      ].map(opt => (
+                        <button key={opt.id} onClick={() => handleMatchmakingChange(opt.id)} className="flex-1 py-2 rounded-xl text-sm font-bold cursor-pointer transition-colors" style={{ background: (t.config.matchmaking || "americano") === opt.id ? COLOR : "#374151", color: (t.config.matchmaking || "americano") === opt.id ? "#fff" : "#94a3b8" }}>{opt.label}</button>
                       ))}
                     </div>
-                    <p className="text-xs text-gray-600 mt-1.5">{(t.config.matchmaking || "americano") === "americano" ? "Parejas aleatorias cada ronda" : "Desde ronda 2, los mejores juegan entre sí"}</p>
+                    <p className="text-xs text-gray-600 mt-1.5">
+                      {(t.config.matchmaking || "americano") === "americano"
+                        ? "Parejas aleatorias cada ronda"
+                        : (t.config.matchmaking || "americano") === "mexicano"
+                        ? "Desde ronda 2, los mejores juegan entre sí"
+                        : "Vos elegís los emparejamientos de cada ronda"}
+                    </p>
                   </div>
                   <div>
                     <label className="text-xs text-gray-400 font-semibold block mb-1.5">Descripción <span className="text-gray-600 font-normal">(opcional)</span></label>
@@ -601,7 +712,7 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
           </div>
 
           {/* Tabs — solo si hay emparejamientos */}
-          {canReshuffle && (
+          {canShowMatchmakingTab && (
             <div className="flex shrink-0" style={{ borderBottom: "1px solid #1f2937" }}>
               {[{ id: "emparejamientos", label: "🎲 Emparejamientos" }, { id: "resumen", label: "📋 Resumen" }].map(tab => (
                 <button
@@ -623,9 +734,9 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
           <div className="flex-1 overflow-y-auto">
 
             {/* Tab Emparejamientos */}
-            {canReshuffle && launchModalTab === "emparejamientos" && localPrecomputedRounds && (
+            {canShowMatchmakingTab && launchModalTab === "emparejamientos" && roundsToPreview && (
               <div className="px-4 py-4 space-y-6">
-                {localPrecomputedRounds.map((round, ri) => (
+                {roundsToPreview.map((round, ri) => (
                   <div key={ri}>
                     <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Ronda {ri + 1}</div>
                     <div className="space-y-2">
@@ -707,7 +818,7 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
                   <div className="px-4 py-2.5 border-b border-gray-800"><span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Formato</span></div>
                   <div className="px-4 py-3 space-y-1">
                     <SummaryRow label="Rondas" value={t.config.maxRounds ? String(t.config.maxRounds) : "Ilimitadas"} />
-                    <SummaryRow label="Emparejamiento" value={(t.config.matchmaking || "americano") === "americano" ? "Americano" : "Mexicano"} />
+                    <SummaryRow label="Emparejamiento" value={(t.config.matchmaking || "americano") === "americano" ? "Americano" : (t.config.matchmaking || "americano") === "mexicano" ? "Mexicano" : "Manual"} />
                   </div>
                 </div>
               </div>
