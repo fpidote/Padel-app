@@ -38,7 +38,8 @@ export default function ManualRoundBuilder({ players, courts, rounds, onChange, 
     );
   }
 
-  const round = rounds[activeRound] ?? null;
+  const safeActive = Math.min(activeRound, Math.max(0, rounds.length - 1));
+  const round = rounds[safeActive] ?? null;
 
   return (
     <div className="min-h-screen bg-[#111827] text-gray-50" style={{ fontFamily: "system-ui" }}>
@@ -47,8 +48,7 @@ export default function ManualRoundBuilder({ players, courts, rounds, onChange, 
         {/* Header */}
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 font-semibold mb-5 cursor-pointer transition-colors"
-          style={{ background: "none", border: "none", padding: 0 }}
+          className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 font-semibold mb-5 cursor-pointer transition-colors bg-transparent border-none p-0"
         >
           ← Volver al setup
         </button>
@@ -60,7 +60,7 @@ export default function ManualRoundBuilder({ players, courts, rounds, onChange, 
         <div className="flex gap-2 overflow-x-auto pb-2 mb-6">
           {rounds.map((r, i) => {
             const complete = isRoundComplete(r);
-            const isActive = i === activeRound;
+            const isActive = i === safeActive;
             return (
               <button
                 key={i}
@@ -113,7 +113,7 @@ export default function ManualRoundBuilder({ players, courts, rounds, onChange, 
                           key={si}
                           value={court.pairA[si]?.id ?? ""}
                           onChange={(e) =>
-                            updateSlot(activeRound, ci, "pairA", si, e.target.value || null)
+                            updateSlot(safeActive, ci, "pairA", si, e.target.value || null)
                           }
                           className="w-full bg-[#0f172a] border rounded-xl px-3 py-2 text-sm font-bold outline-none"
                           style={{
@@ -144,7 +144,7 @@ export default function ManualRoundBuilder({ players, courts, rounds, onChange, 
                           key={si}
                           value={court.pairB[si]?.id ?? ""}
                           onChange={(e) =>
-                            updateSlot(activeRound, ci, "pairB", si, e.target.value || null)
+                            updateSlot(safeActive, ci, "pairB", si, e.target.value || null)
                           }
                           className="w-full bg-[#0f172a] border rounded-xl px-3 py-2 text-sm font-bold outline-none"
                           style={{
