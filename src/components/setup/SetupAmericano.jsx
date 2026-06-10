@@ -322,6 +322,7 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
         rounds={localManualRounds}
         onChange={setLocalManualRounds}
         onBack={() => setShowManualBuilder(false)}
+        config={{ useLevels: !!t.config.useLevels, maxRounds: t.config.maxRounds ?? 4 }}
       />
     );
   }

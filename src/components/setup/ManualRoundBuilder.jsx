@@ -5,6 +5,7 @@ import {
   availablePlayersForSlot,
   calcularDescansos,
 } from "../../logic/manualRounds";
+import { precomputeAllRounds } from "../../logic/americano";
 
 const COLOR = "#0284c7";
 
@@ -20,8 +21,34 @@ function levelLabel(p) {
   return lvl > 0 ? `[${LEVELS[lvl].short}] ` : "";
 }
 
-export default function ManualRoundBuilder({ players, courts, rounds, onChange, onBack }) {
+export default function ManualRoundBuilder({ players, courts, rounds, onChange, onBack, config = {} }) {
   const [activeRound, setActiveRound] = useState(0);
+  const [pendingAutoFill, setPendingAutoFill] = useState(false);
+
+  function autoFillAll() {
+    const numRounds = rounds.length > 0 ? rounds.length : (config.maxRounds ?? 4);
+    const { rounds: generated } = precomputeAllRounds(players, {
+      courts,
+      maxRounds: numRounds,
+      mode: "individual",
+      useLevels: config.useLevels,
+    });
+    onChange(generated);
+    setActiveRound(0);
+    setPendingAutoFill(false);
+  }
+
+  function handleAutoFillClick() {
+    if (players.length < 4) return;
+    const hasData = rounds.some((r) =>
+      r.courts.some((c) => [...c.pairA, ...c.pairB].some(Boolean))
+    );
+    if (hasData) {
+      setPendingAutoFill(true);
+    } else {
+      autoFillAll();
+    }
+  }
 
   function addRound() {
     const next = [...rounds, buildEmptyRound(courts)];
@@ -80,9 +107,49 @@ export default function ManualRoundBuilder({ players, courts, rounds, onChange, 
         >
           ✓ Guardar y volver al setup
         </button>
-        <h2 className="text-xl font-black mb-6" style={{ color: COLOR }}>
-          ✏️ Armar Rondas
-        </h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-black" style={{ color: COLOR }}>
+            ✏️ Armar Rondas
+          </h2>
+          <button
+            onClick={handleAutoFillClick}
+            disabled={players.length < 4}
+            className="text-xs px-3 py-2 rounded-xl font-bold transition-colors"
+            style={{
+              background: "#1f2937",
+              border: `1px solid ${players.length < 4 ? "#374151" : COLOR + "50"}`,
+              color: players.length < 4 ? "#64748b" : COLOR,
+              cursor: players.length < 4 ? "not-allowed" : "pointer",
+              opacity: players.length < 4 ? 0.5 : 1,
+            }}
+          >
+            ↺ Autocompletar todo
+          </button>
+        </div>
+
+        {pendingAutoFill && (
+          <div className="mb-4 flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-yellow-400/10 border border-yellow-400/20">
+            <span className="text-xs text-yellow-400 font-semibold">
+              ⚠️ Esto reemplazará las rondas actuales.
+            </span>
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={() => setPendingAutoFill(false)}
+                className="text-xs px-3 py-1.5 rounded-lg font-bold cursor-pointer"
+                style={{ background: "#374151", color: "#94a3b8" }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={autoFillAll}
+                className="text-xs px-3 py-1.5 rounded-lg font-bold cursor-pointer"
+                style={{ background: "#b45309", color: "#fff" }}
+              >
+                Reemplazar
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Tabs de rondas */}
         <div className="flex gap-2 overflow-x-auto pb-2 mb-6">
