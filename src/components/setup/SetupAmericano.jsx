@@ -210,6 +210,8 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
     if (!newName.trim()) return;
     setLocalPrecomputedRounds(null);
     setLocalRoundWarnings([]);
+    setLocalManualRounds([]);
+    setManualResetMsg(false);
     persist({ ...t, playerInputs: [...(t.playerInputs || []), { name: newName.trim(), level: useLevels ? newLvl : 0 }] });
     setNewName("");
     nameInputRef.current?.focus();
@@ -465,7 +467,7 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
                           >{lvl.short}</button>
                         );
                       })()}
-                      <button onClick={() => { setEditingIdx(null); setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); persist({ ...t, playerInputs: t.playerInputs.filter((_, idx) => idx !== i) }); }} className="text-gray-600 hover:text-red-400 transition-colors cursor-pointer text-sm leading-none shrink-0">✕</button>
+                      <button onClick={() => { setEditingIdx(null); setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); setLocalManualRounds([]); setManualResetMsg(false); persist({ ...t, playerInputs: t.playerInputs.filter((_, idx) => idx !== i) }); }} className="text-gray-600 hover:text-red-400 transition-colors cursor-pointer text-sm leading-none shrink-0">✕</button>
                     </div>
                   ))
               }
