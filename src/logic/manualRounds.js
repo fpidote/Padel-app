@@ -10,10 +10,8 @@ export function calcularDescansos(entities, courts) {
 
 export function isCourtComplete(court) {
   return (
-    court.pairA.length === 2 &&
-    court.pairA.every(Boolean) &&
-    court.pairB.length === 2 &&
-    court.pairB.every(Boolean)
+    Array.isArray(court?.pairA) && court.pairA.length === 2 && court.pairA.every(Boolean) &&
+    Array.isArray(court?.pairB) && court.pairB.length === 2 && court.pairB.every(Boolean)
   );
 }
 

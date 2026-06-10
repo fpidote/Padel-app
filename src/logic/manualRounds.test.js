@@ -110,4 +110,15 @@ describe("availablePlayersForSlot", () => {
     const available = availablePlayersForSlot(players, round, 0, "pairA", 0);
     expect(available).toHaveLength(4);
   });
+
+  it("incluye el jugador actual aunque no esté en la lista de jugadores disponibles", () => {
+    // Only 3 players in the list, but slot has p(3) which was "removed"
+    const players = [p(0), p(1), p(2)]; // p(3) not in players array
+    const round = buildEmptyRound(1);
+    round.courts[0].pairB[1] = p(3); // assigned but not in players list
+    const available = availablePlayersForSlot(players, round, 0, "pairB", 1);
+    // p(3) should appear first (prepended)
+    expect(available[0].id).toBe(3);
+    expect(available).toHaveLength(4); // p(3) prepended + p(0), p(1), p(2)
+  });
 });
