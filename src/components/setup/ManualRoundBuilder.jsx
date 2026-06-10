@@ -8,6 +8,18 @@ import {
 
 const COLOR = "#0284c7";
 
+const LEVELS = [
+  { short: "-", color: "#64748b" },
+  { short: "P", color: "#94a3b8" },
+  { short: "M", color: "#38bdf8" },
+  { short: "A", color: "#84cc16" },
+];
+
+function levelLabel(p) {
+  const lvl = p.level || 0;
+  return lvl > 0 ? `[${LEVELS[lvl].short}] ` : "";
+}
+
 export default function ManualRoundBuilder({ players, courts, rounds, onChange, onBack }) {
   const [activeRound, setActiveRound] = useState(0);
 
@@ -28,19 +40,29 @@ export default function ManualRoundBuilder({ players, courts, rounds, onChange, 
       ? players.find((p) => String(p.id) === playerId) ?? null
       : null;
     onChange(
-      rounds.map((r, ri) =>
-        ri !== roundIdx
-          ? r
-          : {
-              ...r,
-              courts: r.courts.map((c, ci) => {
-                if (ci !== courtIdx) return c;
-                const pair = [...c[pairKey]];
-                pair[slotIdx] = player;
-                return { ...c, [pairKey]: pair };
-              }),
-            }
-      )
+      rounds.map((r, ri) => {
+        if (ri !== roundIdx) return r;
+        const newCourts = r.courts.map((c, ci) => {
+          let updated = { ...c, pairA: [...c.pairA], pairB: [...c.pairB] };
+          // Limpiar slot previo del jugador (swap implícito)
+          if (player) {
+            ["pairA", "pairB"].forEach((pk) => {
+              updated[pk] = updated[pk].map((p, si) =>
+                p?.id === player.id && !(ci === courtIdx && pk === pairKey && si === slotIdx)
+                  ? null
+                  : p
+              );
+            });
+          }
+          // Asignar al nuevo slot
+          if (ci === courtIdx) {
+            updated[pairKey] = [...updated[pairKey]];
+            updated[pairKey][slotIdx] = player;
+          }
+          return updated;
+        });
+        return { ...r, courts: newCourts };
+      })
     );
   }
 
@@ -125,7 +147,9 @@ export default function ManualRoundBuilder({ players, courts, rounds, onChange, 
                   {/* pairA */}
                   <div className="flex flex-col gap-2">
                     {[0, 1].map((si) => {
-                      const options = availablePlayersForSlot(players, round, ci, "pairA", si);
+                      const { available, assignedElsewhere } = availablePlayersForSlot(
+                        players, round, ci, "pairA", si
+                      );
                       return (
                         <select
                           key={si}
@@ -140,11 +164,20 @@ export default function ManualRoundBuilder({ players, courts, rounds, onChange, 
                           }}
                         >
                           <option value="">— elegir —</option>
-                          {options.map((p) => (
+                          {available.map((p) => (
                             <option key={p.id} value={p.id}>
-                              {p.name}
+                              {levelLabel(p)}{p.name}
                             </option>
                           ))}
+                          {assignedElsewhere.length > 0 && (
+                            <optgroup label="Ya asignados">
+                              {assignedElsewhere.map((p) => (
+                                <option key={`e-${p.id}`} value={p.id}>
+                                  {levelLabel(p)}{p.name} ↩
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
                         </select>
                       );
                     })}
@@ -156,7 +189,9 @@ export default function ManualRoundBuilder({ players, courts, rounds, onChange, 
                   {/* pairB */}
                   <div className="flex flex-col gap-2">
                     {[0, 1].map((si) => {
-                      const options = availablePlayersForSlot(players, round, ci, "pairB", si);
+                      const { available, assignedElsewhere } = availablePlayersForSlot(
+                        players, round, ci, "pairB", si
+                      );
                       return (
                         <select
                           key={si}
@@ -171,11 +206,20 @@ export default function ManualRoundBuilder({ players, courts, rounds, onChange, 
                           }}
                         >
                           <option value="">— elegir —</option>
-                          {options.map((p) => (
+                          {available.map((p) => (
                             <option key={p.id} value={p.id}>
-                              {p.name}
+                              {levelLabel(p)}{p.name}
                             </option>
                           ))}
+                          {assignedElsewhere.length > 0 && (
+                            <optgroup label="Ya asignados">
+                              {assignedElsewhere.map((p) => (
+                                <option key={`e-${p.id}`} value={p.id}>
+                                  {levelLabel(p)}{p.name} ↩
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
                         </select>
                       );
                     })}
