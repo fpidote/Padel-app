@@ -17,6 +17,12 @@ export default function ManualRoundBuilder({ players, courts, rounds, onChange, 
     setActiveRound(next.length - 1);
   }
 
+  function deleteRound(i) {
+    const next = rounds.filter((_, ri) => ri !== i);
+    onChange(next);
+    setActiveRound(Math.max(0, Math.min(activeRound, next.length - 1)));
+  }
+
   function updateSlot(roundIdx, courtIdx, pairKey, slotIdx, playerId) {
     const player = playerId
       ? players.find((p) => String(p.id) === playerId) ?? null
@@ -50,7 +56,7 @@ export default function ManualRoundBuilder({ players, courts, rounds, onChange, 
           onClick={onBack}
           className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 font-semibold mb-5 cursor-pointer transition-colors bg-transparent border-none p-0"
         >
-          ← Volver al setup
+          ✓ Guardar y volver al setup
         </button>
         <h2 className="text-xl font-black mb-6" style={{ color: COLOR }}>
           ✏️ Armar Rondas
@@ -62,18 +68,30 @@ export default function ManualRoundBuilder({ players, courts, rounds, onChange, 
             const complete = isRoundComplete(r);
             const isActive = i === safeActive;
             return (
-              <button
+              <div
                 key={i}
-                onClick={() => setActiveRound(i)}
-                className="shrink-0 px-3 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer"
+                className="shrink-0 flex items-center rounded-xl text-sm font-bold transition-colors"
                 style={{
                   background: isActive ? COLOR : "#1f2937",
-                  color: isActive ? "#fff" : complete ? "#4ade80" : "#64748b",
                   border: `1px solid ${isActive ? COLOR : complete ? "#4ade8040" : "#374151"}`,
                 }}
               >
-                R{i + 1} {complete ? "✓" : "✗"}
-              </button>
+                <button
+                  onClick={() => setActiveRound(i)}
+                  className="px-3 py-2 cursor-pointer bg-transparent border-none"
+                  style={{ color: isActive ? "#fff" : complete ? "#4ade80" : "#64748b" }}
+                >
+                  R{i + 1} {complete ? "✓" : "✗"}
+                </button>
+                <button
+                  onClick={() => deleteRound(i)}
+                  className="pr-2.5 cursor-pointer bg-transparent border-none text-base leading-none opacity-40 hover:opacity-100 transition-opacity"
+                  style={{ color: isActive ? "#fff" : "#9ca3af" }}
+                  title="Eliminar ronda"
+                >
+                  ×
+                </button>
+              </div>
             );
           })}
           <button

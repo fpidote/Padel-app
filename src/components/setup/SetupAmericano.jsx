@@ -777,9 +777,9 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
             )}
 
             {/* Tab Resumen (o vista única si no hay matchmaking) */}
-            {(!canReshuffle || launchModalTab === "resumen") && (
+            {(!canShowMatchmakingTab || launchModalTab === "resumen") && (
               <div className="px-4 py-4 space-y-3">
-                {!canReshuffle && (
+                {!canReshuffle && !isManual && (
                   <div className="bg-[#1f2937] border border-gray-700 rounded-xl px-4 py-3 text-xs text-gray-500">
                     {isPairs
                       ? "El sorteo de la primera ronda se genera al iniciar."

@@ -173,7 +173,11 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
   const allSaved = t.currentRound?.every((c) => c.saved);
   const isFinished = !!(
     (t.config.maxRounds && t.roundNum >= t.config.maxRounds)
-    || (t.precomputedRounds?.length && t.roundNum > t.precomputedRounds.length)
+    || (t.precomputedRounds?.length && (
+      t.config.matchmaking === "manual"
+        ? t.roundNum >= t.precomputedRounds.length
+        : t.roundNum > t.precomputedRounds.length
+    ))
   );
 
   const allPlayers = isPairs
@@ -421,7 +425,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                 listStyleType: "disc",
               }}
             >
-              {generateRules(t.type, t.config).map((rule, i) => (
+              {generateRules(t.type, t.config, { numRounds: t.precomputedRounds?.length }).map((rule, i) => (
                 <li key={i} style={{ marginBottom: 10 }}>
                   {rule}
                 </li>

@@ -43,7 +43,7 @@ export const TOURNAMENT_TYPES = [
   },
 ];
 
-export function generateRules(type, config) {
+export function generateRules(type, config, context = {}) {
   function scoringDesc() {
     const s = config.scoringSystem || "timed";
     if (s === "rally") return `Partidos en rally scoring a ${config.rallyPoints ?? 24} puntos.`;
@@ -60,15 +60,28 @@ export function generateRules(type, config) {
 
   switch (type) {
     case "americano": {
+      const matchmaking = config.matchmaking || "americano";
+      const numRounds = context.numRounds;
+      let rotationDesc;
+      if (matchmaking === "manual") {
+        rotationDesc = "Emparejamientos definidos manualmente por el organizador.";
+      } else if (config.mode === "individual" || !config.mode) {
+        rotationDesc = matchmaking === "mexicano"
+          ? "Emparejamiento Mexicano: desde ronda 2 los mejores juegan entre sí."
+          : "Americano: parejas aleatorias cada ronda según clasificación.";
+      } else {
+        rotationDesc = "Modo parejas: las parejas rotan juntas según su clasificación.";
+      }
+      const roundsDesc = numRounds
+        ? `El torneo tiene ${numRounds} rondas en total.`
+        : config.maxRounds
+          ? `El torneo tiene ${config.maxRounds} rondas en total.`
+          : "Sin límite de rondas fijo; el organizador decide cuándo terminar.";
       const rules = [
         scoringDesc(),
         goldenPointDesc(),
-        (config.mode === "individual" || !config.mode)
-          ? "Modo individual: cada jugador rota solo según su clasificación."
-          : "Modo parejas: las parejas rotan juntas según su clasificación.",
-        config.maxRounds
-          ? `El torneo tiene ${config.maxRounds} rondas en total.`
-          : "Sin límite de rondas fijo; el organizador decide cuándo terminar.",
+        rotationDesc,
+        roundsDesc,
         `${config.courts ?? 2} ${(config.courts ?? 2) === 1 ? "pista" : "pistas"} en juego simultáneamente.`,
       ];
       return rules;
