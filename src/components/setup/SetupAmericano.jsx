@@ -166,6 +166,7 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
     } else {
       setLocalPrecomputedRounds(null);
       setLocalRoundWarnings([]);
+      setManualResetMsg(false);
     }
     persist({ ...t, config: { ...t.config, matchmaking: val } });
   }
@@ -457,7 +458,7 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
                           <button
                             onClick={() => {
                               if (editingIdx === i) { setEditLvl(l => (l + 1) % 4); }
-                              else { setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); const arr = [...t.playerInputs]; arr[i] = { ...arr[i], level: ((arr[i].level || 0) + 1) % 4 }; persist({ ...t, playerInputs: arr }); }
+                              else { setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); setLocalManualRounds([]); const arr = [...t.playerInputs]; arr[i] = { ...arr[i], level: ((arr[i].level || 0) + 1) % 4 }; persist({ ...t, playerInputs: arr }); }
                             }}
                             className="w-6 h-6 flex items-center justify-center text-xs font-bold rounded-md shrink-0 cursor-pointer"
                             style={{ background: lvl.color + "20", color: lvl.color }}
@@ -817,7 +818,7 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
                 <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
                   <div className="px-4 py-2.5 border-b border-gray-800"><span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Formato</span></div>
                   <div className="px-4 py-3 space-y-1">
-                    <SummaryRow label="Rondas" value={t.config.maxRounds ? String(t.config.maxRounds) : "Ilimitadas"} />
+                    <SummaryRow label="Rondas" value={isManual ? String(localManualRounds.length) : t.config.maxRounds ? String(t.config.maxRounds) : "Ilimitadas"} />
                     <SummaryRow label="Emparejamiento" value={(t.config.matchmaking || "americano") === "americano" ? "Americano" : (t.config.matchmaking || "americano") === "mexicano" ? "Mexicano" : "Manual"} />
                   </div>
                 </div>
