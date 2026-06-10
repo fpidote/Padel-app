@@ -18,6 +18,9 @@ export const TOURNAMENT_TYPES = [
     name: "Americano",
     icon: "🔄",
     desc: "Rotativo por nivel. Las parejas cambian cada ronda según la clasificación.",
+    tagline: "Todos mezclados",
+    landingDesc: "Individual o por parejas, Clásico o Mexicano. Los cruces se organizan solos buscando variedad de rivales.",
+    tags: ["Individual o parejas", "Rotativo"],
     color: "#0284c7",
   },
   {
@@ -25,6 +28,9 @@ export const TOURNAMENT_TYPES = [
     name: "Relámpago",
     icon: "⚡",
     desc: "Eliminación directa con cuadro de revancha. El que pierde sigue jugando.",
+    tagline: "Acción rápida y revancha",
+    landingDesc: "Eliminación directa con cuadro de consolación. Perdés una vez y seguís jugando.",
+    tags: ["Bracket", "Con consolación"],
     color: "#7c3aed",
   },
   {
@@ -32,6 +38,9 @@ export const TOURNAMENT_TYPES = [
     name: "Mundialito",
     icon: "🌍",
     desc: "Fase de grupos estilo FIFA seguida de eliminatorias directas.",
+    tagline: "Como el Mundial, en tu cancha",
+    landingDesc: "Fase de grupos y eliminatorias directas. Todos juegan, los mejores se clasifican.",
+    tags: ["Grupos + KO", "8+ jugadores"],
     color: "#059669",
   },
   {
@@ -39,6 +48,9 @@ export const TOURNAMENT_TYPES = [
     name: "El Pozo",
     icon: "👑",
     desc: "Rey de la pista. Los ganadores suben, los perdedores bajan cada ronda.",
+    tagline: "Solo queda el rey",
+    landingDesc: "Ganadores suben de pista, perdedores bajan. La presión y la dificultad aumentan ronda a ronda.",
+    tags: ["King of the Hill", "Sin eliminados"],
     color: "#d97706",
   },
 ];
@@ -64,7 +76,13 @@ export function generateRules(type, config, context = {}) {
       const numRounds = context.numRounds;
       let rotationDesc;
       if (matchmaking === "manual") {
-        rotationDesc = "Emparejamientos definidos manualmente por el organizador.";
+        const s = config.scoringSystem || "timed";
+        const metric = s === "games" ? "juegos"
+          : s === "rally" ? "puntos"
+          : (config.timedMetric ?? "games") === "games" ? "juegos" : "puntos";
+        rotationDesc = (config.mode === "parejas")
+          ? `La pareja que acumule más ${metric} al final del torneo gana.`
+          : `El jugador que acumule más ${metric} al final del torneo gana.`;
       } else if (config.mode === "individual" || !config.mode) {
         rotationDesc = matchmaking === "mexicano"
           ? "Emparejamiento Mexicano: desde ronda 2 los mejores juegan entre sí."

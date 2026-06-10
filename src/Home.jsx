@@ -230,8 +230,16 @@ export default function Home() {
       <main className="w-full max-w-lg mx-auto px-6 pb-12">
 
         {/* Hero */}
-        <section className="pt-10 pb-8 text-center">
-          <div className="inline-flex items-center gap-2 bg-[#84cc16]/8 border border-[#84cc16]/20 text-[#84cc16] text-[10px] font-bold tracking-[0.5px] px-3.5 py-1.5 rounded-full mb-5 select-none">
+        <section className="pt-10 pb-8 text-center relative">
+          {/* Spotlight focal detrás del título */}
+          <div
+            className="absolute inset-0 -z-10 pointer-events-none"
+            style={{
+              background: 'radial-gradient(ellipse 75% 45% at 50% 25%, rgba(132,204,22,0.10) 0%, transparent 70%)',
+            }}
+          />
+
+          <div className="inline-flex items-center gap-2 bg-[#84cc16]/8 border border-[#84cc16]/20 text-[#84cc16] text-[10px] font-bold tracking-[0.5px] px-3.5 py-1.5 rounded-full mb-5 select-none anim-fade-up anim-d1">
             <span
               className="w-1.5 h-1.5 rounded-full bg-[#84cc16] flex-shrink-0"
               style={{ animation: 'pulse-dot 2s ease-in-out infinite' }}
@@ -239,19 +247,22 @@ export default function Home() {
             100% gratis · Tiempo real
           </div>
 
-          <h1 className="text-[42px] font-black leading-[1.0] tracking-[-0.05em] mb-4">
+          <h1
+            className="text-[64px] leading-[0.95] tracking-[-0.01em] mb-4 anim-fade-up anim-d2"
+            style={{ fontFamily: 'var(--font-display)', fontWeight: 900 }}
+          >
             Organiza.<br />
             Comparte.<br />
             <span className="text-[#84cc16]">Juega.</span>
           </h1>
 
-          <p className="text-[#4a5568] text-sm font-medium leading-relaxed mb-8 max-w-xs mx-auto">
+          <p className="text-gray-400 text-sm font-medium leading-relaxed mb-8 max-w-xs mx-auto anim-fade-up anim-d3">
             Monta tu torneo en 2 minutos, comparte el link y que empiece el juego.
           </p>
 
           <button
             onClick={handleCreateClick}
-            className="w-full bg-[#84cc16] hover:bg-lime-400 text-[#14532d] font-black py-4 rounded-2xl text-base transition-colors cursor-pointer"
+            className="w-full bg-[#84cc16] hover:bg-lime-400 text-[#14532d] font-black py-4 rounded-2xl text-base transition-colors cursor-pointer anim-fade-up anim-d4"
             style={{
               boxShadow: '0 0 0 1px rgba(132,204,22,0.4), 0 4px 20px rgba(132,204,22,0.25), 0 12px 40px rgba(132,204,22,0.1)',
             }}
@@ -261,61 +272,72 @@ export default function Home() {
 
           <button
             onClick={handleGoToPanel}
-            className="w-full text-gray-400 hover:text-gray-200 text-sm font-semibold py-2 transition-colors cursor-pointer"
+            className="w-full text-gray-400 hover:text-gray-200 text-sm font-semibold py-2 transition-colors cursor-pointer anim-fade-up anim-d5"
           >
             {user ? "Mis torneos →" : "Ya tengo torneos →"}
           </button>
+
+          <div className="flex items-center gap-3 mt-2 mb-3 anim-fade-up anim-d6">
+            <div className="flex-1 h-px bg-gray-800" />
+            <span className="text-gray-600 text-xs">o únete con un código</span>
+            <div className="flex-1 h-px bg-gray-800" />
+          </div>
+
+          <div className="flex gap-2 anim-fade-up anim-d7">
+            <input
+              value={joinVal}
+              onChange={(e) => setJoinVal(e.target.value.toUpperCase())}
+              onKeyDown={(e) => e.key === "Enter" && onJoin()}
+              maxLength={6}
+              placeholder="CÓDIGO"
+              className="flex-1 min-w-0 font-data bg-white/[0.03] border border-white/[0.07] focus:border-[#84cc16]/30 rounded-2xl text-[#f1f5f9] text-xl font-bold tracking-[0.35em] text-center py-3 outline-none transition-all placeholder:text-[#1e2a3a] placeholder:tracking-[4px] placeholder:text-sm placeholder:font-medium"
+              onFocus={(e) => { e.target.style.boxShadow = '0 0 0 3px rgba(132,204,22,0.06)'; }}
+              onBlur={(e) => { e.target.style.boxShadow = 'none'; }}
+            />
+            <button
+              onClick={onJoin}
+              className="bg-gray-700 hover:bg-gray-600 text-gray-50 font-bold px-5 py-3 rounded-xl transition-colors cursor-pointer shrink-0"
+            >
+              Unirse
+            </button>
+          </div>
         </section>
-
-        {/* Divider */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex-1 h-px bg-gray-800" />
-          <span className="text-gray-500 text-xs">o únete con un código</span>
-          <div className="flex-1 h-px bg-gray-800" />
-        </div>
-
-        {/* Join */}
-        <div className="flex gap-2 mb-10">
-          <input
-            value={joinVal}
-            onChange={(e) => setJoinVal(e.target.value.toUpperCase())}
-            onKeyDown={(e) => e.key === "Enter" && onJoin()}
-            maxLength={6}
-            placeholder="CÓDIGO"
-            className="flex-1 min-w-0 font-data bg-white/[0.03] border border-white/[0.07] focus:border-[#84cc16]/30 rounded-2xl text-[#f1f5f9] text-xl font-bold tracking-[0.35em] text-center py-3 outline-none transition-all placeholder:text-[#1e2a3a] placeholder:tracking-[4px] placeholder:text-sm placeholder:font-medium"
-            onFocus={(e) => { e.target.style.boxShadow = '0 0 0 3px rgba(132,204,22,0.06)'; }}
-            onBlur={(e) => { e.target.style.boxShadow = 'none'; }}
-          />
-          <button
-            onClick={onJoin}
-            className="bg-gray-700 hover:bg-gray-600 text-gray-50 font-bold px-5 py-3 rounded-xl transition-colors cursor-pointer shrink-0"
-          >
-            Unirse
-          </button>
-        </div>
 
         {/* Formatos informativos */}
         <section id="formats" className="mb-10">
-          <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-3">
-            Formatos disponibles
+          <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-4">
+            Elige tu formato
           </p>
-          <div className="flex flex-col gap-2">
-            {TOURNAMENT_TYPES.map((tt) => (
+          <div className="grid grid-cols-2 gap-3">
+            {TOURNAMENT_TYPES.map((tt, i) => (
               <div
                 key={tt.id}
-                className="w-full flex items-center gap-3 p-4 rounded-xl"
+                className={`format-card rounded-2xl p-4 flex flex-col gap-2 anim-fade-up anim-d${i + 5}`}
                 style={{
-                  background: tt.color + "14",
-                  border: "1px solid " + tt.color + "40",
-                  borderLeft: "4px solid " + tt.color,
+                  background: tt.color + "12",
+                  border: "1px solid " + tt.color + "25",
+                  borderTop: "3px solid " + tt.color,
                 }}
               >
-                <span className="text-2xl flex-shrink-0">{tt.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-sm" style={{ color: tt.color }}>
+                <span className="text-3xl leading-none">{tt.icon}</span>
+                <div className="flex-1">
+                  <div className="font-black text-sm leading-tight" style={{ color: tt.color }}>
                     {tt.name}
                   </div>
-                  <div className="text-gray-400 text-xs mt-0.5">{tt.desc}</div>
+                  <div className="text-gray-50 text-xs font-semibold mt-1 leading-snug">
+                    {tt.tagline}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {tt.tags?.map((tag) => (
+                    <span
+                      key={tag}
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                      style={{ background: tt.color + "20", color: tt.color }}
+                    >
+                      {tag}
+                    </span>
+                  ))}
                 </div>
               </div>
             ))}
@@ -324,14 +346,17 @@ export default function Home() {
 
         {/* Beneficios */}
         <section className="border-t border-gray-800 pt-8 mb-10">
-          <div className="flex flex-col gap-5">
+          <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-5">
+            Por qué funciona
+          </p>
+          <div className="flex flex-col gap-4">
             {BENEFITS.map((b) => (
-              <div key={b.title} className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-lg bg-[#84cc16]/7 border border-[#84cc16]/10 flex items-center justify-center shrink-0 text-xl leading-none">
+              <div key={b.title} className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-[#84cc16]/12 border border-[#84cc16]/25 flex items-center justify-center shrink-0 text-xl leading-none">
                   {b.icon}
                 </div>
-                <div>
-                  <div className="text-gray-50 text-sm font-semibold">{b.title}</div>
+                <div className="pt-0.5">
+                  <div className="text-gray-50 text-sm font-bold">{b.title}</div>
                   <div className="text-gray-400 text-xs mt-0.5 leading-relaxed">{b.desc}</div>
                 </div>
               </div>
