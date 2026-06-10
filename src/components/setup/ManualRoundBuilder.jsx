@@ -114,14 +114,7 @@ export default function ManualRoundBuilder({ players, courts, rounds, onChange, 
           <button
             onClick={handleAutoFillClick}
             disabled={players.length < 4}
-            className="text-xs px-3 py-2 rounded-xl font-bold transition-colors"
-            style={{
-              background: "#1f2937",
-              border: `1px solid ${players.length < 4 ? "#374151" : COLOR + "50"}`,
-              color: players.length < 4 ? "#64748b" : COLOR,
-              cursor: players.length < 4 ? "not-allowed" : "pointer",
-              opacity: players.length < 4 ? 0.5 : 1,
-            }}
+            className="text-xs px-3 py-2 rounded-xl font-bold transition-colors bg-[#1f2937] border border-[#0284c7]/30 text-[#0284c7] disabled:opacity-50 disabled:cursor-not-allowed disabled:text-[#64748b] disabled:border-[#374151]"
           >
             ↺ Autocompletar todo
           </button>
