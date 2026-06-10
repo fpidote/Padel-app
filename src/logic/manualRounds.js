@@ -45,8 +45,14 @@ export function availablePlayersForSlot(players, round, courtIdx, pairKey, slotI
   });
   const currentPlayer = round.courts[courtIdx][pairKey][slotIdx];
   const available = players.filter((p) => !usedIds.has(p.id));
-  if (currentPlayer && !available.find((p) => p.id === currentPlayer.id)) {
-    return [currentPlayer, ...available];
+  const assignedElsewhere = players.filter((p) => usedIds.has(p.id));
+  // Jugador actual eliminado del torneo pero aún en el slot
+  if (
+    currentPlayer &&
+    !available.find((p) => p.id === currentPlayer.id) &&
+    !assignedElsewhere.find((p) => p.id === currentPlayer.id)
+  ) {
+    return { available: [currentPlayer, ...available], assignedElsewhere };
   }
-  return available;
+  return { available, assignedElsewhere };
 }

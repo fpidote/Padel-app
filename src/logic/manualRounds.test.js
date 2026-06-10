@@ -85,40 +85,43 @@ describe("buildEmptyRound", () => {
 });
 
 describe("availablePlayersForSlot", () => {
-  it("excluye los jugadores asignados en otros slots de la misma ronda", () => {
+  it("retorna available con jugadores libres y assignedElsewhere con los ocupados", () => {
     const players = [p(0), p(1), p(2), p(3)];
     const round = buildEmptyRound(1);
     round.courts[0].pairA[0] = p(0);
     round.courts[0].pairA[1] = p(1);
-    const available = availablePlayersForSlot(players, round, 0, "pairB", 0);
+    const { available, assignedElsewhere } = availablePlayersForSlot(players, round, 0, "pairB", 0);
     expect(available.map((x) => x.id)).toEqual([2, 3]);
+    expect(assignedElsewhere.map((x) => x.id)).toEqual([0, 1]);
   });
 
-  it("incluye el jugador actual del slot aunque esté asignado", () => {
+  it("incluye el jugador actual del slot en available (no en assignedElsewhere)", () => {
     const players = [p(0), p(1), p(2), p(3)];
     const round = buildEmptyRound(1);
     round.courts[0].pairA[0] = p(0);
     round.courts[0].pairA[1] = p(1);
     round.courts[0].pairB[0] = p(2);
-    const available = availablePlayersForSlot(players, round, 0, "pairB", 0);
+    const { available, assignedElsewhere } = availablePlayersForSlot(players, round, 0, "pairB", 0);
     expect(available.map((x) => x.id)).toContain(2);
+    expect(assignedElsewhere.map((x) => x.id)).not.toContain(2);
+    expect(assignedElsewhere.map((x) => x.id)).toEqual([0, 1]);
   });
 
-  it("devuelve todos los jugadores si la ronda está vacía", () => {
+  it("devuelve todos en available y assignedElsewhere vacío si la ronda está vacía", () => {
     const players = [p(0), p(1), p(2), p(3)];
     const round = buildEmptyRound(1);
-    const available = availablePlayersForSlot(players, round, 0, "pairA", 0);
+    const { available, assignedElsewhere } = availablePlayersForSlot(players, round, 0, "pairA", 0);
     expect(available).toHaveLength(4);
+    expect(assignedElsewhere).toHaveLength(0);
   });
 
-  it("incluye el jugador actual aunque no esté en la lista de jugadores disponibles", () => {
-    // Only 3 players in the list, but slot has p(3) which was "removed"
-    const players = [p(0), p(1), p(2)]; // p(3) not in players array
+  it("prepende el jugador actual en available aunque no esté en la lista de jugadores", () => {
+    const players = [p(0), p(1), p(2)];
     const round = buildEmptyRound(1);
-    round.courts[0].pairB[1] = p(3); // assigned but not in players list
-    const available = availablePlayersForSlot(players, round, 0, "pairB", 1);
-    // p(3) should appear first (prepended)
+    round.courts[0].pairB[1] = p(3);
+    const { available, assignedElsewhere } = availablePlayersForSlot(players, round, 0, "pairB", 1);
     expect(available[0].id).toBe(3);
-    expect(available).toHaveLength(4); // p(3) prepended + p(0), p(1), p(2)
+    expect(available).toHaveLength(4);
+    expect(assignedElsewhere).toHaveLength(0);
   });
 });
