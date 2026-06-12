@@ -368,8 +368,12 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
 
         {!isAdmin && (
           <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 mb-4">
-            <div className="font-bold">{t.config.name}</div>
-            <div className="text-xs text-gray-500 mt-1">{t.config.courts} pistas · Esperando al organizador...</div>
+            <div className="font-bold text-gray-50">{t.config.name || "Torneo Americano"}</div>
+            <div className="text-xs text-gray-500 mt-1">{t.config.courts} pistas · El torneo aún no comenzó</div>
+            <div className="flex items-center gap-1.5 mt-3">
+              <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 shrink-0" style={{ animation: 'pulse-dot 2s ease-in-out infinite' }} />
+              <span className="text-xs text-yellow-400/80 font-medium">Esta pantalla se actualizará automáticamente cuando empiece</span>
+            </div>
           </div>
         )}
 

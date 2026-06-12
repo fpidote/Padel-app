@@ -80,7 +80,7 @@ export function generateRules(type, config, context = {}) {
         const metric = s === "games" ? "juegos"
           : s === "rally" ? "puntos"
           : (config.timedMetric ?? "games") === "games" ? "juegos" : "puntos";
-        rotationDesc = (config.mode === "parejas")
+        rotationDesc = (config.mode === "pairs")
           ? `La pareja que acumule más ${metric} al final del torneo gana.`
           : `El jugador que acumule más ${metric} al final del torneo gana.`;
       } else if (config.mode === "individual" || !config.mode) {

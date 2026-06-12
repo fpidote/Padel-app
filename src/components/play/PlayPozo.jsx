@@ -40,7 +40,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
       !t.pairs?.length
     ) return;
     const firstRound = buildPozoRound(t.pairs, t.config.courts);
-    persist({ ...t, currentPozoRound: firstRound });
+    void persist({ ...t, currentPozoRound: firstRound });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function onSaveCourt(ci) {

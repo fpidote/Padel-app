@@ -173,11 +173,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
   const allSaved = t.currentRound?.every((c) => c.saved);
   const isFinished = !!(
     (t.config.maxRounds && t.roundNum >= t.config.maxRounds)
-    || (t.precomputedRounds?.length && (
-      t.config.matchmaking === "manual"
-        ? t.roundNum > t.precomputedRounds.length
-        : t.roundNum > t.precomputedRounds.length
-    ))
+    || (t.precomputedRounds?.length && t.roundNum > t.precomputedRounds.length)
   );
 
   const allPlayers = isPairs
