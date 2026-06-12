@@ -65,7 +65,7 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
   const [localRoundWarnings,     setLocalRoundWarnings]     = useState([]);
   const [showLaunchModal,        setShowLaunchModal]        = useState(false);
   const [launchModalTab,         setLaunchModalTab]         = useState("emparejamientos");
-  const [localManualRounds,  setLocalManualRounds]  = useState([]);
+  const [localManualRounds,  setLocalManualRounds]  = useState(t.config.manualRoundsConfig ?? []);
   const [showManualBuilder,  setShowManualBuilder]   = useState(false);
   const [manualResetMsg,     setManualResetMsg]      = useState(false);
 
@@ -77,6 +77,7 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
   const debGames    = useRef(null);
   const debRounds   = useRef(null);
   const debMinutes  = useRef(null);
+  const debManual   = useRef(null);
   const navigate    = useNavigate();
   const nameInputRef = useRef(null);
   const p1InputRef   = useRef(null);
@@ -163,22 +164,26 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
     if (val !== "manual") {
       setLocalManualRounds([]);
       setManualResetMsg(false);
+      persist({ ...t, config: { ...t.config, matchmaking: val, manualRoundsConfig: [] } });
     } else {
+      setLocalManualRounds(t.config.manualRoundsConfig ?? []);
       setLocalPrecomputedRounds(null);
       setLocalRoundWarnings([]);
       setManualResetMsg(false);
+      persist({ ...t, config: { ...t.config, matchmaking: val } });
     }
-    persist({ ...t, config: { ...t.config, matchmaking: val } });
   }
 
   function handleCourtsChange(n) {
+    setLocalPrecomputedRounds(null);
+    setLocalRoundWarnings([]);
     if (isManual && localManualRounds.length > 0) {
       setLocalManualRounds([]);
       setManualResetMsg(true);
+      persist({ ...t, config: { ...t.config, courts: n, manualRoundsConfig: [] } });
+    } else {
+      persist({ ...t, config: { ...t.config, courts: n } });
     }
-    setLocalPrecomputedRounds(null);
-    setLocalRoundWarnings([]);
-    persist({ ...t, config: { ...t.config, courts: n } });
   }
 
   function handleReshuffle() {
@@ -187,6 +192,14 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
     const result = precomputeAllRounds(entities, t.config);
     setLocalPrecomputedRounds(result.rounds);
     setLocalRoundWarnings(result.warnings);
+  }
+
+  function handleManualRoundsChange(rounds) {
+    setLocalManualRounds(rounds);
+    clearTimeout(debManual.current);
+    debManual.current = setTimeout(() => {
+      persist({ ...t, config: { ...t.config, manualRoundsConfig: rounds } });
+    }, 600);
   }
 
   function handleOpenLaunchModal() {
@@ -212,7 +225,7 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
     setLocalRoundWarnings([]);
     setLocalManualRounds([]);
     setManualResetMsg(false);
-    persist({ ...t, playerInputs: [...(t.playerInputs || []), { name: newName.trim(), level: useLevels ? newLvl : 0 }] });
+    persist({ ...t, playerInputs: [...(t.playerInputs || []), { name: newName.trim(), level: useLevels ? newLvl : 0 }], config: { ...t.config, manualRoundsConfig: [] } });
     setNewName("");
     nameInputRef.current?.focus();
   }
@@ -320,7 +333,7 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
         players={players}
         courts={t.config.courts}
         rounds={localManualRounds}
-        onChange={setLocalManualRounds}
+        onChange={handleManualRoundsChange}
         onBack={() => setShowManualBuilder(false)}
         config={{ useLevels: !!t.config.useLevels, maxRounds: t.config.maxRounds ?? 4 }}
       />
@@ -461,14 +474,14 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
                           <button
                             onClick={() => {
                               if (editingIdx === i) { setEditLvl(l => (l + 1) % 4); }
-                              else { setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); setLocalManualRounds([]); const arr = [...t.playerInputs]; arr[i] = { ...arr[i], level: ((arr[i].level || 0) + 1) % 4 }; persist({ ...t, playerInputs: arr }); }
+                              else { setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); setLocalManualRounds([]); const arr = [...t.playerInputs]; arr[i] = { ...arr[i], level: ((arr[i].level || 0) + 1) % 4 }; persist({ ...t, playerInputs: arr, config: { ...t.config, manualRoundsConfig: [] } }); }
                             }}
                             className="w-6 h-6 flex items-center justify-center text-xs font-bold rounded-md shrink-0 cursor-pointer"
                             style={{ background: lvl.color + "20", color: lvl.color }}
                           >{lvl.short}</button>
                         );
                       })()}
-                      <button onClick={() => { setEditingIdx(null); setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); setLocalManualRounds([]); setManualResetMsg(false); persist({ ...t, playerInputs: t.playerInputs.filter((_, idx) => idx !== i) }); }} className="text-gray-600 hover:text-red-400 transition-colors cursor-pointer text-sm leading-none shrink-0">✕</button>
+                      <button onClick={() => { setEditingIdx(null); setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); setLocalManualRounds([]); setManualResetMsg(false); persist({ ...t, playerInputs: t.playerInputs.filter((_, idx) => idx !== i), config: { ...t.config, manualRoundsConfig: [] } }); }} className="text-gray-600 hover:text-red-400 transition-colors cursor-pointer text-sm leading-none shrink-0">✕</button>
                     </div>
                   ))
               }

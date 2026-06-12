@@ -175,7 +175,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
     (t.config.maxRounds && t.roundNum >= t.config.maxRounds)
     || (t.precomputedRounds?.length && (
       t.config.matchmaking === "manual"
-        ? t.roundNum >= t.precomputedRounds.length
+        ? t.roundNum > t.precomputedRounds.length
         : t.roundNum > t.precomputedRounds.length
     ))
   );
