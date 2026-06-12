@@ -14,7 +14,7 @@ const PlayPozo = lazy(() => import('./components/play/PlayPozo'));
 export default function TournamentPage() {
   const { code } = useParams();
   const navigate = useNavigate();
-  const { t, notFound, isAdmin, error, persist, copyCode } = useTournament(code);
+  const { t, notFound, isAdmin, error, saving, persist, copyCode } = useTournament(code);
   const [editMode, setEditMode] = useState(false);
 
   if (notFound)
@@ -62,7 +62,7 @@ export default function TournamentPage() {
       </div>
     );
 
-  const props = { t, code, isAdmin, persist, copyCode };
+  const props = { t, code, isAdmin, saving, persist, copyCode };
   const typeInfo = TOURNAMENT_TYPES.find((x) => x.id === t.type) || TOURNAMENT_TYPES[0];
 
   const canEditTournament = !t.scoringStarted;

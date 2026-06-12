@@ -38,7 +38,7 @@ function SummaryRow({ label, value, yellow }) {
   );
 }
 
-export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, onExitEdit }) {
+export default function SetupAmericano({ t, code, isAdmin, saving, persist, copyCode, onExitEdit }) {
   const isPairs = t.config.mode === "pairs";
 
   const [localName,     setLocalName]     = useState(t.config.name        || "");
@@ -858,8 +858,13 @@ export default function SetupAmericano({ t, code, isAdmin, persist, copyCode, on
                   🔀 Re-sortear
                 </button>
               )}
-              <button onClick={onStart} className="flex-1 py-3 rounded-xl font-black text-sm text-white cursor-pointer" style={{ background: COLOR }}>
-                🎾 Iniciar
+              <button
+                onClick={onStart}
+                disabled={saving}
+                className="flex-1 py-3 rounded-xl font-black text-sm text-white transition-opacity"
+                style={{ background: COLOR, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1 }}
+              >
+                {saving ? "Guardando..." : "🎾 Iniciar"}
               </button>
             </div>
           </div>
