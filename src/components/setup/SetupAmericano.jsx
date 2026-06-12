@@ -239,6 +239,8 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
   }
 
   async function onStart() {
+    [debName, debDesc, debLocation, debDatetime, debRally, debGames, debRounds, debMinutes, debManual]
+      .forEach(ref => clearTimeout(ref.current));
     try {
       let entities;
       if (isPairs) {
