@@ -165,14 +165,67 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
     }
   }
 
+  async function onFinish() {
+    if (!t.currentRound.every((c) => c.saved)) return;
+    const isPairsF = t.config.mode === "pairs";
+    const entityKeyF = isPairsF ? "pairs" : "players";
+    let np = t[entityKeyF].map((p) => ({ ...p }));
+    const nh = { ...t.partnerHistory };
+    const nso = { ...t.sitOutHistory };
+    t.sittingOut.forEach((p) => { nso[p.id] = (nso[p.id] || 0) + 1; });
+    t.currentRound.forEach((court) => {
+      const a = parseInt(court.scoreA), b = parseInt(court.scoreB);
+      if (isPairsF) {
+        [court.pairA, court.pairB].forEach((pair, pi) => {
+          const won = pi === 0 ? a > b : b > a;
+          const p = np.find((x) => x.id === pair.id);
+          if (p) { p.pts += won ? 1 : 0; p.gf += pi === 0 ? a : b; p.gc += pi === 0 ? b : a; }
+        });
+      } else {
+        [court.pairA, court.pairB].forEach((pair, pi) => {
+          nh[pk(pair[0].id, pair[1].id)] = (nh[pk(pair[0].id, pair[1].id)] || 0) + 1;
+          const won = pi === 0 ? a > b : b > a;
+          pair.forEach(({ id }) => {
+            const p = np.find((x) => x.id === id);
+            if (p) { p.pts += won ? 1 : 0; p.gf += pi === 0 ? a : b; p.gc += pi === 0 ? b : a; }
+          });
+        });
+      }
+    });
+    const newRounds = [
+      ...t.rounds,
+      { num: t.roundNum, courts: t.currentRound, sittingOut: t.sittingOut },
+    ];
+    setLs({});
+    try {
+      await persist({
+        ...t,
+        [entityKeyF]: np,
+        rounds: newRounds,
+        currentRound: [],
+        sittingOut: [],
+        partnerHistory: nh,
+        sitOutHistory: nso,
+        roundNum: t.roundNum + 1,
+      });
+    } catch (err) {
+      console.error("Error al finalizar torneo:", err);
+      setModalMsg("No se pudo finalizar el torneo. Intenta de nuevo.");
+    }
+  }
+
   const isPairs = t.config.mode === "pairs";
   const entityKey = isPairs ? "pairs" : "players";
   const standings = [...(t[entityKey] || [])].sort((a, b) =>
     b.pts !== a.pts ? b.pts - a.pts : b.gf - b.gc - (a.gf - a.gc),
   );
   const allSaved = t.currentRound?.every((c) => c.saved);
-  const isFinished = !!(
+  const isLastRound = !!(
     (t.config.maxRounds && t.roundNum >= t.config.maxRounds)
+    || (t.precomputedRounds?.length && t.roundNum >= t.precomputedRounds.length)
+  );
+  const isFinished = !!(
+    (t.config.maxRounds && t.roundNum > t.config.maxRounds)
     || (t.precomputedRounds?.length && t.roundNum > t.precomputedRounds.length)
   );
 
@@ -368,10 +421,12 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                     allSaved={allSaved}
                     onSave={onSave}
                     onNext={onNext}
+                    onFinish={onFinish}
                     onEdit={onEdit}
                     matchesSearch={matchesSearch}
                     persist={persist}
                     isFinished={isFinished}
+                    isLastRound={isLastRound}
                     showLevelsToggle={showLevelsToggle}
                   />
                 )}
@@ -645,7 +700,7 @@ function AllRoundsPlayerView({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSea
   );
 }
 
-function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEdit, matchesSearch, persist, isFinished, showLevelsToggle }) {
+function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onFinish, onEdit, matchesSearch, persist, isFinished, isLastRound, showLevelsToggle }) {
   const [renameModal, setRenameModal] = useState(null);
   const showLevel = t.config.useLevels && isAdmin && showLevelsToggle;
   const isPairs = t.config.mode === "pairs";
@@ -876,12 +931,12 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onEd
 
       {allSaved && isAdmin && (
         <button
-          onClick={isFinished ? undefined : onNext}
+          onClick={isFinished ? undefined : isLastRound ? onFinish : onNext}
           disabled={isFinished}
           className="w-full py-4 rounded-2xl font-black text-base text-white mt-2"
           style={{ background: isFinished ? "#374151" : "#059669", cursor: isFinished ? "not-allowed" : "pointer" }}
         >
-          {isFinished ? "🏁 Torneo Finalizado" : "Siguiente Ronda ➔"}
+          {isFinished ? "🏁 Torneo Finalizado" : isLastRound ? "Finalizar Torneo ✓" : "Siguiente Ronda ➔"}
         </button>
       )}
       {!isAdmin && !allSaved && (
