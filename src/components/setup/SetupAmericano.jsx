@@ -308,8 +308,20 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
       persist({ ...t, pairInputs: arr });
     } else {
       const arr = [...(t.playerInputs || [])];
-      arr[i] = { ...arr[i], name: editName.trim() || arr[i].name, level: editLvl };
-      persist({ ...t, playerInputs: arr });
+      const newName = editName.trim() || arr[i].name;
+      arr[i] = { ...arr[i], name: newName, level: editLvl };
+      const existingManual = t.config.manualRoundsConfig ?? [];
+      const updatedManual = existingManual.map(round => ({
+        ...round,
+        courts: round.courts.map(court => ({
+          ...court,
+          pairA: court.pairA.map(p => p && p.id === i ? { ...p, name: newName } : p),
+          pairB: court.pairB.map(p => p && p.id === i ? { ...p, name: newName } : p),
+        })),
+        sittingOut: (round.sittingOut || []).map(p => p && p.id === i ? { ...p, name: newName } : p),
+      }));
+      setLocalManualRounds(updatedManual);
+      persist({ ...t, playerInputs: arr, config: { ...t.config, manualRoundsConfig: updatedManual } });
     }
     setEditingIdx(null);
   }
@@ -392,7 +404,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-gray-400 font-semibold block mb-1.5">Nombre del torneo</label>
-                <input value={localName} onChange={e => handleName(e.target.value)} className={inputCls} />
+                <input data-testid="input-tournament-name" value={localName} onChange={e => handleName(e.target.value)} className={inputCls} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -708,6 +720,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
 
             {/* ── CTA único ── */}
             <button
+              data-testid="btn-open-modal"
               onClick={handleOpenLaunchModal}
               disabled={!ok}
               className="w-full mt-8 py-4 rounded-2xl font-black text-lg transition-colors"
@@ -861,6 +874,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
                 </button>
               )}
               <button
+                data-testid="btn-iniciar"
                 onClick={onStart}
                 disabled={saving}
                 className="flex-1 py-3 rounded-xl font-black text-sm text-white transition-opacity"
