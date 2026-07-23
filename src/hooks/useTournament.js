@@ -1,8 +1,9 @@
 // src/hooks/useTournament.js
 import { useState, useEffect, useRef } from "react";
 import { onSnapshot, doc, setDoc } from "firebase/firestore";
-import { onAuthStateChanged } from "firebase/auth";
-import { db, auth } from "../firebase";
+import { onAuthStateChanged, signInWithPopup } from "firebase/auth";
+import { db, auth, googleProvider } from "../firebase";
+import { buildShareMessage } from "../logic/utils";
 
 export function useTournament(code) {
   const [authUser, setAuthUser] = useState(null);
@@ -10,14 +11,39 @@ export function useTournament(code) {
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   const isAdmin = !!(authUser?.uid && t?.ownerUid && authUser.uid === t.ownerUid);
 
   const verRef = useRef(null);
+  const wasAdminRef = useRef(false);
 
   useEffect(() => {
     return onAuthStateChanged(auth, (user) => setAuthUser(user));
   }, []);
+
+  // ── Detección de sesión expirada ────────────────────────────
+  // Si el usuario era admin y dejó de serlo porque se deslogueó (no porque
+  // cambió el dueño del torneo), avisamos para que se vuelva a autenticar.
+  useEffect(() => {
+    if (wasAdminRef.current && !isAdmin && authUser === null) {
+      setSessionExpired(true);
+    } else if (isAdmin) {
+      setSessionExpired(false);
+    }
+    wasAdminRef.current = isAdmin;
+  }, [isAdmin, authUser]);
+
+  async function reauthenticate() {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (err) {
+      if (err.code !== "auth/popup-closed-by-user") {
+        console.error("Error al reautenticar:", err);
+        alert("No se pudo iniciar sesión. Intentá de nuevo.");
+      }
+    }
+  }
 
   // ── Firebase Realtime Listener ──────────────────────────────
   useEffect(() => {
@@ -81,15 +107,13 @@ export function useTournament(code) {
 
   // ── copyCode ─────────────────────────────────────────────────
   function copyCode() {
-    const link = `${window.location.origin}/torneo/${code}`;
-    const msg = `🏆 ¡Seguí el torneo de pádel en tiempo real!\n\nPodés entrar directo haciendo clic en este link:\n${link}\n\nO ingresando el código: *${code}* en la web.`;
-
+    const msg = buildShareMessage(t, code);
     if (navigator.share) {
-      navigator.share({ title: "Torneo de Pádel", text: msg }).catch(() => {});
+      navigator.share({ title: t?.config?.name || "Torneo de Pádel", text: msg }).catch(() => {});
     } else {
       window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
     }
   }
 
-  return { t, notFound, isAdmin, error, saving, persist, copyCode };
+  return { t, notFound, isAdmin, error, saving, persist, copyCode, sessionExpired, reauthenticate };
 }

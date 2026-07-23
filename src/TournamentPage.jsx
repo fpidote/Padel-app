@@ -3,6 +3,7 @@ import { useState, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTournament } from "./hooks/useTournament";
 import { TOURNAMENT_TYPES } from "./logic/constants";
+import { SimpleModal } from "./components/shared/Components";
 
 const SetupAmericano = lazy(() => import('./components/setup/SetupAmericano'));
 const SetupPairs = lazy(() => import('./components/setup/SetupPairs'));
@@ -14,7 +15,7 @@ const PlayPozo = lazy(() => import('./components/play/PlayPozo'));
 export default function TournamentPage() {
   const { code } = useParams();
   const navigate = useNavigate();
-  const { t, notFound, isAdmin, error, saving, persist, copyCode } = useTournament(code);
+  const { t, notFound, isAdmin, error, saving, persist, copyCode, sessionExpired, reauthenticate } = useTournament(code);
   const [editMode, setEditMode] = useState(false);
 
   if (notFound)
@@ -69,21 +70,30 @@ export default function TournamentPage() {
   const onEditTournament = canEditTournament ? () => setEditMode(true) : undefined;
 
   return (
-    <Suspense fallback={<div className="p-4 text-center text-[#f1f5f9]">Cargando torneo...</div>}>
-      {(t.status === "setup" || editMode) ? (
-        t.type === "americano"
-          ? <SetupAmericano {...props} onExitEdit={editMode ? () => setEditMode(false) : undefined} />
-          : <SetupPairs {...props} typeInfo={typeInfo} onExitEdit={editMode ? () => setEditMode(false) : undefined} />
-      ) : (
-        <div className="min-h-screen bg-[#0f172a]">
-          <div className="max-w-2xl mx-auto w-full">
-            {t.type === "americano" && <PlayAmericano {...props} onEditTournament={onEditTournament} />}
-            {t.type === "relampago" && <PlayRelampago {...props} onEditTournament={onEditTournament} />}
-            {t.type === "mundialito" && <PlayMundialito {...props} onEditTournament={onEditTournament} />}
-            {t.type === "pozo" && <PlayPozo {...props} onEditTournament={onEditTournament} />}
-          </div>
-        </div>
+    <>
+      {sessionExpired && (
+        <SimpleModal
+          icon="🔒"
+          message="Tu sesión expiró. Iniciá sesión de nuevo para seguir cargando resultados."
+          onClose={reauthenticate}
+        />
       )}
-    </Suspense>
+      <Suspense fallback={<div className="p-4 text-center text-[#f1f5f9]">Cargando torneo...</div>}>
+        {(t.status === "setup" || editMode) ? (
+          t.type === "americano"
+            ? <SetupAmericano {...props} onExitEdit={editMode ? () => setEditMode(false) : undefined} />
+            : <SetupPairs {...props} typeInfo={typeInfo} onExitEdit={editMode ? () => setEditMode(false) : undefined} />
+        ) : (
+          <div className="min-h-screen bg-[#0f172a]">
+            <div className="max-w-2xl mx-auto w-full">
+              {t.type === "americano" && <PlayAmericano {...props} onEditTournament={onEditTournament} />}
+              {t.type === "relampago" && <PlayRelampago {...props} onEditTournament={onEditTournament} />}
+              {t.type === "mundialito" && <PlayMundialito {...props} onEditTournament={onEditTournament} />}
+              {t.type === "pozo" && <PlayPozo {...props} onEditTournament={onEditTournament} />}
+            </div>
+          </div>
+        )}
+      </Suspense>
+    </>
   );
 }
