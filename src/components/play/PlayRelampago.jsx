@@ -94,6 +94,8 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
         cursor: !isAdmin || isTBD || isBye || match.saved ? "default" : "pointer",
         position: "relative",
         userSelect: "none",
+        // Abierta con sets desborda su slot: se ve como popover
+        boxShadow: expanded && isSetFormat ? "0 12px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.1)" : undefined,
       }}
     >
       {match.saved && (
