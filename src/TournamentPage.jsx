@@ -11,6 +11,7 @@ const PlayAmericano = lazy(() => import('./components/play/PlayAmericano'));
 const PlayRelampago = lazy(() => import('./components/play/PlayRelampago'));
 const PlayMundialito = lazy(() => import('./components/play/PlayMundialito'));
 const PlayPozo = lazy(() => import('./components/play/PlayPozo'));
+const PlayLiga = lazy(() => import('./components/play/PlayLiga'));
 
 export default function TournamentPage() {
   const { code } = useParams();
@@ -90,6 +91,7 @@ export default function TournamentPage() {
               {t.type === "relampago" && <PlayRelampago {...props} onEditTournament={onEditTournament} />}
               {t.type === "mundialito" && <PlayMundialito {...props} onEditTournament={onEditTournament} />}
               {t.type === "pozo" && <PlayPozo {...props} onEditTournament={onEditTournament} />}
+              {t.type === "liga" && <PlayLiga {...props} onEditTournament={onEditTournament} />}
             </div>
           </div>
         )}

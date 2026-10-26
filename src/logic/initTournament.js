@@ -70,6 +70,23 @@ export function buildInitialTournament(type, ownerUid) {
       timerStartedAt: null,
       timerElapsed: 0,
     },
+    liga: {
+      ...base,
+      config: {
+        ...base.config,
+        scoringFormat: "sets3",
+        idaYVuelta: false,
+        playoffEnabled: false,
+        advanceQualifiers: 4,
+        seasonMode: "single",
+      },
+      pairInputs: [],
+      pairs: [],
+      rounds: [],
+      matches: [],
+      knockoutBracket: null,
+      phase: "setup",
+    },
   };
 
   return inits[type];

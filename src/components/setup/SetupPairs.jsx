@@ -4,6 +4,7 @@ import { shuffle, buildShareMessage } from "../../logic/utils";
 import { buildBracket } from "../../logic/relampago";
 import { buildGroups, validateMundialitoConfig } from "../../logic/mundialito";
 import { buildPozoRound, shufflePlayers } from "../../logic/pozo";
+import { buildLigaFixture } from "../../logic/liga";
 
 const SCORING_OPTIONS = [
   { id: "timed", icon: "⏱️", name: "Por tiempo",   desc: "Se anota al terminar el tiempo" },
@@ -164,6 +165,9 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
     } else if (t.type === "mundialito") {
       const groups = buildGroups(pairsToStart, t.config.groupCount || 2);
       await persist({ ...t, config: finalConfig, groups, pairs: pairsToStart, phase: "groups", status: "playing" });
+    } else if (t.type === "liga") {
+      const { rounds, matches, pairs: standings } = buildLigaFixture(pairsToStart, t.config.idaYVuelta || false);
+      await persist({ ...t, config: finalConfig, rounds, matches, pairs: standings, phase: "fixture", status: "playing" });
     } else if (t.type === "pozo") {
       if (t.config.pozoMode === "mixer") {
         const playersToStart = (t.playerInputs || []).map((p, i) => ({
@@ -413,6 +417,56 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
                 </>
               )}
 
+              {/* Liga: ida/ida y vuelta y fase final opcional */}
+              {t.type === "liga" && (
+                <>
+                  <div>
+                    <label className="text-xs text-gray-400 font-semibold block mb-2">Formato de vueltas</label>
+                    <div className="flex gap-2">
+                      {[
+                        { id: false, label: "Ida" },
+                        { id: true, label: "Ida y vuelta" },
+                      ].map((opt) => (
+                        <button key={String(opt.id)}
+                          onClick={() => persist({ ...t, config: { ...t.config, idaYVuelta: opt.id } })}
+                          className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer"
+                          style={{ background: (t.config.idaYVuelta || false) === opt.id ? color : "#1f2937", color: (t.config.idaYVuelta || false) === opt.id ? "#fff" : "#94a3b8" }}
+                        >{opt.label}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 font-semibold block mb-2">Fase final</label>
+                    <div className="flex gap-2">
+                      {[
+                        { id: false, label: "Solo tabla" },
+                        { id: true, label: "Con playoff" },
+                      ].map((opt) => (
+                        <button key={String(opt.id)}
+                          onClick={() => persist({ ...t, config: { ...t.config, playoffEnabled: opt.id } })}
+                          className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer"
+                          style={{ background: (t.config.playoffEnabled || false) === opt.id ? color : "#1f2937", color: (t.config.playoffEnabled || false) === opt.id ? "#fff" : "#94a3b8" }}
+                        >{opt.label}</button>
+                      ))}
+                    </div>
+                  </div>
+                  {t.config.playoffEnabled && (
+                    <div>
+                      <label className="text-xs text-gray-400 font-semibold block mb-2">Parejas que avanzan al playoff</label>
+                      <div className="flex gap-2">
+                        {[2, 4, 8].map(n => (
+                          <button key={n}
+                            onClick={() => persist({ ...t, config: { ...t.config, advanceQualifiers: n } })}
+                            className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer"
+                            style={{ background: (t.config.advanceQualifiers ?? 4) === n ? color : "#1f2937", color: (t.config.advanceQualifiers ?? 4) === n ? "#fff" : "#94a3b8" }}
+                          >{n}</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
               {/* Pozo: duración de ronda y número de rondas */}
               {t.type === "pozo" && (
                 <>
@@ -445,6 +499,7 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
               )}
             </div>
 
+            {/* ── Puntuación (no aplica a Pozo ni a Liga, que usa mejor de 3 sets fijo) ── */}
             {(t.type === "mundialito" || t.type === "relampago") && (
               <>
                 <SectionHeader>🎾 Formato de partido</SectionHeader>
@@ -470,8 +525,8 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
               </>
             )}
 
-            {/* ── Puntuación (no aplica a Pozo ni a formatos por sets) ── */}
-            {t.type !== "pozo" && (t.config.scoringFormat || "games") === "games" && (
+            {/* ── Puntuación (no aplica a Pozo ni a Liga, ni a formatos por sets) ── */}
+            {t.type !== "pozo" && t.type !== "liga" && (t.config.scoringFormat || "games") === "games" && (
               <>
                 <SectionHeader>🎯 Puntuación</SectionHeader>
                 <div className="flex flex-col gap-2">

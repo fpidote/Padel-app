@@ -53,6 +53,16 @@ export const TOURNAMENT_TYPES = [
     tags: ["King of the Hill", "Sin eliminados"],
     color: "#d97706",
   },
+  {
+    id: "liga",
+    name: "Liga",
+    icon: "📅",
+    desc: "Todos contra todos en una tabla única, a lo largo de varias jornadas.",
+    tagline: "Una tabla, muchas fechas",
+    landingDesc: "Parejas fijas que juegan todas contra todas. Ideal para competencias de varias semanas con tabla de posiciones.",
+    tags: ["Todos vs todos", "Jornada única o temporada"],
+    color: "#db2777",
+  },
 ];
 
 export function generateRules(type, config, context = {}) {
@@ -133,6 +143,23 @@ export function generateRules(type, config, context = {}) {
       } else {
         rules.push("Sin límite de rondas fijo; el organizador para el torneo cuando lo decide.");
       }
+      return rules;
+    }
+    case "liga": {
+      const rules = [
+        config.idaYVuelta
+          ? "Todas las parejas juegan entre sí a doble vuelta (ida y vuelta)."
+          : "Todas las parejas juegan entre sí una vez (ida).",
+        "Victoria = 1 punto · Derrota = 0 puntos (no hay empates).",
+        "Partidos al mejor de 3 sets.",
+        "El desempate en la tabla se define primero por diferencia de sets y luego por diferencia de games.",
+      ];
+      if (config.playoffEnabled) {
+        rules.push(`Al terminar la tabla, los ${config.advanceQualifiers ?? 4} mejores clasificados juegan una fase eliminatoria.`);
+      } else {
+        rules.push("Sin fase final: el campeón es quien queda primero en la tabla.");
+      }
+      rules.push(`${config.courts ?? 2} ${(config.courts ?? 2) === 1 ? "pista" : "pistas"} en juego simultáneamente.`);
       return rules;
     }
     default:
