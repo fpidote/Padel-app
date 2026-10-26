@@ -1,4 +1,5 @@
 // src/components/shared/MatchCard.jsx
+import { analyzeSets } from "../../logic/sets";
 
 export default function MatchCard({
   match,
@@ -14,29 +15,14 @@ export default function MatchCard({
   const maxSets = scoringFormat === "sets5" ? 5 : 3;
   const setsNeededToWin = maxSets === 5 ? 3 : 2;
 
-  // Calcular en tiempo real quién va ganando mientras el usuario escribe
-  const getLiveSetResults = () => {
-    let setsA = 0;
-    let setsB = 0;
-    const setList = [];
-
-    for (let i = 0; i < maxSets; i++) {
-      const sA = ls[`${match.id}_set${i}_A`] ?? "";
-      const sB = ls[`${match.id}_set${i}_B`] ?? "";
-      const a = parseInt(sA);
-      const b = parseInt(sB);
-
-      if (!isNaN(a) && !isNaN(b) && a >= 0 && b >= 0 && a !== b) {
-        setList.push({ a, b });
-        if (a > b) setsA++;
-        else setsB++;
-      }
-    }
-
-    const matchFinished =
-      setsA === setsNeededToWin || setsB === setsNeededToWin;
-    return { setsA, setsB, setList, matchFinished };
-  };
+  // Analiza en tiempo real los sets que el usuario va escribiendo
+  const live = analyzeSets(
+    Array.from({ length: maxSets }, (_, i) => ({
+      a: ls[`${match.id}_set${i}_A`] ?? "",
+      b: ls[`${match.id}_set${i}_B`] ?? "",
+    })),
+    setsNeededToWin,
+  );
 
   // Formato tradicional por juegos
   const sA_games = ls[`${match.id}_A`] ?? (match.scoreA || "");
@@ -47,8 +33,7 @@ export default function MatchCard({
   const isGamesValid =
     !isNaN(gA) && !isNaN(gB) && gA >= 0 && gB >= 0 && gA !== gB;
 
-  const live = getLiveSetResults();
-  const isValidFinal = isSetFormat ? live.matchFinished : isGamesValid;
+  const isValidFinal = isSetFormat ? live.finished : isGamesValid;
   const finalScoreA = isSetFormat ? live.setsA : gA;
   const finalScoreB = isSetFormat ? live.setsB : gB;
   const isEditing =
@@ -87,17 +72,9 @@ export default function MatchCard({
       {!match.saved && isSetFormat && isAdmin && match.pairA && match.pairB ? (
         <div className="flex flex-col gap-2.5 px-4 pt-2 pb-3">
           {Array.from({ length: maxSets }).map((_, idx) => {
-            let tempSetsA = 0;
-            let tempSetsB = 0;
-            for (let i = 0; i < idx; i++) {
-              const pA = parseInt(ls[`${match.id}_set${i}_A`]);
-              const pB = parseInt(ls[`${match.id}_set${i}_B`]);
-              if (!isNaN(pA) && !isNaN(pB) && pA !== pB) {
-                if (pA > pB) tempSetsA++;
-                else tempSetsB++;
-              }
-            }
-            if (tempSetsA === setsNeededToWin || tempSetsB === setsNeededToWin) return null;
+            // Solo se muestran los sets ya cargados y el siguiente pendiente
+            if (idx > live.sets.length || (live.finished && idx >= live.sets.length)) return null;
+            const hasError = live.errorIndex === idx;
 
             return (
               <div key={idx} className="flex items-center justify-between bg-black/20 px-3 py-1.5 rounded-lg border border-white/[0.04]">
@@ -110,7 +87,7 @@ export default function MatchCard({
                   onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
                   value={ls[`${match.id}_set${idx}_A`] ?? ""}
                   onChange={(e) => setLs((p) => ({ ...p, [`${match.id}_set${idx}_A`]: e.target.value }))}
-                  className="font-data w-11 h-9 rounded-lg bg-white/[0.04] border-[1.5px] border-white/10 text-center text-base font-bold text-[#f1f5f9] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all"
+                  className={`font-data w-11 h-9 rounded-lg bg-white/[0.04] border-[1.5px] ${hasError ? "border-red-500/60" : "border-white/10"} text-center text-base font-bold text-[#f1f5f9] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all`}
                 />
                 <span className="text-gray-500 font-bold mx-2">-</span>
                 <input
@@ -118,7 +95,7 @@ export default function MatchCard({
                   onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
                   value={ls[`${match.id}_set${idx}_B`] ?? ""}
                   onChange={(e) => setLs((p) => ({ ...p, [`${match.id}_set${idx}_B`]: e.target.value }))}
-                  className="font-data w-11 h-9 rounded-lg bg-white/[0.04] border-[1.5px] border-white/10 text-center text-base font-bold text-[#f1f5f9] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all"
+                  className={`font-data w-11 h-9 rounded-lg bg-white/[0.04] border-[1.5px] ${hasError ? "border-red-500/60" : "border-white/10"} text-center text-base font-bold text-[#f1f5f9] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all`}
                 />
                 <span className="font-semibold text-gray-400 flex-1 text-left ml-3 text-sm">
                   {match.pairB.p1} / {match.pairB.p2}
@@ -126,6 +103,11 @@ export default function MatchCard({
               </div>
             );
           })}
+          {live.error && (
+            <p className="text-xs text-red-400 font-semibold">
+              ⚠️ Set {live.errorIndex + 1}: {live.error}
+            </p>
+          )}
         </div>
       ) : (
         // Inputs tradicionales por games o vista de lectura
@@ -271,7 +253,7 @@ export default function MatchCard({
             type="button"
             onClick={() => {
               if (isSetFormat) {
-                onSave(match.id, finalScoreA, finalScoreB, live.setList);
+                onSave(match.id, finalScoreA, finalScoreB, live.sets);
               } else {
                 onSave(match.id, finalScoreA, finalScoreB);
               }
