@@ -2,6 +2,7 @@
 import { useState, Fragment } from "react";
 import { generateRules } from "../../logic/constants";
 import { advanceBracket } from "../../logic/relampago";
+import { analyzeSets } from "../../logic/sets";
 import { THeader, Tabs } from "../shared/Components";
 import PairStandings from "../shared/PairStandings";
 
@@ -18,22 +19,15 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
   const maxSets = scoringFormat === "sets5" ? 5 : 3;
   const setsNeeded = maxSets === 5 ? 3 : 2;
 
-  // Sets cargados hasta ahora (se corta en el primer set incompleto o cuando alguien ya ganó)
-  const liveSets = [];
-  let liveA = 0;
-  let liveB = 0;
-  if (isSetFormat) {
-    for (let i = 0; i < maxSets && liveA < setsNeeded && liveB < setsNeeded; i++) {
-      const a = parseInt(ls[`${match.id}_set${i}_A`]);
-      const b = parseInt(ls[`${match.id}_set${i}_B`]);
-      if (isNaN(a) || isNaN(b) || a < 0 || b < 0 || a === b) break;
-      liveSets.push({ a, b });
-      if (a > b) liveA++;
-      else liveB++;
-    }
-  }
-  const setsDone = liveA === setsNeeded || liveB === setsNeeded;
-  const visibleSetRows = setsDone ? liveSets.length : Math.min(liveSets.length + 1, maxSets);
+  // Sets cargados hasta ahora, validados con las reglas del pádel
+  const live = analyzeSets(
+    Array.from({ length: maxSets }, (_, i) => ({
+      a: ls[`${match.id}_set${i}_A`] ?? "",
+      b: ls[`${match.id}_set${i}_B`] ?? "",
+    })),
+    setsNeeded,
+  );
+  const visibleSetRows = live.finished ? live.sets.length : Math.min(live.sets.length + 1, maxSets);
 
   const isByeA = match.pairA?.id === "bye";
   const isByeB = match.pairB?.id === "bye";
@@ -45,7 +39,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
   const aVal = ls[`${match.id}_A`] ?? "";
   const bVal = ls[`${match.id}_B`] ?? "";
   const canSave = isSetFormat
-    ? setsDone
+    ? live.finished
     : aVal !== "" && bVal !== "" &&
       Number(aVal) >= 0 && Number(bVal) >= 0 &&
       Number(aVal) !== Number(bVal);
@@ -130,7 +124,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
           />
         ) : (
           <span style={{ fontSize: 16, fontWeight: 800, color: match.saved ? (wonA ? "#4ade80" : "#475569") : "#334155", minWidth: 28, textAlign: "right" }}>
-            {expanded && isSetFormat ? liveA : match.saved ? match.scoreA : "–"}
+            {expanded && isSetFormat ? live.setsA : match.saved ? match.scoreA : "–"}
           </span>
         )}
       </div>
@@ -158,15 +152,15 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
           />
         ) : (
           <span style={{ fontSize: 16, fontWeight: 800, color: match.saved ? (wonB ? "#4ade80" : "#475569") : "#334155", minWidth: 28, textAlign: "right" }}>
-            {expanded && isSetFormat ? liveB : match.saved ? match.scoreB : "–"}
+            {expanded && isSetFormat ? live.setsB : match.saved ? match.scoreB : "–"}
           </span>
         )}
       </div>
 
       {match.saved && isSetFormat && match.sets?.length > 0 && (
-        <div style={{ marginTop: 6, display: "flex", gap: 6, flexWrap: "wrap", fontSize: 11, color: "#94a3b8", fontWeight: 700 }}>
+        <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px] font-bold text-slate-400">
           {match.sets.map((set, i) => (
-            <span key={i} style={{ background: "#0f172a", padding: "1px 6px", borderRadius: 4 }}>
+            <span key={i} className="bg-[#0f172a] px-1.5 py-px rounded">
               {set.a}-{set.b}
             </span>
           ))}
@@ -174,25 +168,30 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
       )}
 
       {expanded && isSetFormat && (
-        <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+        <div className="mt-2 flex flex-col gap-1.5">
           {Array.from({ length: visibleSetRows }).map((_, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 10, fontWeight: 700, color: "#64748b", width: 36 }}>SET {i + 1}</span>
+            <div key={i} className="flex items-center gap-1.5">
+              <span className="w-9 text-[10px] font-bold text-slate-500">SET {i + 1}</span>
               {["A", "B"].map((side, si) => (
                 <Fragment key={side}>
-                  {si === 1 && <span style={{ color: "#64748b", fontWeight: 700 }}>-</span>}
+                  {si === 1 && <span className="font-bold text-slate-500">-</span>}
                   <input
                     type="number" min="0"
                     value={ls[`${match.id}_set${i}_${side}`] ?? ""}
                     onClick={(e) => e.stopPropagation()}
                     onChange={(e) => setLs((prev) => ({ ...prev, [`${match.id}_set${i}_${side}`]: e.target.value }))}
                     onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
-                    style={{ width: 36, height: 28, borderRadius: 6, background: "#0f172a", border: "1px solid #334155", textAlign: "center", color: "#38bdf8", fontWeight: 700, fontSize: 14, outline: "none" }}
+                    className={`w-9 h-7 rounded-md bg-[#0f172a] border text-center text-sm font-bold text-sky-400 outline-none ${live.errorIndex === i ? "border-red-500/60" : "border-[#334155]"}`}
                   />
                 </Fragment>
               ))}
             </div>
           ))}
+          {live.error && (
+            <p className="text-[11px] font-semibold text-red-400">
+              ⚠️ Set {live.errorIndex + 1}: {live.error}
+            </p>
+          )}
         </div>
       )}
 
@@ -200,7 +199,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
         <button
           onClick={(e) => {
             e.stopPropagation();
-            if (isSetFormat) onSave(match.id, liveA, liveB, liveSets);
+            if (isSetFormat) onSave(match.id, live.setsA, live.setsB, live.sets);
             else onSave(match.id, parseInt(aVal), parseInt(bVal));
             setExpanded(false);
           }}
@@ -305,7 +304,8 @@ function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, accentColor,
                   return (
                     <div
                       key={match.id}
-                      style={{ position: "absolute", top: centerY, left: 0, right: 0, transform: "translateY(-50%)", zIndex: openId === match.id ? 20 : 1 }}
+                      className={openId === match.id ? "z-20" : "z-[1]"}
+                      style={{ position: "absolute", top: centerY, left: 0, right: 0, transform: "translateY(-50%)" }}
                     >
                       <BracketMatchCard
                         match={match}
