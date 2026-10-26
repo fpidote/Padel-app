@@ -110,20 +110,51 @@ export function seedQualifiers(groups, advancePerGroup) {
 
 // Cuántos clasifican, de qué tamaño es el cuadro y cuántos pasan directo a la segunda ronda.
 export function knockoutInfo(groupCount, advancePerGroup) {
-  const qualifiers = (groupCount ?? 2) * (advancePerGroup ?? 2);
+  const groups = groupCount ?? 2;
+  const qualifiers = groups * (advancePerGroup ?? 2);
   let size = 1;
   while (size < qualifiers) size *= 2;
-  return { qualifiers, size, byes: size - qualifiers };
+  return { qualifiers, size, byes: size - qualifiers, groups };
+}
+
+const POSITIONS = [
+  ["primero", "primeros"],
+  ["segundo", "segundos"],
+  ["tercero", "terceros"],
+  ["cuarto", "cuartos"],
+  ["quinto", "quintos"],
+  ["sexto", "sextos"],
+];
+
+// Quiénes pasan directo: la siembra reparte los lugares libres primero entre los primeros de grupo,
+// luego entre los segundos, etc. (dentro de cada puesto, los de mejor rendimiento).
+function byePositionsText(byes, groups) {
+  const parts = [];
+  let left = byes;
+  let partial = false;
+  for (let pos = 0; left > 0; pos++) {
+    const take = Math.min(left, groups);
+    const [one, many] = POSITIONS[pos] || [`${pos + 1}.º`, `${pos + 1}.º`];
+    if (take === groups) parts.push(`todos los ${many}${pos === 0 ? " de grupo" : ""}`);
+    else {
+      partial = true;
+      parts.push(take === 1 ? `el mejor ${one}${pos === 0 ? " de grupo" : ""}` : `los ${take} mejores ${many}${pos === 0 ? " de grupo" : ""}`);
+    }
+    left -= take;
+  }
+  const text = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} y ${parts[parts.length - 1]}` : parts[0];
+  return { text, partial };
 }
 
 // Frase para el organizador cuando el cuadro necesita pasa directo (null si es exacto).
-export function knockoutByesText({ qualifiers, byes }) {
+export function knockoutByesText({ qualifiers, byes, groups = 2 }) {
   if (byes <= 0) return null;
-  return byes === 1
-    ? `Con ${qualifiers} parejas clasificadas, la mejor clasificada pasa directo a la segunda ronda.`
-    : `Con ${qualifiers} parejas clasificadas, las ${byes} mejor clasificadas pasan directo a la segunda ronda.`;
+  const { text, partial } = byePositionsText(byes, groups);
+  const verb = byes === 1 ? "pasa" : "pasan";
+  const base = `Con ${qualifiers} parejas clasificadas, ${verb} directo a la segunda ronda ${text}.`;
+  return partial ? `${base} Entre los de un mismo puesto, se ordenan por victorias y diferencia.` : base;
 }
 
 export function buildKnockoutFromGroups(groups, advancePerGroup) {
-  return buildBracket(seedQualifiers(groups, advancePerGroup));
+  return buildBracket(seedQualifiers(groups, advancePerGroup), { consolation: false });
 }

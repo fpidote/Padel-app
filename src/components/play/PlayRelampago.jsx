@@ -1,7 +1,7 @@
 // src/components/play/PlayRelampago.jsx
 import { useState, Fragment } from "react";
 import { generateRules } from "../../logic/constants";
-import { advanceBracket, countPlayed } from "../../logic/relampago";
+import { advanceBracket, unadvanceBracket, countPlayed } from "../../logic/relampago";
 import { analyzeSets } from "../../logic/sets";
 import { applyMatchToPairs } from "../../logic/standings";
 import { THeader, Tabs } from "../shared/Components";
@@ -345,8 +345,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
   }
 
   async function onEditMatch(matchId) {
-    const updatedBracket = t.bracket.map((m) => ({ ...m }));
-    const match = updatedBracket.find((m) => m.id === matchId);
+    const match = t.bracket.find((m) => m.id === matchId);
     if (!match) return;
     if (match.pairA?.id === "bye" || match.pairB?.id === "bye") return;
 
@@ -354,24 +353,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
     const b = parseInt(match.scoreB);
     const pairs = applyMatchToPairs(t.pairs, match, a, b, match.sets, -1);
 
-    if (match.nextMatchId && match.winner) {
-      const nextM = updatedBracket.find((m) => m.id === match.nextMatchId);
-      if (nextM) {
-        if (nextM.pairA?.id === match.winner.id) nextM.pairA = null;
-        if (nextM.pairB?.id === match.winner.id) nextM.pairB = null;
-      }
-    }
-    if (match.loserMatchId && match.loser) {
-      const consM = updatedBracket.find((m) => m.id === match.loserMatchId);
-      if (consM) {
-        if (consM.pairA?.id === match.loser.id) consM.pairA = null;
-        if (consM.pairB?.id === match.loser.id) consM.pairB = null;
-      }
-    }
-
-    match.saved = false;
-
-    await persist({ ...t, bracket: updatedBracket, pairs });
+    await persist({ ...t, bracket: unadvanceBracket(t.bracket, matchId), pairs });
   }
 
   const consolRounds = [

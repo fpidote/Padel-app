@@ -226,22 +226,22 @@ describe("buildKnockoutFromGroups — cruces", () => {
 
 describe("knockoutInfo", () => {
   it("calcula clasificados, tamaño del cuadro y pasa directo", () => {
-    expect(knockoutInfo(2, 3)).toEqual({ qualifiers: 6, size: 8, byes: 2 });
-    expect(knockoutInfo(2, 2)).toEqual({ qualifiers: 4, size: 4, byes: 0 });
-    expect(knockoutInfo(3, 1)).toEqual({ qualifiers: 3, size: 4, byes: 1 });
-    expect(knockoutInfo(4, 3)).toEqual({ qualifiers: 12, size: 16, byes: 4 });
-    expect(knockoutInfo(2, 5)).toEqual({ qualifiers: 10, size: 16, byes: 6 });
+    expect(knockoutInfo(2, 3)).toEqual({ qualifiers: 6, size: 8, byes: 2, groups: 2 });
+    expect(knockoutInfo(2, 2)).toEqual({ qualifiers: 4, size: 4, byes: 0, groups: 2 });
+    expect(knockoutInfo(3, 1)).toEqual({ qualifiers: 3, size: 4, byes: 1, groups: 3 });
+    expect(knockoutInfo(4, 3)).toEqual({ qualifiers: 12, size: 16, byes: 4, groups: 4 });
+    expect(knockoutInfo(2, 5)).toEqual({ qualifiers: 10, size: 16, byes: 6, groups: 2 });
   });
   it("usa los valores por defecto de la configuración (2 grupos, 2 avanzan)", () => {
-    expect(knockoutInfo(undefined, undefined)).toEqual({ qualifiers: 4, size: 4, byes: 0 });
+    expect(knockoutInfo(undefined, undefined)).toEqual({ qualifiers: 4, size: 4, byes: 0, groups: 2 });
   });
 });
 
 describe("reglas del Mundialito — pasa directo", () => {
-  it("avisa cuántos pasan directo cuando los clasificados no son potencia de 2", () => {
+  it("avisa quiénes pasan directo cuando los clasificados no son potencia de 2", () => {
     const rules = generateRules("mundialito", { groupCount: 2, advancePerGroup: 3 }).join(" ");
     expect(rules).toContain("6 parejas");
-    expect(rules).toContain("2 mejor clasificadas pasan directo");
+    expect(rules).toContain("pasan directo a la segunda ronda todos los primeros de grupo");
   });
   it("no menciona pasa directo cuando el cuadro es exacto", () => {
     expect(generateRules("mundialito", { groupCount: 2, advancePerGroup: 2 }).join(" ")).not.toContain("pasan directo");
@@ -249,13 +249,38 @@ describe("reglas del Mundialito — pasa directo", () => {
 });
 
 describe("knockoutByesText", () => {
+  const text = (g, a) => knockoutByesText(knockoutInfo(g, a));
   it("no dice nada si el cuadro es exacto", () => {
-    expect(knockoutByesText(knockoutInfo(2, 2))).toBeNull();
+    expect(text(2, 2)).toBeNull();
   });
-  it("en plural cuenta cuántas pasan directo", () => {
-    expect(knockoutByesText(knockoutInfo(2, 3))).toBe("Con 6 parejas clasificadas, las 2 mejor clasificadas pasan directo a la segunda ronda.");
+  it("si sobran tantos lugares como grupos, pasan todos los primeros", () => {
+    expect(text(2, 3)).toBe("Con 6 parejas clasificadas, pasan directo a la segunda ronda todos los primeros de grupo.");
   });
-  it("en singular usa la forma correcta", () => {
-    expect(knockoutByesText(knockoutInfo(3, 1))).toBe("Con 3 parejas clasificadas, la mejor clasificada pasa directo a la segunda ronda.");
+  it("si sobra un solo lugar, pasa el mejor primero", () => {
+    expect(text(3, 1)).toBe("Con 3 parejas clasificadas, pasa directo a la segunda ronda el mejor primero de grupo. Entre los de un mismo puesto, se ordenan por victorias y diferencia.");
+  });
+  it("si sobran menos lugares que grupos, pasan los mejores primeros", () => {
+    expect(text(5, 1)).toBe("Con 5 parejas clasificadas, pasan directo a la segunda ronda los 3 mejores primeros de grupo. Entre los de un mismo puesto, se ordenan por victorias y diferencia.");
+    expect(text(3, 2)).toBe("Con 6 parejas clasificadas, pasan directo a la segunda ronda los 2 mejores primeros de grupo. Entre los de un mismo puesto, se ordenan por victorias y diferencia.");
+  });
+  it("si sobran más lugares que grupos, completan con los mejores segundos", () => {
+    expect(text(3, 4)).toBe("Con 12 parejas clasificadas, pasan directo a la segunda ronda todos los primeros de grupo y el mejor segundo. Entre los de un mismo puesto, se ordenan por victorias y diferencia.");
+  });
+  it("con 9 clasificados (3 grupos de 3) pasan primeros, segundos y el mejor tercero", () => {
+    expect(text(3, 3)).toBe("Con 9 parejas clasificadas, pasan directo a la segunda ronda todos los primeros de grupo, todos los segundos y el mejor tercero. Entre los de un mismo puesto, se ordenan por victorias y diferencia.");
+  });
+  it("con 10 clasificados (2 grupos de 5) pasan primeros, segundos y terceros", () => {
+    expect(text(2, 5)).toBe("Con 10 parejas clasificadas, pasan directo a la segunda ronda todos los primeros de grupo, todos los segundos y todos los terceros.");
+  });
+  it("no aclara el desempate cuando pasan todos los de cada puesto", () => {
+    expect(text(2, 3)).not.toContain("Entre los de un mismo puesto");
+  });
+});
+
+describe("eliminatoria del Mundialito sin cuadro de revancha", () => {
+  it("solo tiene partidos del cuadro principal", () => {
+    const groups = mkGroups([4, 4, 4], { B: 1, C: 2 });
+    const bracket = buildKnockoutFromGroups(groups, 3);
+    expect(bracket.every((m) => m.bracket === "winners")).toBe(true);
   });
 });

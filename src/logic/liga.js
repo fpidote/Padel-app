@@ -153,5 +153,5 @@ export function buildLigaKnockout(pairs, advanceQualifiers) {
       ((a.gamesFor || 0) - (a.gamesAgainst || 0))
     );
   });
-  return buildBracket(sorted.slice(0, advanceQualifiers));
+  return buildBracket(sorted.slice(0, advanceQualifiers), { consolation: false });
 }

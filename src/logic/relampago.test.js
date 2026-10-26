@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildBracket, advanceBracket, countPlayed, firstRoundSeedPairs } from "./relampago.js";
+import { buildBracket, advanceBracket, unadvanceBracket, countPlayed, firstRoundSeedPairs } from "./relampago.js";
 
 function makePairs(n) {
   return Array.from({ length: n }, (_, i) => ({
@@ -37,7 +37,7 @@ describe("buildBracket — con byes (no potencia de 2)", () => {
     expect(byeSlots).toHaveLength(0);
   });
 
-  it("T-REL-02: 6 parejas — consolación R2 tiene 1 match reservado para bye-loser de W_R2", () => {
+  it("T-REL-02: 6 parejas — la consolación tiene dos semifinales y una final", () => {
     const bracket = buildBracket(makePairs(6));
     const consR2 = bracket.filter((m) => m.bracket === "consolation" && m.round === 2);
     expect(consR2).toHaveLength(1);
@@ -54,37 +54,105 @@ describe("buildBracket — con byes (no potencia de 2)", () => {
 });
 
 describe("advanceBracket — bye-loser de W_R2 va a consolación", () => {
-  function buildAndAdvanceW2ByeMatch(n) {
-    const pairs = makePairs(n);
-    let bracket = buildBracket(pairs);
-    // Encontrar el partido W_R2 donde ambos son bye-avanzados
-    const w2ByeMatch = bracket.find(
-      (m) => m.bracket === "winners" && m.round === 2 && m.pairAByeInR1 && m.pairBByeInR1
+  // 6 parejas: las dos mejores descansan en mitades opuestas, cada una espera a un ganador de R1.
+  function conditionalR2Matches(bracket) {
+    return bracket.filter(
+      (m) => m.bracket === "winners" && m.round === 2 && (m.pairAByeInR1 || m.pairBByeInR1)
     );
-    return { bracket, w2ByeMatch };
   }
 
-  it("T-REL-04: 6 parejas — loser de W_R2 bye-match llega a consolación R2", () => {
-    const { bracket, w2ByeMatch } = buildAndAdvanceW2ByeMatch(6);
-    expect(w2ByeMatch).toBeTruthy();
-    // Guardar el partido: pairA gana (scoreA=6, scoreB=3)
-    const updated = advanceBracket(bracket, w2ByeMatch.id, 6, 3);
-    const loser = w2ByeMatch.pairB; // pairB pierde
-    const consR2 = updated.filter((m) => m.bracket === "consolation" && m.round === 2);
-    const loserInConsolSlotB = consR2.some((m) => m.pairB?.id === loser.id);
-    expect(loserInConsolSlotB).toBe(true);
+  it("T-REL-04: 6 parejas — la pareja que descansó y pierde en W_R2 llega a la consolación", () => {
+    const bracket = buildBracket(makePairs(6));
+    const conds = conditionalR2Matches(bracket);
+    expect(conds).toHaveLength(2);
+    const target = conds[0];
+    const byeIsA = target.pairAByeInR1;
+    const loser = byeIsA ? target.pairA : target.pairB;
+    const withOpponent = bracket.map((m) => ({ ...m }));
+    const opp = { id: "rival", p1: "R1", p2: "R2" };
+    const t = withOpponent.find((m) => m.id === target.id);
+    if (byeIsA) t.pairB = opp; else t.pairA = opp;
+    const updated = advanceBracket(withOpponent, target.id, byeIsA ? 3 : 6, byeIsA ? 6 : 3);
+    const inConsol = updated
+      .filter((m) => m.bracket === "consolation")
+      .some((m) => m.pairA?.id === loser.id || m.pairB?.id === loser.id);
+    expect(inConsol).toBe(true);
   });
 
-  it("T-REL-05: 6 parejas — winner de W_R2 bye-match NO va a consolación", () => {
-    const { bracket, w2ByeMatch } = buildAndAdvanceW2ByeMatch(6);
-    expect(w2ByeMatch).toBeTruthy();
-    const updated = advanceBracket(bracket, w2ByeMatch.id, 6, 3);
-    const winner = w2ByeMatch.pairA; // pairA gana
-    const consolMatches = updated.filter((m) => m.bracket === "consolation");
-    const winnerInConsol = consolMatches.some(
-      (m) => m.pairA?.id === winner.id || m.pairB?.id === winner.id
-    );
-    expect(winnerInConsol).toBe(false);
+  it("T-REL-05: 6 parejas — el ganador del W_R2 condicional NO va a consolación", () => {
+    const bracket = buildBracket(makePairs(6));
+    const target = conditionalR2Matches(bracket)[0];
+    const byeIsA = target.pairAByeInR1;
+    const winner = byeIsA ? target.pairA : target.pairB;
+    const withOpponent = bracket.map((m) => ({ ...m }));
+    const opp = { id: "rival", p1: "R1", p2: "R2" };
+    const t = withOpponent.find((m) => m.id === target.id);
+    if (byeIsA) t.pairB = opp; else t.pairA = opp;
+    const updated = advanceBracket(withOpponent, target.id, byeIsA ? 6 : 3, byeIsA ? 3 : 6);
+    const inConsol = updated
+      .filter((m) => m.bracket === "consolation")
+      .some((m) => m.pairA?.id === winner.id || m.pairB?.id === winner.id);
+    expect(inConsol).toBe(false);
+  });
+});
+
+// Juega un cuadro completo con resultados pseudoaleatorios reproducibles.
+function playAll(bracket, seed) {
+  let x = seed;
+  const rnd = () => ((x = (x * 1664525 + 1013904223) % 4294967296) / 4294967296);
+  let b = bracket;
+  for (let guard = 0; guard < 500; guard++) {
+    const m = b.find((mm) => !mm.saved && mm.pairA && mm.pairB && mm.pairA.id !== "bye" && mm.pairB.id !== "bye");
+    if (!m) break;
+    const aWins = rnd() < 0.5;
+    b = advanceBracket(b, m.id, aWins ? 6 : 3, aWins ? 3 : 6);
+  }
+  return b;
+}
+
+describe("cuadro completo — cualquier cantidad de parejas", () => {
+  it("se puede jugar hasta el final: todos los partidos quedan resueltos y hay campeón", () => {
+    for (let n = 3; n <= 20; n++) {
+      for (const seed of [1, 7, 42]) {
+        const b = playAll(buildBracket(makePairs(n)), seed);
+        const stuck = b.filter((m) => !m.saved && (m.pairA?.id !== "bye" && m.pairB?.id !== "bye") );
+        expect(stuck.map((m) => m.id), `n=${n} seed=${seed}`).toEqual([]);
+        const final = b.find((m) => m.bracket === "winners" && !m.nextMatchId);
+        expect(final.winner, `n=${n} seed=${seed}`).toBeTruthy();
+      }
+    }
+  });
+
+  it("la consolación también termina con un campeón de revancha", () => {
+    for (let n = 3; n <= 20; n++) {
+      const b = playAll(buildBracket(makePairs(n)), 5);
+      const cons = b.filter((m) => m.bracket === "consolation");
+      const final = cons.find((m) => !m.nextMatchId);
+      expect(final?.winner, `n=${n}`).toBeTruthy();
+      expect(final.winner.id, `n=${n}`).not.toBe("bye");
+    }
+  });
+
+  it("cada pareja juega como máximo un partido por ronda del cuadro principal", () => {
+    for (let n = 3; n <= 20; n++) {
+      const b = playAll(buildBracket(makePairs(n)), 3);
+      for (const m of b.filter((x) => x.bracket === "winners")) {
+        // el ganador de un partido no puede estar en dos partidos de la misma ronda
+        const same = b.filter((x) => x.bracket === "winners" && x.round === m.round);
+        const ids = same.flatMap((x) => [x.pairA?.id, x.pairB?.id]).filter((id) => id && id !== "bye");
+        expect(new Set(ids).size, `n=${n} ronda ${m.round}`).toBe(ids.length);
+      }
+    }
+  });
+
+  it("en el cuadro principal se juegan n-1 partidos reales (cada uno elimina a una pareja)", () => {
+    for (let n = 2; n <= 20; n++) {
+      const b = playAll(buildBracket(makePairs(n)), 11);
+      const real = b.filter(
+        (m) => m.bracket === "winners" && m.saved && m.pairA?.id !== "bye" && m.pairB?.id !== "bye"
+      );
+      expect(real, `n=${n}`).toHaveLength(n - 1);
+    }
   });
 });
 
@@ -169,7 +237,23 @@ describe("countPlayed", () => {
 describe("firstRoundSeedPairs", () => {
   it("empareja el mejor sembrado con el peor y reparte los pasa directo entre los mejores", () => {
     // 6 parejas en un cuadro de 8: los índices 6 y 7 son BYE
-    expect(firstRoundSeedPairs(6)).toEqual([[0, 7], [1, 6], [2, 5], [3, 4]]);
+    expect(firstRoundSeedPairs(6)).toEqual([[0, 7], [3, 4], [1, 6], [2, 5]]);
+  });
+  it("los dos mejores sembrados quedan en mitades opuestas y solo se cruzan en la final", () => {
+    for (const size of [4, 8, 16, 32]) {
+      const pairs = firstRoundSeedPairs(size);
+      const half = pairs.length / 2;
+      const indexOf = (seed) => pairs.findIndex((p) => p.includes(seed));
+      expect(indexOf(0) < half, `size ${size}`).not.toBe(indexOf(1) < half);
+    }
+  });
+  it("los cuatro mejores quedan cada uno en un cuarto distinto del cuadro", () => {
+    for (const size of [8, 16, 32]) {
+      const pairs = firstRoundSeedPairs(size);
+      const quarter = pairs.length / 4;
+      const quarters = [0, 1, 2, 3].map((s) => Math.floor(pairs.findIndex((p) => p.includes(s)) / quarter));
+      expect(new Set(quarters).size, `size ${size}`).toBe(4);
+    }
   });
   it("sin pasa directo (potencia de 2) no hay índices fuera de rango", () => {
     expect(firstRoundSeedPairs(4)).toEqual([[0, 3], [1, 2]]);
@@ -183,6 +267,76 @@ describe("firstRoundSeedPairs", () => {
         .map((m) => [m.pairA.id, m.pairB.id]);
       const expected = firstRoundSeedPairs(n).map(([a, b]) => [a < n ? a : "bye", b < n ? b : "bye"]);
       expect(r1).toEqual(expected);
+    }
+  });
+});
+
+describe("unadvanceBracket — deshacer un resultado", () => {
+  const cons = (b) => b.filter((m) => m.bracket === "consolation");
+  const condMatch = (b) =>
+    b.find((m) => m.bracket === "winners" && m.round === 2 && (m.pairAByeInR1 !== m.pairBByeInR1));
+
+  // Hace jugar el W_R2 condicional de 5 parejas dejando que gane quien descansó.
+  function playCondWithByeWinner(n) {
+    let b = buildBracket(makePairs(n));
+    const target = condMatch(b);
+    const feeder = b.find((m) => m.bracket === "winners" && m.round === 1 && m.nextMatchId === target.id && m.pairA?.id !== "bye" && m.pairB?.id !== "bye");
+    b = advanceBracket(b, feeder.id, 6, 3);
+    const t = b.find((m) => m.id === target.id);
+    const byeIsA = t.pairAByeInR1;
+    b = advanceBracket(b, t.id, byeIsA ? 6 : 3, byeIsA ? 3 : 6);
+    return { b, targetId: target.id };
+  }
+
+  it("quita al ganador del partido siguiente y al perdedor de la consolación", () => {
+    let b = buildBracket(makePairs(4));
+    const r1 = b.find((m) => m.id === "w_r1_m0");
+    b = advanceBracket(b, r1.id, 6, 3);
+    b = unadvanceBracket(b, r1.id);
+    const next = b.find((m) => m.id === r1.nextMatchId);
+    expect([next.pairA, next.pairB]).toEqual([null, null]);
+    expect(cons(b).every((m) => !m.pairA && !m.pairB || m.pairB?.id === "bye")).toBe(true);
+    expect(b.find((m) => m.id === r1.id).saved).toBe(false);
+  });
+
+  it("si al ganar el que descansó se cubrió un lugar con BYE, deshacer lo vuelve a vaciar", () => {
+    const { b, targetId } = playCondWithByeWinner(5);
+    const slotted = cons(b).filter((m) => m.round === 1 && (m.pairA?.id === "bye" || m.pairB?.id === "bye") && m.saved);
+    expect(slotted.length).toBeGreaterThan(0);
+    const undone = unadvanceBracket(b, targetId);
+    const after = cons(undone).filter((m) => m.round === 1);
+    // no queda ningún partido de consolación resuelto solo por ese BYE
+    expect(after.some((m) => m.saved && m.pairA?.id === "bye")).toBe(false);
+    const fed = undone.find((m) => m.id === targetId);
+    expect(fed.saved).toBe(false);
+  });
+
+  it("deshacer y volver a guardar con otro resultado deja el cuadro consistente", () => {
+    const { b, targetId } = playCondWithByeWinner(5);
+    const t = b.find((m) => m.id === targetId);
+    const byeIsA = t.pairAByeInR1;
+    let again = unadvanceBracket(b, targetId);
+    // ahora pierde quien descansó
+    again = advanceBracket(again, targetId, byeIsA ? 3 : 6, byeIsA ? 6 : 3);
+    const loser = byeIsA ? t.pairA : t.pairB;
+    expect(cons(again).some((m) => m.pairA?.id === loser.id || m.pairB?.id === loser.id)).toBe(true);
+  });
+});
+
+describe("buildBracket — sin consolación (eliminatorias de Mundialito y Liga)", () => {
+  it("con consolation:false solo hay cuadro principal y nadie se deriva a revancha", () => {
+    for (const n of [3, 4, 5, 6, 8, 10, 12]) {
+      const b = buildBracket(makePairs(n), { consolation: false });
+      expect(b.filter((m) => m.bracket === "consolation"), `n=${n}`).toHaveLength(0);
+      expect(b.every((m) => !m.loserMatchId), `n=${n}`).toBe(true);
+    }
+  });
+  it("se puede jugar completo y el único partido sin siguiente es la final", () => {
+    for (const n of [3, 5, 6, 7, 10, 12]) {
+      const b = playAll(buildBracket(makePairs(n), { consolation: false }), 9);
+      const finals = b.filter((m) => !m.nextMatchId);
+      expect(finals, `n=${n}`).toHaveLength(1);
+      expect(finals[0].winner, `n=${n}`).toBeTruthy();
     }
   });
 });

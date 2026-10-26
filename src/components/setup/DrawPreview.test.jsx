@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { GroupsPreview, FixturePreview, BracketPreview } from "./DrawPreview";
 import { buildBracket } from "../../logic/relampago";
+import { knockoutInfo } from "../../logic/mundialito";
 
 const pair = (id) => ({ id, p1: `Ana${id}`, p2: `Eva${id}` });
 
@@ -29,11 +30,11 @@ describe("GroupsPreview", () => {
   });
 
   it("explica cuántas pasan directo cuando los clasificados no son potencia de 2", () => {
-    const html = renderToStaticMarkup(<GroupsPreview groups={groups} advancePerGroup={3} knockout={{ qualifiers: 6, size: 8, byes: 2 }} />);
-    expect(html).toContain("las 2 mejor clasificadas pasan directo");
+    const html = renderToStaticMarkup(<GroupsPreview groups={groups} advancePerGroup={3} knockout={knockoutInfo(2, 3)} />);
+    expect(html).toContain("pasan directo a la segunda ronda todos los primeros de grupo");
   });
   it("no menciona pasa directo si el cuadro es exacto", () => {
-    const html = renderToStaticMarkup(<GroupsPreview groups={groups} advancePerGroup={2} knockout={{ qualifiers: 4, size: 4, byes: 0 }} />);
+    const html = renderToStaticMarkup(<GroupsPreview groups={groups} advancePerGroup={2} knockout={knockoutInfo(2, 2)} />);
     expect(html).not.toContain("pasan directo");
   });
 
