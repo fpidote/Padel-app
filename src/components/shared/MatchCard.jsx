@@ -70,7 +70,11 @@ export default function MatchCard({
 
       {/* Inputs (Si es por sets, mostramos las filas) */}
       {!match.saved && isSetFormat && isAdmin && match.pairA && match.pairB ? (
-        <div className="flex flex-col gap-2.5 px-4 pt-2 pb-3">
+        <div className="flex flex-col gap-2 px-4 pt-3 pb-3">
+          <div className="flex justify-between gap-3 px-3 text-xs font-bold text-gray-400">
+            <span className="flex-1 text-left">{match.pairA.p1} / {match.pairA.p2}</span>
+            <span className="flex-1 text-right">{match.pairB.p1} / {match.pairB.p2}</span>
+          </div>
           {Array.from({ length: maxSets }).map((_, idx) => {
             // Solo se muestran los sets ya cargados y el siguiente pendiente
             if (idx > live.sets.length || (live.finished && idx >= live.sets.length)) return null;
@@ -78,10 +82,6 @@ export default function MatchCard({
 
             return (
               <div key={idx} className="flex items-center justify-between bg-black/20 px-3 py-1.5 rounded-lg border border-white/[0.04]">
-                <span className="text-xs font-bold text-gray-500 w-11">SET {idx + 1}</span>
-                <span className="font-semibold text-gray-400 flex-1 text-right mr-3 text-sm">
-                  {match.pairA.p1} / {match.pairA.p2}
-                </span>
                 <input
                   type="number" min="0"
                   onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
@@ -89,7 +89,7 @@ export default function MatchCard({
                   onChange={(e) => setLs((p) => ({ ...p, [`${match.id}_set${idx}_A`]: e.target.value }))}
                   className={`font-data w-11 h-9 rounded-lg bg-white/[0.04] border-[1.5px] ${hasError ? "border-red-500/60" : "border-white/10"} text-center text-base font-bold text-[#f1f5f9] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all`}
                 />
-                <span className="text-gray-500 font-bold mx-2">-</span>
+                <span className="text-xs font-bold text-gray-500">SET {idx + 1}</span>
                 <input
                   type="number" min="0"
                   onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
@@ -97,9 +97,6 @@ export default function MatchCard({
                   onChange={(e) => setLs((p) => ({ ...p, [`${match.id}_set${idx}_B`]: e.target.value }))}
                   className={`font-data w-11 h-9 rounded-lg bg-white/[0.04] border-[1.5px] ${hasError ? "border-red-500/60" : "border-white/10"} text-center text-base font-bold text-[#f1f5f9] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all`}
                 />
-                <span className="font-semibold text-gray-400 flex-1 text-left ml-3 text-sm">
-                  {match.pairB.p1} / {match.pairB.p2}
-                </span>
               </div>
             );
           })}
