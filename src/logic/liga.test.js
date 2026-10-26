@@ -400,3 +400,9 @@ describe("reglas de la Liga — desempate", () => {
     expect(generateRules("liga", { scoringFormat: "sets3" }).join(" ")).toContain("partido entre las parejas igualadas");
   });
 });
+
+describe("reglas de la Liga — sin pistas", () => {
+  test("no habla de pistas: la Liga solo arma fechas y cruces", () => {
+    expect(generateRules("liga", { scoringFormat: "sets3", courts: 3 }).join(" ")).not.toContain("pista");
+  });
+});

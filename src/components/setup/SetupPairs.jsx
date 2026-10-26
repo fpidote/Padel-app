@@ -57,16 +57,21 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
   const isMixer   = t.type === "pozo" && t.config.pozoMode === "mixer";
   const pairs     = t.pairInputs || [];
   const players   = t.playerInputs || [];
-  const act       = isMixer ? t.config.courts * 4 : t.config.courts * 2;
+  const isLigaType = t.type === "liga";
+  const act       = isLigaType ? 2 : isMixer ? t.config.courts * 4 : t.config.courts * 2;
   const tot       = isMixer ? players.length : pairs.length;
-  const sit       = Math.max(0, tot - act);
+  const sit       = isLigaType ? tot % 2 : Math.max(0, tot - act);
   const need      = Math.max(0, act - tot);
 
   const statusBg  = need > 0 ? "bg-red-400/10 border-red-400/20"    : sit > 0 ? "bg-yellow-400/10 border-yellow-400/20"    : "bg-green-400/10 border-green-400/20";
   const statusTxt = need > 0 ? "text-red-400"                       : sit > 0 ? "text-yellow-400"                          : "text-green-400";
   const isPozo = t.type === "pozo";
 
-  const statusMsg = isPozo
+  const statusMsg = isLigaType
+    ? need > 0
+      ? `⚠️ Faltan ${need} ${need === 1 ? "pareja" : "parejas"}`
+      : `${tot} parejas` + (sit > 0 ? " · ⏳ una descansa cada jornada" : " · ✓ listo")
+    : isPozo
     ? need > 0
       ? `⚠️ Faltan ${need} ${isMixer ? "jugadores" : "parejas"}`
       : sit === 0
@@ -279,7 +284,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
         {!isAdmin && (
           <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 mb-4">
             <div className="font-bold">{t.config.name}</div>
-            <div className="text-xs text-gray-500 mt-1">{t.config.courts} pistas · Esperando al organizador...</div>
+            <div className="text-xs text-gray-500 mt-1">{t.type !== "liga" && `${t.config.courts} pistas · `}Esperando al organizador...</div>
           </div>
         )}
 
@@ -347,7 +352,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
             {/* ── Configuración ── */}
             <SectionHeader>🏓 Configuración</SectionHeader>
             <div className="space-y-4">
-              <div>
+              {t.type !== "liga" && <div>
                 <label className="text-xs text-gray-400 font-semibold block mb-2">Pistas</label>
                 <div className="flex gap-2">
                   {(t.type === "pozo" ? [2,3,4,5,6] : [1,2,3,4,5,6]).map(n => (
@@ -358,7 +363,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
                     >{n}</button>
                   ))}
                 </div>
-              </div>
+              </div>}
 
               {/* Mundialito: grupos y avance */}
               {t.type === "mundialito" && (
@@ -801,7 +806,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
               </SummaryCard>
               <SummaryCard title="Participantes">
                 <SummaryRow label="Total" value={`${tot} parejas`} />
-                <SummaryRow label="Pistas" value={t.config.courts} />
+                {t.type !== "liga" && <SummaryRow label="Pistas" value={t.config.courts} />}
                 {t.type === "mundialito" && <SummaryRow label="Grupos" value={t.config.groupCount || 2} />}
                 {t.type === "mundialito" && <SummaryRow label="Avanzan por grupo" value={t.config.advancePerGroup ?? 2} />}
                 {t.type === "mundialito" && <SummaryRow label="Clasifican a la eliminatoria" value={`${knockoutInfo(t.config.groupCount || 2, t.config.advancePerGroup ?? 2).qualifiers} parejas`} />}

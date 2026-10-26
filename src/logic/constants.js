@@ -170,7 +170,6 @@ export function generateRules(type, config, context = {}) {
       } else {
         rules.push("Sin fase final: el campeón es quien queda primero en la tabla.");
       }
-      rules.push(`${config.courts ?? 2} ${(config.courts ?? 2) === 1 ? "pista" : "pistas"} en juego simultáneamente.`);
       return rules;
     }
     default:
