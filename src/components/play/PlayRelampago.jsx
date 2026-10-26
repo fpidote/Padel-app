@@ -56,18 +56,13 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
       : `${match.pairA.p1} / ${match.pairA.p2}`;
     return (
       <div
-        style={{
-          background: "#1e293b",
-          borderRadius: 10,
-          borderLeft: `3px solid ${accentColor}`,
-          padding: "10px 14px",
-          userSelect: "none",
-        }}
+        className="bg-[#1e293b] rounded-[10px] border-l-[3px] p-[10px_14px] select-none"
+        style={{ borderLeftColor: accentColor }}
       >
-        <div style={{ fontSize: 14, fontWeight: 700, color: "#f1f5f9", marginBottom: 4 }}>
+        <div className="text-sm font-bold text-slate-100 mb-1">
           {realPairName}
         </div>
-        <div style={{ fontSize: 11, color: "#64748b" }}>
+        <div className="text-[11px] text-slate-500">
           Exento — pasa directo
         </div>
       </div>
@@ -88,34 +83,26 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
   return (
     <div
       onClick={handleCardClick}
+      className="bg-[#1e293b] rounded-[10px] border-l-[3px] p-[12px_14px] relative select-none"
       style={{
-        background: "#1e293b",
-        borderRadius: 10,
-        borderLeft: `3px solid ${accentColor}`,
-        padding: "12px 14px",
+        borderLeftColor: accentColor,
         cursor: !isAdmin || isTBD || isBye || match.saved ? "default" : "pointer",
-        position: "relative",
-        userSelect: "none",
         // Abierta con sets desborda su slot: se ve como popover
         boxShadow: expanded && isSetFormat ? "0 12px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.1)" : undefined,
       }}
     >
       {match.saved && (
-        <div style={{ position: "absolute", top: 5, right: 8, fontSize: 10, color: "#4ade80", fontWeight: 700 }}>
+        <div className="absolute top-[5px] right-2 text-[10px] text-green-400 font-bold">
           ✓
         </div>
       )}
 
       {/* Fila A */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-        <span style={{
-          fontSize: 14,
-          fontWeight: 700,
-          fontStyle: isByeA ? "italic" : "normal",
-          color: nameColor(isByeA, wonA, !!match.pairA),
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          flex: 1, marginRight: 6,
-        }}>
+      <div className="flex justify-between items-center mb-1.5">
+        <span
+          className="text-sm font-bold overflow-hidden text-ellipsis whitespace-nowrap flex-1 mr-1.5"
+          style={{ fontStyle: isByeA ? "italic" : "normal", color: nameColor(isByeA, wonA, !!match.pairA) }}
+        >
           {nameA}
         </span>
         {expanded && !isSetFormat ? (
@@ -125,25 +112,21 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
             onClick={(e) => e.stopPropagation()}
             onChange={(e) => setLs((prev) => ({ ...prev, [`${match.id}_A`]: e.target.value }))}
             onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
-            style={{ width: 36, height: 28, borderRadius: 6, background: "#0f172a", border: "1px solid #334155", textAlign: "center", color: "#38bdf8", fontWeight: 700, fontSize: 14, outline: "none" }}
+            className="w-9 h-7 rounded-md bg-[#0f172a] border border-[#334155] text-center text-sky-400 font-bold text-sm outline-none"
           />
         ) : (
-          <span style={{ fontSize: 16, fontWeight: 800, color: match.saved ? (wonA ? "#4ade80" : "#475569") : "#334155", minWidth: 28, textAlign: "right" }}>
+          <span className="text-base font-extrabold min-w-7 text-right" style={{ color: match.saved ? (wonA ? "#4ade80" : "#475569") : "#334155" }}>
             {expanded && isSetFormat ? live.setsA : match.saved ? match.scoreA : "–"}
           </span>
         )}
       </div>
 
       {/* Fila B */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{
-          fontSize: 14,
-          fontWeight: 700,
-          fontStyle: isByeB ? "italic" : "normal",
-          color: nameColor(isByeB, wonB, !!match.pairB),
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          flex: 1, marginRight: 6,
-        }}>
+      <div className="flex justify-between items-center">
+        <span
+          className="text-sm font-bold overflow-hidden text-ellipsis whitespace-nowrap flex-1 mr-1.5"
+          style={{ fontStyle: isByeB ? "italic" : "normal", color: nameColor(isByeB, wonB, !!match.pairB) }}
+        >
           {nameB}
         </span>
         {expanded && !isSetFormat ? (
@@ -153,10 +136,10 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
             onClick={(e) => e.stopPropagation()}
             onChange={(e) => setLs((prev) => ({ ...prev, [`${match.id}_B`]: e.target.value }))}
             onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
-            style={{ width: 36, height: 28, borderRadius: 6, background: "#0f172a", border: "1px solid #334155", textAlign: "center", color: "#38bdf8", fontWeight: 700, fontSize: 14, outline: "none" }}
+            className="w-9 h-7 rounded-md bg-[#0f172a] border border-[#334155] text-center text-sky-400 font-bold text-sm outline-none"
           />
         ) : (
-          <span style={{ fontSize: 16, fontWeight: 800, color: match.saved ? (wonB ? "#4ade80" : "#475569") : "#334155", minWidth: 28, textAlign: "right" }}>
+          <span className="text-base font-extrabold min-w-7 text-right" style={{ color: match.saved ? (wonB ? "#4ade80" : "#475569") : "#334155" }}>
             {expanded && isSetFormat ? live.setsB : match.saved ? match.scoreB : "–"}
           </span>
         )}
@@ -208,7 +191,8 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
             else onSave(match.id, parseInt(aVal), parseInt(bVal));
             setExpanded(false);
           }}
-          style={{ marginTop: 8, width: "100%", padding: "5px 0", borderRadius: 6, background: accentColor, color: "#fff", fontWeight: 700, fontSize: 12, border: "none", cursor: "pointer" }}
+          className="mt-2 w-full py-[5px] rounded-md text-white font-bold text-xs border-0 cursor-pointer"
+          style={{ background: accentColor }}
         >
           ✓ Guardar
         </button>
@@ -217,7 +201,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
       {match.saved && isAdmin && !isBye && (
         <div
           onClick={(e) => { e.stopPropagation(); onEdit(match.id); }}
-          style={{ marginTop: 5, textAlign: "center", fontSize: 10, color: "#334155", cursor: "pointer" }}
+          className="mt-1.5 text-center text-[10px] text-slate-700 cursor-pointer"
         >
           ✏️ editar
         </div>
@@ -243,14 +227,13 @@ function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, accentColor,
   const r1Count = matchesByRound[rounds[0]].length;
   const isSetFormat = scoringFormat === "sets3" || scoringFormat === "sets5";
   const containerHeight = Math.max(r1Count * (isSetFormat ? SLOT_HEIGHT_SETS : SLOT_HEIGHT), 100);
-  const LABEL_H = 26;
 
   function matchCenterY(total, idx) {
     return containerHeight * (2 * idx + 1) / (2 * total);
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "row", overflowX: "auto", alignItems: "flex-start", paddingBottom: 16, padding: "16px 8px", minHeight: 300 }}>
+    <div className="flex flex-row overflow-x-auto items-start p-[16px_8px] min-h-[300px]">
       {rounds.map((round, ri) => {
         const roundMatches = matchesByRound[round];
         const isLastRound = round === maxRound;
@@ -287,8 +270,8 @@ function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, accentColor,
           });
 
           connectorEl = (
-            <div style={{ width: 32, flexShrink: 0, marginTop: LABEL_H }}>
-              <svg width="32" height={containerHeight} style={{ display: "block" }}>
+            <div className="w-8 shrink-0 mt-[26px]">
+              <svg width="32" height={containerHeight} className="block">
                 {lines}
               </svg>
             </div>
@@ -297,21 +280,21 @@ function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, accentColor,
 
         return (
           <Fragment key={round}>
-            <div style={{ display: "flex", flexDirection: "column", width: 240, flexShrink: 0 }}>
-              <div style={{ height: LABEL_H, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+            <div className="flex flex-col w-60 shrink-0">
+              <div className="h-[26px] flex items-center justify-center">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em]">
                   {label}
                 </span>
               </div>
-              <div style={{ height: containerHeight, position: "relative" }}>
+              <div className="relative" style={{ height: containerHeight }}>
                 {roundMatches.map((match, mi) => {
                   if (match.pairA?.id === "bye" && match.pairB?.id === "bye") return null;
                   const centerY = matchCenterY(roundMatches.length, mi);
                   return (
                     <div
                       key={match.id}
-                      className={openId === match.id ? "z-20" : "z-[1]"}
-                      style={{ position: "absolute", top: centerY, left: 0, right: 0, transform: "translateY(-50%)" }}
+                      className={`absolute left-0 right-0 -translate-y-1/2 ${openId === match.id ? "z-20" : "z-[1]"}`}
+                      style={{ top: centerY }}
                     >
                       <BracketMatchCard
                         match={match}
@@ -404,7 +387,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
   )?.winner;
 
   return (
-    <div style={{ paddingBottom: 80 }}>
+    <div className="pb-20">
       <THeader
         t={t}
         code={code}
@@ -413,7 +396,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
         subtitle="Cuadro de eliminación"
         onEdit={isAdmin ? onEditTournament : undefined}
       />
-      <div style={{ padding: 16 }}>
+      <div className="p-4">
         <Tabs
           tabs={[
             ["bracket", "⚡ Cuadro"],
@@ -426,16 +409,16 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
         />
       </div>
 
-      <div style={{ padding: "0 16px" }}>
+      <div className="px-4">
         {tab === "bracket" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div className="flex flex-col gap-4">
             {champion && (
-              <div style={{ background: "#1e293b", padding: 16, borderRadius: 12, textAlign: "center", border: "2px solid #f59e0b" }}>
-                <div style={{ fontSize: 24 }}>🏆</div>
-                <div style={{ color: "#f59e0b", fontWeight: 700, textTransform: "uppercase", fontSize: 12, marginBottom: 4 }}>
+              <div className="bg-[#1e293b] p-4 rounded-xl text-center border-2 border-amber-500">
+                <div className="text-2xl">🏆</div>
+                <div className="text-amber-500 font-bold uppercase text-xs mb-1">
                   Campeón
                 </div>
-                <div style={{ color: "#f1f5f9", fontWeight: 800, fontSize: 18 }}>
+                <div className="text-slate-100 font-extrabold text-lg">
                   {champion.p1} / {champion.p2}
                 </div>
               </div>
@@ -454,20 +437,20 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
         )}
 
         {tab === "consolation" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div className="flex flex-col gap-4">
             {consolChampion && (
-              <div style={{ background: "#1e293b", padding: 16, borderRadius: 12, textAlign: "center", border: "2px solid #94a3b8" }}>
-                <div style={{ fontSize: 24 }}>🥈</div>
-                <div style={{ color: "#94a3b8", fontWeight: 700, textTransform: "uppercase", fontSize: 12, marginBottom: 4 }}>
+              <div className="bg-[#1e293b] p-4 rounded-xl text-center border-2 border-slate-400">
+                <div className="text-2xl">🥈</div>
+                <div className="text-slate-400 font-bold uppercase text-xs mb-1">
                   Campeón Revancha
                 </div>
-                <div style={{ color: "#f1f5f9", fontWeight: 800, fontSize: 18 }}>
+                <div className="text-slate-100 font-extrabold text-lg">
                   {consolChampion.p1} / {consolChampion.p2}
                 </div>
               </div>
             )}
             {consolRounds.length === 0 && (
-              <div style={{ padding: 20, textAlign: "center", color: "#94a3b8", background: "#1e293b", borderRadius: 8 }}>
+              <div className="p-5 text-center text-slate-400 bg-[#1e293b] rounded-lg">
                 El cuadro de Revancha se activa cuando hay primeras rondas jugadas.
               </div>
             )}
@@ -489,13 +472,13 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
         )}
 
         {tab === "rules" && (
-          <div style={{ background: "#1e293b", padding: 20, borderRadius: 12 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 800, color: "#38bdf8", marginBottom: 16 }}>
+          <div className="bg-[#1e293b] p-5 rounded-xl">
+            <h3 className="text-lg font-extrabold text-sky-400 mb-4">
               Reglas del Torneo Relámpago
             </h3>
-            <ul style={{ color: "#cbd5e1", fontSize: 14, lineHeight: "1.6", paddingLeft: 20, listStyleType: "disc" }}>
+            <ul className="text-slate-300 text-sm leading-[1.6] pl-5 list-disc">
               {generateRules(t.type, t.config).map((rule, i) => (
-                <li key={i} style={{ marginBottom: 10 }}>{rule}</li>
+                <li key={i} className="mb-2">{rule}</li>
               ))}
             </ul>
           </div>
