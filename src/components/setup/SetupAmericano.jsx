@@ -323,7 +323,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
       <div className="max-w-lg mx-auto px-4 pb-16 pt-6">
 
         {onExitEdit && (
-          <button onClick={onExitEdit} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 font-semibold mb-5 cursor-pointer transition-colors" style={{ background: "none", border: "none", padding: 0 }}>
+          <button onClick={onExitEdit} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 font-semibold mb-5 cursor-pointer transition-colors bg-transparent border-0 p-0">
             ← Volver al torneo
           </button>
         )}
@@ -336,8 +336,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
           </div>
           <button
             onClick={handleShare}
-            className="text-xs px-3 py-2 rounded-xl border transition-colors cursor-pointer shrink-0 font-semibold"
-            style={copied ? { background: "#16a34a20", border: "1px solid #16a34a50", color: "#4ade80" } : { background: "#1f2937", border: "1px solid #374151", color: "#94a3b8" }}
+            className={`text-xs px-3 py-2 rounded-xl transition-colors cursor-pointer shrink-0 font-semibold border ${copied ? "bg-[#16a34a20] border-[#16a34a50] text-[#4ade80]" : "bg-[#1f2937] border-[#374151] text-[#94a3b8]"}`}
           >
             {copied ? "✓ Copiado" : "📤 Compartir"}
           </button>
@@ -357,7 +356,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
         {isAdmin && (
           <>
             <div className="flex items-center mb-5">
-              <button onClick={() => navigate("/")} className="text-sm text-gray-500 hover:text-gray-300 transition-colors cursor-pointer" style={{ background: "none", border: "none", padding: 0 }}>
+              <button onClick={() => navigate("/")} className="text-sm text-gray-500 hover:text-gray-300 transition-colors cursor-pointer bg-transparent border-0 p-0">
                 ← Inicio
               </button>
             </div>
@@ -388,8 +387,8 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
                 {[{ id: "individual", label: "👤 Individual" }, { id: "pairs", label: "👥 Parejas Fijas" }].map(opt => (
                   <button key={opt.id}
                     onClick={() => persist({ ...t, config: { ...t.config, mode: opt.id } })}
-                    className="flex-1 py-3 rounded-xl font-bold text-sm transition-colors cursor-pointer"
-                    style={{ background: t.config.mode === opt.id ? COLOR : "#1f2937", color: t.config.mode === opt.id ? "#fff" : "#94a3b8" }}
+                    className={`flex-1 py-3 rounded-xl font-bold text-sm transition-colors cursor-pointer ${t.config.mode === opt.id ? "text-white" : "bg-[#1f2937] text-[#94a3b8]"}`}
+                    style={t.config.mode === opt.id ? { background: COLOR } : undefined}
                   >{opt.label}</button>
                 ))}
               </div>
@@ -402,8 +401,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
                     </div>
                     <button
                       onClick={() => { setWarningDismissed(false); setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); persist({ ...t, config: { ...t.config, useLevels: !useLevels } }); }}
-                      className="px-4 py-1.5 rounded-lg text-sm font-bold cursor-pointer shrink-0"
-                      style={{ background: useLevels ? "#16a34a30" : "#374151", color: useLevels ? "#4ade80" : "#94a3b8", border: `1px solid ${useLevels ? "#4ade8040" : "transparent"}` }}
+                      className={`px-4 py-1.5 rounded-lg text-sm font-bold cursor-pointer shrink-0 border ${useLevels ? "bg-[#16a34a30] text-[#4ade80] border-[#4ade8040]" : "bg-[#374151] text-[#94a3b8] border-transparent"}`}
                     >{useLevels ? "ON" : "OFF"}</button>
                   </div>
                   {useLevels && (
@@ -477,17 +475,17 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
                     <span className="text-gray-600 font-bold shrink-0">/</span>
                     <input ref={p2InputRef} value={newP2} onChange={e => setNewP2(e.target.value)} onKeyDown={e => e.key === "Enter" && addPair()} placeholder="Jugador 2" className={addInputCls} />
                   </div>
-                  <button onClick={addPair} className="w-full py-2.5 rounded-xl font-bold text-sm cursor-pointer transition-colors" style={{ background: newP1.trim() && newP2.trim() ? COLOR : "#374151", color: "#fff" }}>+ Agregar pareja</button>
+                  <button onClick={addPair} className={`w-full py-2.5 rounded-xl font-bold text-sm cursor-pointer transition-colors text-white ${newP1.trim() && newP2.trim() ? "" : "bg-[#374151]"}`} style={newP1.trim() && newP2.trim() ? { background: COLOR } : undefined}>+ Agregar pareja</button>
                 </div>
               ) : (
                 <div className="flex gap-2">
                   {useLevels && (
-                    <button onClick={() => setNewLvl(l => (l + 1) % 4)} className="w-10 h-10 flex items-center justify-center rounded-xl shrink-0 font-bold text-sm cursor-pointer" style={{ background: "#1f2937", border: `1px solid ${LEVELS[newLvl].color}`, color: LEVELS[newLvl].color }}>
+                    <button onClick={() => setNewLvl(l => (l + 1) % 4)} className="w-10 h-10 flex items-center justify-center rounded-xl shrink-0 font-bold text-sm cursor-pointer bg-[#1f2937]" style={{ border: `1px solid ${LEVELS[newLvl].color}`, color: LEVELS[newLvl].color }}>
                       {LEVELS[newLvl].short}
                     </button>
                   )}
                   <input ref={nameInputRef} value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === "Enter" && addPlayer()} placeholder="Nombre del jugador..." className={addInputCls} />
-                  <button onClick={addPlayer} className="px-4 py-2.5 rounded-xl font-bold text-sm shrink-0 cursor-pointer transition-colors" style={{ background: newName.trim() ? COLOR : "#374151", color: "#fff" }}>Agregar</button>
+                  <button onClick={addPlayer} className={`px-4 py-2.5 rounded-xl font-bold text-sm shrink-0 cursor-pointer transition-colors text-white ${newName.trim() ? "" : "bg-[#374151]"}`} style={newName.trim() ? { background: COLOR } : undefined}>Agregar</button>
                 </div>
               )}
             </div>
@@ -516,8 +514,8 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
               {[1,2,3,4,5,6].map(n => (
                 <button key={n}
                   onClick={() => handleCourtsChange(n)}
-                  className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer"
-                  style={{ background: t.config.courts === n ? COLOR : "#1f2937", color: t.config.courts === n ? "#fff" : "#94a3b8" }}
+                  className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer ${t.config.courts === n ? "text-white" : "bg-[#1f2937] text-[#94a3b8]"}`}
+                  style={t.config.courts === n ? { background: COLOR } : undefined}
                 >{n}</button>
               ))}
             </div>
@@ -539,8 +537,8 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
                   {[null, 4, 6, 8, 10, 12].map(n => (
                     <button key={n ?? "ilim"}
                       onClick={() => { setRoundsCustom(""); setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); persist({ ...t, config: { ...t.config, maxRounds: n } }); }}
-                      className="px-3 py-2 rounded-xl text-sm font-bold cursor-pointer transition-colors"
-                      style={{ background: (t.config.maxRounds ?? null) === n ? COLOR : "#374151", color: (t.config.maxRounds ?? null) === n ? "#fff" : "#94a3b8" }}
+                      className={`px-3 py-2 rounded-xl text-sm font-bold cursor-pointer transition-colors ${(t.config.maxRounds ?? null) === n ? "text-white" : "bg-[#374151] text-[#94a3b8]"}`}
+                      style={(t.config.maxRounds ?? null) === n ? { background: COLOR } : undefined}
                     >{n === null ? "Ilimitadas" : n}</button>
                   ))}
                   <input type="number" value={roundsCustom} onChange={e => handleRoundsCustom(e.target.value)} placeholder="Otro" min={1} max={30} className="w-16 py-2 rounded-lg text-sm text-center font-bold outline-none bg-[#374151] text-gray-300 placeholder:text-gray-600 shrink-0" />
@@ -561,8 +559,8 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
 
                 <button
                   onClick={() => { setManualResetMsg(false); setShowManualBuilder(true); }}
-                  className="w-full py-3 rounded-xl font-bold text-sm cursor-pointer transition-colors mb-3"
-                  style={{ background: "#1f2937", border: `1px solid ${COLOR}50`, color: COLOR }}
+                  className="w-full py-3 rounded-xl font-bold text-sm cursor-pointer transition-colors mb-3 bg-[#1f2937]"
+                  style={{ border: `1px solid ${COLOR}50`, color: COLOR }}
                 >
                   ✏️ Armar rondas
                 </button>
@@ -583,7 +581,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
 
             {/* ── 7. Configuración avanzada ── */}
             <div className="mt-7">
-              <button onClick={() => setShowAdvanced(s => !s)} className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-300 font-semibold transition-colors cursor-pointer" style={{ background: "none", border: "none", padding: 0 }}>
+              <button onClick={() => setShowAdvanced(s => !s)} className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-300 font-semibold transition-colors cursor-pointer bg-transparent border-0 p-0">
                 <span>{showAdvanced ? "▾" : "▸"}</span> ⚙️ Configuración avanzada
               </button>
               {showAdvanced && (
@@ -593,7 +591,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
                       <div className="text-sm font-semibold text-gray-200">Punto de oro en empate</div>
                       <div className="text-xs text-gray-500 mt-0.5">El punto decide el partido igualado</div>
                     </div>
-                    <button onClick={() => persist({ ...t, config: { ...t.config, goldenPoint: !(t.config.goldenPoint !== false) } })} className="px-4 py-1.5 rounded-lg text-sm font-bold cursor-pointer shrink-0" style={{ background: t.config.goldenPoint !== false ? "#16a34a30" : "#374151", color: t.config.goldenPoint !== false ? "#4ade80" : "#94a3b8", border: `1px solid ${t.config.goldenPoint !== false ? "#4ade8040" : "transparent"}` }}>
+                    <button onClick={() => persist({ ...t, config: { ...t.config, goldenPoint: !(t.config.goldenPoint !== false) } })} className={`px-4 py-1.5 rounded-lg text-sm font-bold cursor-pointer shrink-0 border ${t.config.goldenPoint !== false ? "bg-[#16a34a30] text-[#4ade80] border-[#4ade8040]" : "bg-[#374151] text-[#94a3b8] border-transparent"}`}>
                       {t.config.goldenPoint !== false ? "ON" : "OFF"}
                     </button>
                   </div>
@@ -605,7 +603,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
                         { id: "mexicano", label: "Mexicano" },
                         ...(isPairs ? [] : [{ id: "manual", label: "Manual" }]),
                       ].map(opt => (
-                        <button key={opt.id} onClick={() => handleMatchmakingChange(opt.id)} className="flex-1 py-2 rounded-xl text-sm font-bold cursor-pointer transition-colors" style={{ background: (t.config.matchmaking || "americano") === opt.id ? COLOR : "#374151", color: (t.config.matchmaking || "americano") === opt.id ? "#fff" : "#94a3b8" }}>{opt.label}</button>
+                        <button key={opt.id} onClick={() => handleMatchmakingChange(opt.id)} className={`flex-1 py-2 rounded-xl text-sm font-bold cursor-pointer transition-colors ${(t.config.matchmaking || "americano") === opt.id ? "text-white" : "bg-[#374151] text-[#94a3b8]"}`} style={(t.config.matchmaking || "americano") === opt.id ? { background: COLOR } : undefined}>{opt.label}</button>
                       ))}
                     </div>
                     <p className="text-xs text-gray-600 mt-1.5">
@@ -629,8 +627,8 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
               data-testid="btn-open-modal"
               onClick={handleOpenLaunchModal}
               disabled={!ok}
-              className="w-full mt-8 py-4 rounded-2xl font-black text-lg transition-colors"
-              style={{ background: ok ? COLOR : "#374151", color: ok ? "#fff" : "#64748b", cursor: ok ? "pointer" : "not-allowed", opacity: ok ? 1 : 0.5 }}
+              className={`w-full mt-8 py-4 rounded-2xl font-black text-lg transition-colors ${ok ? "text-white cursor-pointer" : "bg-[#374151] text-[#64748b] cursor-not-allowed opacity-50"}`}
+              style={ok ? { background: COLOR } : undefined}
             >
               📋 Revisar y lanzar
             </button>
