@@ -1,7 +1,7 @@
 // src/components/play/PlayRelampago.jsx
 import { useState, Fragment } from "react";
 import { generateRules } from "../../logic/constants";
-import { advanceBracket } from "../../logic/relampago";
+import { advanceBracket, countPlayed } from "../../logic/relampago";
 import { analyzeSets } from "../../logic/sets";
 import { applyMatchToPairs } from "../../logic/standings";
 import { THeader, Tabs } from "../shared/Components";
@@ -482,7 +482,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
         )}
 
         {tab === "standings" && (
-          <PairStandings pairs={t.pairs} title="Posiciones" scoringFormat={t.config?.scoringFormat} />
+          <PairStandings pairs={t.pairs.map((p) => ({ ...p, played: countPlayed(t.bracket, p.id) }))} title="Posiciones" scoringFormat={t.config?.scoringFormat} />
         )}
 
         {tab === "rules" && (

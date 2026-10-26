@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildBracket, advanceBracket } from "./relampago.js";
+import { buildBracket, advanceBracket, countPlayed } from "./relampago.js";
 
 function makePairs(n) {
   return Array.from({ length: n }, (_, i) => ({
@@ -147,5 +147,21 @@ describe("advanceBracket — enrutamiento condicional (5 parejas)", () => {
       (m) => m.pairA?.id === loser.id || m.pairB?.id === loser.id
     );
     expect(loserInConsol).toBe(false);
+  });
+});
+
+describe("countPlayed", () => {
+  const m = (id, a, b, saved) => ({ id, pairA: { id: a }, pairB: { id: b }, saved });
+  const bracket = [m("1", 1, 2, true), m("2", 3, "bye", true), m("3", 1, 3, false), m("4", 1, 3, true)];
+
+  it("cuenta solo partidos guardados", () => {
+    expect(countPlayed(bracket, 1)).toBe(2);
+    expect(countPlayed(bracket, 2)).toBe(1);
+  });
+  it("ignora partidos contra BYE", () => {
+    expect(countPlayed(bracket, 3)).toBe(1);
+  });
+  it("pareja sin partidos devuelve 0", () => {
+    expect(countPlayed(bracket, 99)).toBe(0);
   });
 });

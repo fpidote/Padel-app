@@ -344,3 +344,14 @@ function rippleByes(matches) {
     });
   }
 }
+
+// Cuenta los partidos guardados en los que participa la pareja (los BYE no cuentan).
+export function countPlayed(bracket, pairId) {
+  return (bracket || []).filter(
+    (m) =>
+      m.saved &&
+      m.pairA?.id !== "bye" &&
+      m.pairB?.id !== "bye" &&
+      (m.pairA?.id === pairId || m.pairB?.id === pairId),
+  ).length;
+}
