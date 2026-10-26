@@ -2,18 +2,6 @@
 import { knockoutInfo, knockoutByesText } from "./mundialito";
 import { ligaQualifiers } from "./liga";
 
-export const B = (bg, ex = {}) => ({
-  background: bg,
-  color: "#fff",
-  border: "none",
-  borderRadius: 8,
-  padding: "8px 14px",
-  fontWeight: 700,
-  fontSize: 13,
-  cursor: "pointer",
-  ...ex,
-});
-
 export const TOURNAMENT_TYPES = [
   {
     id: "americano",

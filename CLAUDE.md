@@ -75,7 +75,7 @@ src/
     ├── mundialito.js        # Lógica de grupos + KO
     ├── pozo.js              # Lógica de King of the Hill
     ├── initTournament.js    # buildInitialTournament(type, ownerUid)
-    ├── constants.js         # TOURNAMENT_TYPES, generateRules(type, config), B() (legacy)
+    ├── constants.js         # TOURNAMENT_TYPES, generateRules(type, config, context)
     ├── stats.js             # calculateStats(matches) — estadísticas agregadas por jugador
     └── utils.js             # shuffle, pk, genCode
 ```
@@ -282,8 +282,7 @@ pozo: "#d97706"        // naranja/dorado
 2. **Sin estilos inline** excepto colores dinámicos de formatos (`style={{ color: tt.color }}`)
 3. **Mobile-first** — diseñar para 390px primero, luego ajustar para desktop
 4. **Max width**: `max-w-md` (448px) centrado con `mx-auto` para el contenido principal
-5. La función `B()` de `constants.js` es legado — no usarla en componentes nuevos, usar Tailwind
-6. **Nunca** mezclar Tailwind con estilos inline en el mismo elemento
+5. Si un elemento necesita un `style` dinámico, que ese `style` tenga solo la propiedad dinámica (color, fondo); el resto va en `className` y nunca se repite la misma propiedad en ambos
 
 ### Jerarquía visual
 
@@ -362,9 +361,9 @@ useEffect(() => {
 ## 11. Deuda Técnica Conocida (no introducir más)
 
 - `useTournament.js` mezcla sync, auth y persist — candidato a dividir en el futuro
-- Componentes de Play y Setup aún usan la función `B()` y estilos inline — migrar a Tailwind progresivamente
+- Los pocos `style` que quedan en Play y Setup son colores dinámicos (formato, nivel del jugador, estado activo); no hay deuda de estilos inline estáticos
 - Sin manejo formal de errores de Firestore (timeout, offline) — mostrar estado de error al usuario
-- Sin tests — prioridad baja por ahora pero no empeorar la testabilidad del código
+- Los tests cubren la lógica pura (`src/logic`) y algunos componentes con `renderToStaticMarkup`; los componentes Play/Setup no tienen tests, así que los cambios visuales se verifican con capturas antes y después
 
 ---
 
@@ -372,7 +371,7 @@ useEffect(() => {
 
 Codex CLI está instalado y con login. Claude decide qué delegar, sin preguntar caso por caso.
 
-- **Delegar**: tareas sencillas pero voluminosas o mecánicas (migrar estilos inline/`B()` a Tailwind por componente, tests de lógica pura, renombrados repetitivos, revisión de un diff antes de commitear).
+- **Delegar**: tareas sencillas pero voluminosas o mecánicas (tests de lógica pura, conversiones mecánicas de estilos a Tailwind verificadas con capturas, renombrados repetitivos, revisión de un diff antes de commitear).
 - **No delegar**: decisiones de diseño, Firebase/Firestore/Rules, auth, cambios de una o dos líneas (el arranque de Codex cuesta más que hacerlo directo).
 - **Cuota**: cada llamada gasta ~17-36k tokens del plan gratuito. Agrupar el trabajo en pocas llamadas grandes y acotadas, no muchas chicas.
 - **Comando**: `codex exec --sandbox workspace-write "<tarea>"` desde la raíz del proyecto, con archivos permitidos explícitos y "no hagas commits". Para solo leer, `--sandbox read-only`.

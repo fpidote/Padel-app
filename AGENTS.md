@@ -19,7 +19,6 @@ React 18 + Vite 5 + Firebase 12 (Auth + Firestore) + React Router 7 + Tailwind v
 
 ## Estilos
 - Tailwind en clases utilitarias. Sin estilos inline, salvo colores dinámicos de formatos (`style={{ color: tt.color }}`).
-- No usar `B()` de `constants.js` en código nuevo (legado).
 - Mobile-first (390px), contenido en `max-w-md mx-auto`.
 
 ## Estructura
