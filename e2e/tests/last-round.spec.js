@@ -1,8 +1,9 @@
 /**
  * Regression test: con 2 rondas precomputadas, la última ronda muestra
- * "Torneo Finalizado" y no permite avanzar a una ronda fantasma.
+ * "Finalizar Torneo" (no "Siguiente Ronda"); al pulsarlo el torneo queda como
+ * "Torneo Finalizado" sin crear una ronda fantasma.
  *
- * Bug: la condición usaba `roundNum > length` en vez de `roundNum >= length`,
+ * Bug original: la condición usaba `roundNum > length` en vez de `roundNum >= length`,
  * lo que permitía clickear "Siguiente Ronda" al finalizar la última ronda.
  */
 import { test, expect } from "@playwright/test";
@@ -76,7 +77,7 @@ async function signInAsAdmin(page) {
   }, token);
 }
 
-test("en la última ronda el botón muestra Torneo Finalizado y no crea ronda extra", async ({ page }) => {
+test("en la última ronda el botón dice Finalizar Torneo y al pulsarlo termina sin crear ronda extra", async ({ page }) => {
   await seedTournament(CODE, playingTournament());
   await page.goto(`/torneo/${CODE}`);
 
@@ -84,11 +85,17 @@ test("en la última ronda el botón muestra Torneo Finalizado y no crea ronda ex
   const token = await getTestToken();
   await page.evaluate(async (t) => { await window.__e2eSignIn(t); }, token);
 
-  // El botón debe mostrar "Torneo Finalizado" — no "Siguiente Ronda"
-  await expect(page.getByRole("button", { name: /Torneo Finalizado/i })).toBeVisible({ timeout: 8000 });
+  // En la última ronda el botón es "Finalizar Torneo" (no "Siguiente Ronda") y se puede pulsar
+  const finish = page.getByRole("button", { name: /Finalizar Torneo/i });
+  await expect(finish).toBeVisible({ timeout: 8000 });
+  await expect(page.getByRole("button", { name: /Siguiente Ronda/i })).toHaveCount(0);
+  await finish.click();
 
-  // Verificar en Firestore que roundNum NO avanzó a una ronda fantasma
+  // Al finalizar queda "Torneo Finalizado" (deshabilitado) y el historial tiene solo las 2 rondas jugadas
+  await expect(page.getByRole("button", { name: /Torneo Finalizado/i })).toBeVisible({ timeout: 8000 });
+  // La escritura a Firestore es asíncrona: esperar a que llegue en vez de leer una sola vez
+  await expect.poll(async () => (await getTournamentData(CODE)).rounds.length, { timeout: 8000 }).toBe(2);
   const data = await getTournamentData(CODE);
-  expect(data.roundNum).toBe(2);
+  expect(data.currentRound).toEqual([]);
   expect(data.status).toBe("playing");
 });
