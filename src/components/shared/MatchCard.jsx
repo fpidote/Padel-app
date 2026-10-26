@@ -108,7 +108,7 @@ export default function MatchCard({
         </div>
       ) : (
         // Inputs tradicionales por games o vista de lectura
-        <div className="grid px-4 py-4" style={{ gridTemplateColumns: "1fr auto 1fr", gap: "10px" }}>
+        <div className="grid grid-cols-[1fr_auto_1fr] gap-[10px] px-4 py-4">
           {/* Team A */}
           <div className="flex flex-col items-end self-center">
             <span className="text-sm font-bold text-gray-50 text-right">
@@ -261,7 +261,6 @@ export default function MatchCard({
               background: isValidFinal ? accentColor : 'rgba(255,255,255,0.04)',
               color: isValidFinal ? 'white' : '#334155',
               boxShadow: isValidFinal ? `0 4px 16px ${accentColor}4d` : 'none',
-              opacity: 1,
             }}
           >
             Guardar resultado

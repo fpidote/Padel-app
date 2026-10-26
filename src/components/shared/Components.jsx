@@ -13,18 +13,8 @@ export function THeader({ t, code, isAdmin, copyCode, subtitle, onEdit }) {
     >
       {/* Glow blob ambiental */}
       <div
-        style={{
-          position: 'absolute',
-          top: -30,
-          left: -20,
-          width: 140,
-          height: 100,
-          borderRadius: '50%',
-          background: typeInfo.color,
-          filter: 'blur(25px)',
-          opacity: 0.35,
-          pointerEvents: 'none',
-        }}
+        className="absolute -top-[30px] -left-[20px] w-[140px] h-[100px] rounded-[50%] blur-[25px] opacity-35 pointer-events-none"
+        style={{ background: typeInfo.color }}
       />
 
       <div className="relative z-10">

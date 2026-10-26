@@ -50,8 +50,7 @@ export default function History({ rounds, matchesSearch }) {
               return (
                 <div
                   key={idx}
-                  className="grid items-center px-4 py-3 border-t border-gray-800 first:border-0"
-                  style={{ gridTemplateColumns: "1fr auto 1fr", gap: "10px" }}
+                  className="grid grid-cols-[1fr_auto_1fr] gap-[10px] items-center px-4 py-3 border-t border-gray-800 first:border-0"
                 >
                   {/* Equipo A */}
                   <div className="flex flex-col items-end text-right">
