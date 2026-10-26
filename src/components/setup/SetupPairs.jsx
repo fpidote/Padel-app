@@ -244,15 +244,14 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
   const addInputCls = "flex-1 bg-[#1f2937] border border-gray-700 focus:border-gray-500 rounded-xl text-gray-50 px-4 py-2.5 text-sm outline-none transition-colors min-w-0";
 
   return (
-    <>    <div className="min-h-screen bg-[#111827] text-gray-50" style={{ fontFamily: "system-ui" }}>
+    <>    <div className="min-h-screen bg-[#111827] text-gray-50 font-[system-ui]">
       <div className="max-w-lg mx-auto px-4 pb-16 pt-6">
 
         {/* ── Volver (solo en modo edición post-inicio) ── */}
         {onExitEdit && (
           <button
             onClick={onExitEdit}
-            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 font-semibold mb-5 cursor-pointer transition-colors"
-            style={{ background: "none", border: "none", padding: 0 }}
+            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 font-semibold mb-5 cursor-pointer transition-colors bg-transparent border-0 p-0"
           >
             ← Volver al torneo
           </button>
@@ -270,11 +269,10 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
           </div>
           <button
             onClick={handleShare}
-            className="text-xs px-3 py-2 rounded-xl border transition-colors cursor-pointer shrink-0 font-semibold"
-            style={copied
-              ? { background: "#16a34a20", border: "1px solid #16a34a50", color: "#4ade80" }
-              : { background: "#1f2937",   border: "1px solid #374151",   color: "#94a3b8" }
-            }
+            className={`text-xs px-3 py-2 rounded-xl border transition-colors cursor-pointer shrink-0 font-semibold ${copied
+              ? "bg-[#16a34a20] border-[#16a34a50] text-[#4ade80]"
+              : "bg-[#1f2937] border-[#374151] text-[#94a3b8]"
+            }`}
           >
             {copied ? "✓ Copiado" : "📤 Compartir"}
           </button>
@@ -294,15 +292,13 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
             <div className="flex items-center justify-between mb-5">
               <button
                 onClick={() => navigate("/")}
-                className="text-sm text-gray-500 hover:text-gray-300 transition-colors cursor-pointer"
-                style={{ background: "none", border: "none", padding: 0 }}
+                className="text-sm text-gray-500 hover:text-gray-300 transition-colors cursor-pointer bg-transparent border-0 p-0"
               >
                 ← Inicio
               </button>
               <button
                 onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 2000); }}
-                className="text-sm text-gray-500 hover:text-gray-300 transition-colors cursor-pointer"
-                style={{ background: "none", border: "none", padding: 0 }}
+                className="text-sm text-gray-500 hover:text-gray-300 transition-colors cursor-pointer bg-transparent border-0 p-0"
               >
                 {saved ? "✓ Guardado" : "💾 Guardar borrador"}
               </button>
@@ -358,8 +354,8 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
                   {(t.type === "pozo" ? [2,3,4,5,6] : [1,2,3,4,5,6]).map(n => (
                     <button key={n}
                       onClick={() => persist({ ...t, config: { ...t.config, courts: n } })}
-                      className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer"
-                      style={{ background: t.config.courts === n ? color : "#1f2937", color: t.config.courts === n ? "#fff" : "#94a3b8" }}
+                      className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer ${t.config.courts === n ? "text-white" : "bg-[#1f2937] text-[#94a3b8]"}`}
+                      style={t.config.courts === n ? { background: color } : undefined}
                     >{n}</button>
                   ))}
                 </div>
@@ -375,8 +371,8 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
                         <button key={n}
                           onClick={() => persist({ ...t, config: { ...t.config, groupCount: n } })}
                           disabled={n > mundialitoCheck.maxGroups}
-                          className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                          style={{ background: t.config.groupCount === n ? color : "#1f2937", color: t.config.groupCount === n ? "#fff" : "#94a3b8" }}
+                          className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${t.config.groupCount === n ? "text-white" : "bg-[#1f2937] text-[#94a3b8]"}`}
+                          style={t.config.groupCount === n ? { background: color } : undefined}
                         >{n}</button>
                       ))}
                     </div>
@@ -388,8 +384,8 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
                         <button key={n}
                           onClick={() => persist({ ...t, config: { ...t.config, advancePerGroup: n } })}
                           disabled={n > mundialitoCheck.maxAdvance}
-                          className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                          style={{ background: t.config.advancePerGroup === n ? color : "#1f2937", color: t.config.advancePerGroup === n ? "#fff" : "#94a3b8" }}
+                          className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${t.config.advancePerGroup === n ? "text-white" : "bg-[#1f2937] text-[#94a3b8]"}`}
+                          style={t.config.advancePerGroup === n ? { background: color } : undefined}
                         >{n}</button>
                       ))}
                     </div>
@@ -412,8 +408,8 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
                       ].map((opt) => (
                         <button key={String(opt.id)}
                           onClick={() => persist({ ...t, config: { ...t.config, idaYVuelta: opt.id } })}
-                          className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer"
-                          style={{ background: (t.config.idaYVuelta || false) === opt.id ? color : "#1f2937", color: (t.config.idaYVuelta || false) === opt.id ? "#fff" : "#94a3b8" }}
+                          className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer ${(t.config.idaYVuelta || false) === opt.id ? "text-white" : "bg-[#1f2937] text-[#94a3b8]"}`}
+                          style={(t.config.idaYVuelta || false) === opt.id ? { background: color } : undefined}
                         >{opt.label}</button>
                       ))}
                     </div>
@@ -427,8 +423,8 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
                       ].map((opt) => (
                         <button key={String(opt.id)}
                           onClick={() => persist({ ...t, config: { ...t.config, playoffEnabled: opt.id } })}
-                          className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer"
-                          style={{ background: (t.config.playoffEnabled || false) === opt.id ? color : "#1f2937", color: (t.config.playoffEnabled || false) === opt.id ? "#fff" : "#94a3b8" }}
+                          className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer ${(t.config.playoffEnabled || false) === opt.id ? "text-white" : "bg-[#1f2937] text-[#94a3b8]"}`}
+                          style={(t.config.playoffEnabled || false) === opt.id ? { background: color } : undefined}
                         >{opt.label}</button>
                       ))}
                     </div>
@@ -440,8 +436,8 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
                         {ligaQualifierOptions(tot).map(n => (
                           <button key={n}
                             onClick={() => persist({ ...t, config: { ...t.config, advanceQualifiers: n } })}
-                            className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer"
-                            style={{ background: ligaQualifiers(t.config, tot) === n ? color : "#1f2937", color: ligaQualifiers(t.config, tot) === n ? "#fff" : "#94a3b8" }}
+                            className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer ${ligaQualifiers(t.config, tot) === n ? "text-white" : "bg-[#1f2937] text-[#94a3b8]"}`}
+                            style={ligaQualifiers(t.config, tot) === n ? { background: color } : undefined}
                           >{n}</button>
                         ))}
                       </div>
@@ -508,9 +504,9 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
         {/* ── Parejas / Jugadores ── */}
         {/* Step 4: selector de modo de juego para pozo */}
         {t.type === "pozo" && isAdmin && (
-          <div style={{ marginBottom: 16 }}>
+          <div className="mb-4">
             <SectionHeader>Modo de juego</SectionHeader>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div className="flex gap-2">
               {[
                 { id: "fixed", label: "Parejas fijas" },
                 { id: "mixer", label: "Individual (cambia de pareja)" },
@@ -525,16 +521,8 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
                       playerInputs: [],
                     })
                   }
-                  style={{
-                    padding:      "6px 14px",
-                    borderRadius: 8,
-                    border:       `2px solid ${t.config.pozoMode === id ? color : "#334155"}`,
-                    background:   t.config.pozoMode === id ? `${color}22` : "transparent",
-                    color:        t.config.pozoMode === id ? color : "#64748b",
-                    fontWeight:   700,
-                    cursor:       "pointer",
-                    fontSize:     13,
-                  }}
+                  className={`px-[14px] py-[6px] rounded-lg border-2 font-bold cursor-pointer text-[13px] ${t.config.pozoMode === id ? "" : "bg-transparent border-[#334155] text-[#64748b]"}`}
+                  style={t.config.pozoMode === id ? { borderColor: color, background: `${color}22`, color } : undefined}
                 >
                   {label}
                 </button>
@@ -559,21 +547,13 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
 
         {/* Step 6: lista de jugadores individuales (mixer) */}
         {isAdmin && isMixer && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
+          <div className="flex flex-col gap-1.5 mb-4">
             {players.map((player, idx) => (
               <div
                 key={player.id}
-                style={{
-                  display:        "flex",
-                  alignItems:     "center",
-                  background:     "#0f172a",
-                  border:         "1px solid #334155",
-                  borderRadius:   10,
-                  padding:        "10px 14px",
-                  justifyContent: "space-between",
-                }}
+                className="flex items-center justify-between bg-[#0f172a] border border-[#334155] rounded-[10px] px-[14px] py-[10px]"
               >
-                <span style={{ color: "#f1f5f9", fontSize: 14 }}>
+                <span className="text-[#f1f5f9] text-[14px]">
                   {idx + 1}. {player.name}
                 </span>
                 <button
@@ -583,7 +563,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
                       playerInputs: t.playerInputs.filter((_, i) => i !== idx),
                     })
                   }
-                  style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: 18 }}
+                  className="bg-transparent border-0 text-[#ef4444] cursor-pointer text-[18px]"
                 >
                   ×
                 </button>
@@ -663,8 +643,8 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
             </div>
             <button
               onClick={addPair}
-              className="w-full py-2.5 rounded-xl font-bold text-sm cursor-pointer transition-colors"
-              style={{ background: newP1.trim() && newP2.trim() ? color : "#374151", color: "#fff" }}
+              className={`w-full py-2.5 rounded-xl font-bold text-sm cursor-pointer transition-colors ${newP1.trim() && newP2.trim() ? "text-white" : "bg-[#374151] text-white"}`}
+              style={newP1.trim() && newP2.trim() ? { background: color } : undefined}
             >
               + Agregar pareja
             </button>
@@ -673,7 +653,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
 
         {/* Step 5: input de jugador individual — solo mixer */}
         {isAdmin && isMixer && (
-          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          <div className="flex gap-2 mb-3">
             <input
               className="flex-1 bg-[#0f172a] border border-[#334155] rounded-xl px-4 py-3 text-gray-50 text-sm placeholder-gray-500 focus:outline-none focus:border-[#38bdf8]"
               placeholder="Nombre del jugador"
@@ -684,12 +664,8 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
             <button
               onClick={addPlayer}
               disabled={!newPlayer.trim()}
-              className="px-4 py-3 rounded-xl font-bold text-sm"
-              style={{
-                background: newPlayer.trim() ? color : "#334155",
-                color:      newPlayer.trim() ? "#fff" : "#64748b",
-                cursor:     newPlayer.trim() ? "pointer" : "not-allowed",
-              }}
+              className={`px-4 py-3 rounded-xl font-bold text-sm ${newPlayer.trim() ? "text-white cursor-pointer" : "bg-[#334155] text-[#64748b] cursor-not-allowed"}`}
+              style={newPlayer.trim() ? { background: color } : undefined}
             >
               + Agregar
             </button>
@@ -716,12 +692,9 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
                   </div>
                   <button
                     onClick={() => persist({ ...t, config: { ...t.config, goldenPoint: !(t.config.goldenPoint !== false) } })}
-                    className="px-4 py-1.5 rounded-lg text-sm font-bold cursor-pointer shrink-0"
-                    style={{
-                      background: t.config.goldenPoint !== false ? "#16a34a30" : "#374151",
-                      color:      t.config.goldenPoint !== false ? "#4ade80"   : "#94a3b8",
-                      border:     `1px solid ${t.config.goldenPoint !== false ? "#4ade8040" : "transparent"}`,
-                    }}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-bold cursor-pointer shrink-0 ${t.config.goldenPoint !== false
+                      ? "bg-[#16a34a30] text-[#4ade80] border border-[#4ade8040]"
+                      : "bg-[#374151] text-[#94a3b8] border border-transparent"}`}
                   >
                     {t.config.goldenPoint !== false ? "ON" : "OFF"}
                   </button>
@@ -734,12 +707,9 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
                     </div>
                     <button
                       onClick={() => persist({ ...t, config: { ...t.config, seedByOrder: !t.config.seedByOrder } })}
-                      className="px-4 py-1.5 rounded-lg text-sm font-bold cursor-pointer shrink-0"
-                      style={{
-                        background: t.config.seedByOrder ? "#16a34a30" : "#374151",
-                        color:      t.config.seedByOrder ? "#4ade80"   : "#94a3b8",
-                        border:     `1px solid ${t.config.seedByOrder ? "#4ade8040" : "transparent"}`,
-                      }}
+                      className={`px-4 py-1.5 rounded-lg text-sm font-bold cursor-pointer shrink-0 ${t.config.seedByOrder
+                        ? "bg-[#16a34a30] text-[#4ade80] border border-[#4ade8040]"
+                        : "bg-[#374151] text-[#94a3b8] border border-transparent"}`}
                     >
                       {t.config.seedByOrder ? "ON" : "OFF"}
                     </button>
@@ -757,13 +727,8 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
               data-testid={hasDraw(t.type) ? "btn-open-modal" : undefined}
               onClick={hasDraw(t.type) ? openLaunch : onStart}
               disabled={!ok}
-              className="w-full mt-8 py-4 rounded-2xl font-black text-lg transition-colors"
-              style={{
-                background: ok ? color  : "#374151",
-                color:      ok ? "#fff" : "#64748b",
-                cursor:     ok ? "pointer" : "not-allowed",
-                opacity:    ok ? 1 : 0.5,
-              }}
+              className={`w-full mt-8 py-4 rounded-2xl font-black text-lg transition-colors ${ok ? "text-white cursor-pointer" : "bg-[#374151] text-[#64748b] cursor-not-allowed opacity-50"}`}
+              style={ok ? { background: color } : undefined}
             >
               {hasDraw(t.type) ? "📋 Revisar y lanzar" : "🎾 Iniciar Torneo"}
             </button>
