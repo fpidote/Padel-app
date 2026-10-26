@@ -1,5 +1,7 @@
 // ── Mundialito Logic ─────────────────────────────────────────
 import { shuffle } from "./utils";
+import { buildBracket } from "./relampago";
+import { sortStandings } from "./standings";
 export function buildGroups(pairs, groupCount) {
   const shuffled = shuffle(pairs);
   const groups = Array.from({ length: groupCount }, (_, i) => ({
@@ -44,13 +46,7 @@ export function buildGroups(pairs, groupCount) {
 export function buildKnockoutFromGroups(groups, advancePerGroup) {
   const qualifiers = [];
   groups.forEach((g) => {
-    const sorted = [...g.standings].sort((a, b) =>
-      b.pts !== a.pts
-        ? b.pts - a.pts
-        : b.gf - b.gc !== a.gf - a.gc
-          ? b.gf - b.gc - (a.gf - a.gc)
-          : 0,
-    );
+    const sorted = sortStandings(g.standings);
     qualifiers.push(...sorted.slice(0, advancePerGroup));
   });
   return buildBracket(qualifiers);
