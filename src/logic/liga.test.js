@@ -4,7 +4,10 @@ import {
   buildLigaFixture,
   recomputeLigaStandings,
   buildLigaKnockout,
+  ligaQualifierOptions,
+  ligaQualifiers,
 } from "./liga.js";
+import { generateRules } from "./constants.js";
 
 // shuffle es no-determinista — la mockeamos para que devuelva el array intacto
 vi.mock("./utils.js", async (importOriginal) => {
@@ -323,5 +326,56 @@ describe("buildLigaKnockout", () => {
     const snapshot = JSON.parse(JSON.stringify(standings));
     buildLigaKnockout(standings, 2);
     expect(standings).toEqual(snapshot);
+  });
+});
+
+describe("ligaQualifierOptions", () => {
+  test("con menos de 5 parejas solo pueden pasar 2", () => {
+    [2, 3, 4].forEach((n) => expect(ligaQualifierOptions(n)).toEqual([2]));
+  });
+  test("con 5 a 8 parejas pueden pasar 2 o 4", () => {
+    [5, 6, 8].forEach((n) => expect(ligaQualifierOptions(n)).toEqual([2, 4]));
+  });
+  test("con 9 o más parejas pueden pasar 2, 4 u 8", () => {
+    [9, 10, 16].forEach((n) => expect(ligaQualifierOptions(n)).toEqual([2, 4, 8]));
+  });
+});
+
+describe("ligaQualifiers", () => {
+  test("respeta la elección si es válida", () => {
+    expect(ligaQualifiers({ advanceQualifiers: 4 }, 6)).toBe(4);
+    expect(ligaQualifiers({ advanceQualifiers: 8 }, 12)).toBe(8);
+  });
+  test("baja al máximo permitido si hay pocas parejas", () => {
+    expect(ligaQualifiers({ advanceQualifiers: 4 }, 4)).toBe(2);
+    expect(ligaQualifiers({ advanceQualifiers: 8 }, 6)).toBe(4);
+  });
+  test("sin elección usa 4 si se puede", () => {
+    expect(ligaQualifiers({}, 6)).toBe(4);
+    expect(ligaQualifiers({}, 3)).toBe(2);
+  });
+});
+
+describe("reglas de la Liga según el formato de partido", () => {
+  const rules = (config) => generateRules("liga", config).join(" ");
+  test("sets: explica el mejor de 3 y desempata por sets y games", () => {
+    const r = rules({ scoringFormat: "sets3" });
+    expect(r).toContain("mejor de 3 sets");
+    expect(r).toContain("diferencia de sets");
+  });
+  test("sin formato guardado se asume mejor de 3 sets", () => {
+    expect(rules({})).toContain("mejor de 3 sets");
+  });
+  test("mejor de 5 sets", () => {
+    expect(rules({ scoringFormat: "sets5" })).toContain("mejor de 5 sets");
+  });
+  test("por games: lo dice y no habla de sets", () => {
+    const r = rules({ scoringFormat: "games", scoringSystem: "games", targetGames: 6 });
+    expect(r).toContain("6 juegos");
+    expect(r).not.toContain("sets");
+  });
+  test("la eliminatoria usa las parejas que realmente pasan", () => {
+    const r = generateRules("liga", { scoringFormat: "sets3", playoffEnabled: true, advanceQualifiers: 8 }, { pairCount: 6 }).join(" ");
+    expect(r).toContain("los 4 mejores");
   });
 });

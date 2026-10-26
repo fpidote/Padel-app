@@ -1,5 +1,6 @@
 // src/logic/constants.js
 import { knockoutInfo, knockoutByesText } from "./mundialito";
+import { ligaQualifiers } from "./liga";
 
 export const B = (bg, ex = {}) => ({
   background: bg,
@@ -68,6 +69,10 @@ export const TOURNAMENT_TYPES = [
 
 export function generateRules(type, config, context = {}) {
   function scoringDesc() {
+    return scoringDescFor(config);
+  }
+
+  function scoringDescFor(config) {
     if (config.scoringFormat === "sets3") return "Partidos al mejor de 3 sets. Se carga el resultado set por set.";
     if (config.scoringFormat === "sets5") return "Partidos al mejor de 5 sets. Se carga el resultado set por set.";
     const s = config.scoringSystem || "timed";
@@ -148,16 +153,20 @@ export function generateRules(type, config, context = {}) {
       return rules;
     }
     case "liga": {
+      const ligaConfig = { ...config, scoringFormat: config.scoringFormat || "sets3" };
+      const bySets = ligaConfig.scoringFormat === "sets3" || ligaConfig.scoringFormat === "sets5";
       const rules = [
         config.idaYVuelta
           ? "Todas las parejas juegan entre sí a doble vuelta (ida y vuelta)."
           : "Todas las parejas juegan entre sí una vez (ida).",
         "Victoria = 1 punto · Derrota = 0 puntos (no hay empates).",
-        "Partidos al mejor de 3 sets.",
-        "El desempate en la tabla se define primero por diferencia de sets y luego por diferencia de games.",
+        scoringDescFor(ligaConfig),
+        bySets
+          ? "El desempate en la tabla se define primero por diferencia de sets y luego por diferencia de games."
+          : "El desempate en la tabla se define por la diferencia entre lo anotado a favor y en contra.",
       ];
       if (config.playoffEnabled) {
-        rules.push(`Al terminar la tabla, los ${config.advanceQualifiers ?? 4} mejores clasificados juegan una fase eliminatoria.`);
+        rules.push(`Al terminar la tabla, los ${context.pairCount ? ligaQualifiers(config, context.pairCount) : (config.advanceQualifiers ?? 4)} mejores clasificados juegan una fase eliminatoria.`);
       } else {
         rules.push("Sin fase final: el campeón es quien queda primero en la tabla.");
       }

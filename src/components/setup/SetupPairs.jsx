@@ -8,6 +8,7 @@ import LaunchModal, { SummaryRow, SummaryCard } from "../shared/LaunchModal";
 import { GroupsPreview, FixturePreview, BracketPreview } from "./DrawPreview";
 import { hasDraw, drawIsRandom, drawKey, buildStartDraw, startPatch } from "../../logic/launchDraw";
 import { matchFormatSummary } from "../../logic/matchFormat";
+import { ligaQualifierOptions, ligaQualifiers } from "../../logic/liga";
 
 function SectionHeader({ children }) {
   return (
@@ -431,14 +432,17 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
                     <div>
                       <label className="text-xs text-gray-400 font-semibold block mb-2">Parejas que pasan a la eliminatoria</label>
                       <div className="flex gap-2">
-                        {[2, 4, 8].map(n => (
+                        {ligaQualifierOptions(tot).map(n => (
                           <button key={n}
                             onClick={() => persist({ ...t, config: { ...t.config, advanceQualifiers: n } })}
                             className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer"
-                            style={{ background: (t.config.advanceQualifiers ?? 4) === n ? color : "#1f2937", color: (t.config.advanceQualifiers ?? 4) === n ? "#fff" : "#94a3b8" }}
+                            style={{ background: ligaQualifiers(t.config, tot) === n ? color : "#1f2937", color: ligaQualifiers(t.config, tot) === n ? "#fff" : "#94a3b8" }}
                           >{n}</button>
                         ))}
                       </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Con menos de 5 parejas pasan 2, con 5 o más hasta 4 y con 9 o más hasta 8.
+                      </p>
                     </div>
                   )}
                 </>
@@ -476,14 +480,14 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
               )}
             </div>
 
-            {/* ── Formato de partido (no aplica a Pozo ni a Liga, que usa mejor de 3 sets fijo) ── */}
-            {t.type !== "pozo" && t.type !== "liga" && (
+            {/* ── Formato de partido (no aplica al Pozo) ── */}
+            {t.type !== "pozo" && (
               <>
                 <SectionHeader>🎾 Formato de partido</SectionHeader>
                 <MatchFormatPicker
                   config={t.config}
                   color={color}
-                  allowSets={t.type === "mundialito" || t.type === "relampago"}
+                  allowSets={t.type === "mundialito" || t.type === "relampago" || t.type === "liga"}
                   onChange={(patch) => persist({ ...t, config: { ...t.config, ...patch } })}
                 />
               </>
@@ -807,7 +811,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
                 {t.type === "relampago" && <SummaryRow label="Cuadro" value={t.config.seedByOrder ? "Por orden de carga" : "Sorteado al azar"} />}
                 {t.type === "liga" && <SummaryRow label="Jornadas" value={activeDraw.rounds.length} />}
                 {t.type === "liga" && <SummaryRow label="Ida y vuelta" value={t.config.idaYVuelta ? "Sí" : "No"} />}
-                {t.type === "liga" && <SummaryRow label="Eliminatoria final" value={t.config.playoffEnabled ? `Sí (${t.config.advanceQualifiers ?? 4} parejas)` : "No"} />}
+                {t.type === "liga" && <SummaryRow label="Eliminatoria final" value={t.config.playoffEnabled ? `Sí (${ligaQualifiers(t.config, tot)} parejas)` : "No"} />}
               </SummaryCard>
               <SummaryCard title="Formato de partido">
                 <SummaryRow label="Formato" value={fmt.label} />

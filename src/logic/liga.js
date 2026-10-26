@@ -155,3 +155,19 @@ export function buildLigaKnockout(pairs, advanceQualifiers) {
   });
   return buildBracket(sorted.slice(0, advanceQualifiers), { consolation: false });
 }
+
+// Cuántas parejas pueden pasar a la eliminatoria según cuántas juegan la liga: con menos de 5 solo
+// 2, con 5 o más hasta 4, y con 9 o más hasta 8.
+export function ligaQualifierOptions(pairCount) {
+  if (pairCount >= 9) return [2, 4, 8];
+  if (pairCount >= 5) return [2, 4];
+  return [2];
+}
+
+// Parejas que pasan realmente: la elección del organizador, bajada al máximo que permite la cantidad
+// de parejas (por si se quitaron parejas después de elegir).
+export function ligaQualifiers(config, pairCount) {
+  const options = ligaQualifierOptions(pairCount);
+  const wanted = config?.advanceQualifiers ?? 4;
+  return Math.max(...options.filter((n) => n <= wanted));
+}

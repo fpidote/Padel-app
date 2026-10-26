@@ -2,10 +2,11 @@
 import { useState } from "react";
 import { generateRules } from "../../logic/constants";
 import { advanceBracket } from "../../logic/relampago";
-import { recomputeLigaStandings, buildLigaKnockout } from "../../logic/liga";
+import { recomputeLigaStandings, buildLigaKnockout, ligaQualifiers } from "../../logic/liga";
 import { THeader, Tabs } from "../shared/Components";
 import MatchCard from "../shared/MatchCard";
 import PairStandings from "../shared/PairStandings";
+import { standingsLabels } from "../../logic/standings";
 
 function sortStandings(pairs) {
   return [...(pairs || [])].sort((a, b) => {
@@ -23,6 +24,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
   const [ls, setLs] = useState({});
 
   const playoffEnabled = !!t.config?.playoffEnabled;
+  const bySets = ["sets3", "sets5"].includes(t.config?.scoringFormat || "sets3");
   const matches = t.matches || [];
   const rounds = t.rounds || [];
   const allMatchesDone = matches.length > 0 && matches.every((m) => m.saved);
@@ -65,7 +67,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
 
   async function onStartKnockout() {
     if (!allMatchesDone) return;
-    const bracket = buildLigaKnockout(t.pairs, t.config.advanceQualifiers || 4);
+    const bracket = buildLigaKnockout(t.pairs, ligaQualifiers(t.config, t.pairs.length));
     await persist({ ...t, knockoutBracket: bracket, phase: "playoff" });
   }
 
@@ -180,10 +182,12 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
             <PairStandings
               pairs={t.pairs || []}
               title="Tabla de posiciones"
-              scoringFormat={t.config?.scoringFormat}
+              scoringFormat={t.config?.scoringFormat || "sets3"}
+              config={t.config}
               extra={
                 <p className="text-xs text-gray-500 mb-3">
-                  Victoria = 1 punto · Derrota = 0 puntos · Desempate por diferencia de sets y luego de games
+                  Victoria = 1 punto · Derrota = 0 puntos · Desempate por diferencia de{" "}
+                  {bySets ? "sets y luego de games" : standingsLabels(t.config).unit === "points" ? "puntos" : "games"}
                 </p>
               }
             />
@@ -195,7 +199,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
             {t.phase === "fixture" && (
               <div className="bg-[#1f2937] rounded-2xl border border-[#374151] p-5 text-center">
                 <div className="text-sm text-gray-400">
-                  La fase final se arma con el top {t.config.advanceQualifiers || 4} de la tabla al terminar todos los partidos de liga.
+                  La fase final se arma con el top {ligaQualifiers(t.config, (t.pairs || []).length)} de la tabla al terminar todos los partidos de liga.
                 </div>
               </div>
             )}
@@ -240,7 +244,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
           <div className="mt-4 bg-[#1f2937] rounded-2xl border border-[#374151] p-5">
             <h3 className="text-base font-black text-[#db2777] mb-4">Reglas de la Liga</h3>
             <ul className="space-y-2.5 list-disc pl-5">
-              {generateRules(t.type, t.config).map((rule, i) => (
+              {generateRules(t.type, t.config, { pairCount: (t.pairs || []).length }).map((rule, i) => (
                 <li key={i} className="text-sm text-gray-300 leading-relaxed">{rule}</li>
               ))}
             </ul>
