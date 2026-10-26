@@ -148,11 +148,11 @@ export default function Home() {
                 <button
                   key={tt.id}
                   onClick={() => onCreate(tt.id)}
-                  className="w-full flex items-center gap-3 p-4 rounded-xl text-left transition-all duration-150 cursor-pointer active:scale-95"
+                  className="w-full flex items-center gap-3 p-4 rounded-xl border border-l-4 text-left transition-all duration-150 cursor-pointer active:scale-95"
                   style={{
                     background: tt.color + "14",
-                    border: "1px solid " + tt.color + "40",
-                    borderLeft: "4px solid " + tt.color,
+                    borderColor: tt.color + "40",
+                    borderLeftColor: tt.color,
                   }}
                 >
                   <span className="text-2xl flex-shrink-0">{tt.icon}</span>
@@ -162,7 +162,7 @@ export default function Home() {
                     </div>
                     <div className="text-gray-400 text-xs mt-0.5">{tt.desc}</div>
                   </div>
-                  <span className="text-xl shrink-0 leading-none" style={{ color: tt.color, opacity: 0.5 }}>›</span>
+                  <span className="text-xl shrink-0 leading-none opacity-50" style={{ color: tt.color }}>›</span>
                 </button>
               ))}
             </div>
@@ -189,7 +189,7 @@ export default function Home() {
                     <img
                       src={user.photoURL}
                       alt=""
-                      onError={(e) => (e.currentTarget.style.display = "none")}
+                      onError={(e) => e.currentTarget.classList.add("hidden")}
                       className="absolute inset-0 w-full h-full object-cover"
                     />
                   )}
@@ -235,10 +235,7 @@ export default function Home() {
         <section className="pt-10 pb-8 text-center relative">
           {/* Spotlight focal detrás del título */}
           <div
-            className="absolute inset-0 -z-10 pointer-events-none"
-            style={{
-              background: 'radial-gradient(ellipse 75% 45% at 50% 25%, rgba(132,204,22,0.10) 0%, transparent 70%)',
-            }}
+            className="absolute inset-0 -z-10 pointer-events-none bg-[radial-gradient(ellipse_75%_45%_at_50%_25%,rgba(132,204,22,0.10)_0%,transparent_70%)]"
           />
 
           <div className="inline-flex items-center gap-2 bg-[#84cc16]/8 border border-[#84cc16]/20 text-[#84cc16] text-[10px] font-bold tracking-[0.5px] px-3.5 py-1.5 rounded-full mb-5 select-none anim-fade-up anim-d1">
@@ -264,10 +261,7 @@ export default function Home() {
 
           <button
             onClick={handleCreateClick}
-            className="w-full bg-[#84cc16] hover:bg-lime-400 text-[#14532d] font-black py-4 rounded-2xl text-base transition-colors cursor-pointer anim-fade-up anim-d4"
-            style={{
-              boxShadow: '0 0 0 1px rgba(132,204,22,0.4), 0 4px 20px rgba(132,204,22,0.25), 0 12px 40px rgba(132,204,22,0.1)',
-            }}
+            className="w-full bg-[#84cc16] hover:bg-lime-400 text-[#14532d] font-black py-4 rounded-2xl text-base transition-colors cursor-pointer anim-fade-up anim-d4 shadow-[0_0_0_1px_rgba(132,204,22,0.4),0_4px_20px_rgba(132,204,22,0.25),0_12px_40px_rgba(132,204,22,0.1)]"
           >
             + Crear torneo gratis
           </button>
@@ -292,9 +286,7 @@ export default function Home() {
               onKeyDown={(e) => e.key === "Enter" && onJoin()}
               maxLength={6}
               placeholder="CÓDIGO"
-              className="flex-1 min-w-0 font-data bg-white/[0.03] border border-white/[0.07] focus:border-[#84cc16]/30 rounded-2xl text-[#f1f5f9] text-xl font-bold tracking-[0.35em] text-center py-3 outline-none transition-all placeholder:text-[#475569] placeholder:tracking-[4px] placeholder:text-sm placeholder:font-medium"
-              onFocus={(e) => { e.target.style.boxShadow = '0 0 0 3px rgba(132,204,22,0.06)'; }}
-              onBlur={(e) => { e.target.style.boxShadow = 'none'; }}
+              className="flex-1 min-w-0 font-data bg-white/[0.03] border border-white/[0.07] focus:border-[#84cc16]/30 focus:shadow-[0_0_0_3px_rgba(132,204,22,0.06)] rounded-2xl text-[#f1f5f9] text-xl font-bold tracking-[0.35em] text-center py-3 outline-none transition-all placeholder:text-[#475569] placeholder:tracking-[4px] placeholder:text-sm placeholder:font-medium"
             />
             <button
               onClick={onJoin}
@@ -314,11 +306,11 @@ export default function Home() {
             {TOURNAMENT_TYPES.map((tt, i) => (
               <div
                 key={tt.id}
-                className={`format-card rounded-2xl p-4 flex flex-col gap-2 anim-fade-up anim-d${i + 5}`}
+                className={`format-card rounded-2xl p-4 flex flex-col gap-2 border border-t-[3px] anim-fade-up anim-d${i + 5}`}
                 style={{
                   background: tt.color + "12",
-                  border: "1px solid " + tt.color + "25",
-                  borderTop: "3px solid " + tt.color,
+                  borderColor: tt.color + "25",
+                  borderTopColor: tt.color,
                 }}
               >
                 <span className="text-3xl leading-none">{tt.icon}</span>

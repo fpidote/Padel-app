@@ -114,7 +114,7 @@ export default function ManualRoundBuilder({
         {/* Header */}
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 font-semibold mb-5 cursor-pointer transition-colors bg-transparent border-none p-0"
+          className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 font-semibold mb-5 cursor-pointer transition-colors bg-transparent border-0 p-0"
         >
           ✓ Guardar y volver al setup
         </button>
@@ -139,15 +139,13 @@ export default function ManualRoundBuilder({
             <div className="flex gap-2 shrink-0">
               <button
                 onClick={() => setPendingAutoFill(false)}
-                className="text-xs px-3 py-1.5 rounded-lg font-bold cursor-pointer"
-                style={{ background: "#374151", color: "#94a3b8" }}
+                className="text-xs px-3 py-1.5 rounded-lg font-bold cursor-pointer bg-[#374151] text-[#94a3b8]"
               >
                 Cancelar
               </button>
               <button
                 onClick={autoFillAll}
-                className="text-xs px-3 py-1.5 rounded-lg font-bold cursor-pointer"
-                style={{ background: "#b45309", color: "#fff" }}
+                className="text-xs px-3 py-1.5 rounded-lg font-bold cursor-pointer bg-[#b45309] text-white"
               >
                 Reemplazar
               </button>
@@ -163,25 +161,17 @@ export default function ManualRoundBuilder({
             return (
               <div
                 key={i}
-                className="shrink-0 flex items-center rounded-xl text-sm font-bold transition-colors"
-                style={{
-                  background: isActive ? COLOR : "#1f2937",
-                  border: `1px solid ${isActive ? COLOR : complete ? "#4ade8040" : "#374151"}`,
-                }}
+                className={`shrink-0 flex items-center rounded-xl text-sm font-bold transition-colors border ${isActive ? "bg-[#0284c7] border-[#0284c7]" : complete ? "bg-[#1f2937] border-[#4ade8040]" : "bg-[#1f2937] border-[#374151]"}`}
               >
                 <button
                   onClick={() => setActiveRound(i)}
-                  className="px-3 py-2 cursor-pointer bg-transparent border-none"
-                  style={{
-                    color: isActive ? "#fff" : complete ? "#4ade80" : "#64748b",
-                  }}
+                  className={`px-3 py-2 cursor-pointer bg-transparent border-0 ${isActive ? "text-white" : complete ? "text-[#4ade80]" : "text-[#64748b]"}`}
                 >
                   R{i + 1} {complete ? "✓" : "✗"}
                 </button>
                 <button
                   onClick={() => deleteRound(i)}
-                  className="pr-2.5 cursor-pointer bg-transparent border-none text-base leading-none opacity-40 hover:opacity-100 transition-opacity"
-                  style={{ color: isActive ? "#fff" : "#9ca3af" }}
+                  className={`pr-2.5 cursor-pointer bg-transparent border-0 text-base leading-none opacity-40 hover:opacity-100 transition-opacity ${isActive ? "text-white" : "text-[#9ca3af]"}`}
                   title="Eliminar ronda"
                 >
                   ×
@@ -191,12 +181,7 @@ export default function ManualRoundBuilder({
           })}
           <button
             onClick={addRound}
-            className="shrink-0 px-4 py-2 rounded-xl text-sm font-bold cursor-pointer transition-colors"
-            style={{
-              background: "#1f2937",
-              border: "1px dashed #374151",
-              color: "#38bdf8",
-            }}
+            className="shrink-0 px-4 py-2 rounded-xl text-sm font-bold cursor-pointer transition-colors bg-[#1f2937] border border-dashed border-[#374151] text-[#38bdf8]"
           >
             +
           </button>
@@ -224,8 +209,7 @@ export default function ManualRoundBuilder({
                   </span>
                 </div>
                 <div
-                  className="px-4 py-4 grid items-center gap-3"
-                  style={{ gridTemplateColumns: "1fr auto 1fr" }}
+                  className="px-4 py-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3"
                 >
                   {/* pairA */}
                   <div className="flex flex-col gap-2">
@@ -251,13 +235,8 @@ export default function ManualRoundBuilder({
                               e.target.value || null,
                             )
                           }
-                          className="w-full bg-[#0f172a] border rounded-xl px-3 py-2 text-sm font-bold outline-none"
-                          style={{
-                            borderColor: court.pairA[si]
-                              ? COLOR + "80"
-                              : "#374151",
-                            color: court.pairA[si] ? "#f1f5f9" : "#64748b",
-                          }}
+                          className={`w-full bg-[#0f172a] border rounded-xl px-3 py-2 text-sm font-bold outline-none ${court.pairA[si] ? "text-[#f1f5f9]" : "border-[#374151] text-[#64748b]"}`}
+                          style={court.pairA[si] ? { borderColor: COLOR + "80" } : undefined}
                         >
                           <option value="">— elegir —</option>
                           {available.map((p) => (
@@ -310,13 +289,8 @@ export default function ManualRoundBuilder({
                               e.target.value || null,
                             )
                           }
-                          className="w-full bg-[#0f172a] border rounded-xl px-3 py-2 text-sm font-bold outline-none"
-                          style={{
-                            borderColor: court.pairB[si]
-                              ? COLOR + "80"
-                              : "#374151",
-                            color: court.pairB[si] ? "#f1f5f9" : "#64748b",
-                          }}
+                          className={`w-full bg-[#0f172a] border rounded-xl px-3 py-2 text-sm font-bold outline-none ${court.pairB[si] ? "text-[#f1f5f9]" : "border-[#374151] text-[#64748b]"}`}
+                          style={court.pairB[si] ? { borderColor: COLOR + "80" } : undefined}
                         >
                           <option value="">— elegir —</option>
                           {available.map((p) => (
