@@ -113,7 +113,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
   const tabs = [
     ["fixture", "📅 Jornadas"],
     ["standings", "🏆 Posiciones"],
-    ...(playoffEnabled ? [["playoff", "⚡ Playoff"]] : []),
+    ...(playoffEnabled ? [["playoff", "⚡ Eliminatoria"]] : []),
     ["rules", "📖 Reglas"],
   ];
 

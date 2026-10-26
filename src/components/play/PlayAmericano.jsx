@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo } from "react";
 import { generateRules } from "../../logic/constants";
 import { pk } from "../../logic/utils";
+import { standingsLabels } from "../../logic/standings";
 import { buildRoundAmericano } from "../../logic/americano";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import History from "../shared/History";
@@ -435,7 +436,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
           </>
         )}
         {tab === "standings" && (
-          <StandingsAmericano rows={standings} roundNum={t.roundNum} useLevels={!!t.config.useLevels} isAdmin={isAdmin} showLevelsToggle={showLevelsToggle} setShowLevelsToggle={setShowLevelsToggle} />
+          <StandingsAmericano labels={standingsLabels(t.config)} rows={standings} roundNum={t.roundNum} useLevels={!!t.config.useLevels} isAdmin={isAdmin} showLevelsToggle={showLevelsToggle} setShowLevelsToggle={setShowLevelsToggle} />
         )}
         {tab === "history" && (
           <>
@@ -1209,7 +1210,7 @@ function WarningsBanner({ warnings }) {
         className="w-full flex items-center justify-between px-4 py-2.5 text-left"
       >
         <div className="flex items-center gap-2">
-          <span className="text-amber-400 text-sm font-bold">⚠️ Restricciones relajadas</span>
+          <span className="text-amber-400 text-sm font-bold">⚠️ Avisos del sorteo</span>
           <span className="text-xs text-amber-500/80 bg-amber-500/20 px-2 py-0.5 rounded-full font-semibold">
             {warnings.length}
           </span>
@@ -1232,7 +1233,7 @@ function WarningsBanner({ warnings }) {
 const thStyleS = { padding: "8px 10px", fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "center" };
 const tdCenterS = { padding: "10px 10px", textAlign: "center" };
 
-function StandingsAmericano({ rows, roundNum, useLevels, isAdmin, showLevelsToggle, setShowLevelsToggle }) {
+function StandingsAmericano({ rows, roundNum, useLevels, isAdmin, showLevelsToggle, setShowLevelsToggle, labels }) {
   return (
     <div style={{ background: "#0f172a", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
       <div style={{ padding: "14px 16px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -1253,7 +1254,7 @@ function StandingsAmericano({ rows, roundNum, useLevels, isAdmin, showLevelsTogg
         )}
       </div>
       <div style={{ fontSize: 11, color: "#475569", padding: "0 16px 10px" }}>
-        1º Puntos · 2º Diferencia de games
+        1º Puntos · 2º Diferencia ({labels.diff}) · {labels.plus} a favor · {labels.minus} en contra
       </div>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
@@ -1261,9 +1262,9 @@ function StandingsAmericano({ rows, roundNum, useLevels, isAdmin, showLevelsTogg
             <th style={thStyleS}>#</th>
             <th style={{ ...thStyleS, textAlign: "left" }}>Jugador</th>
             <th style={thStyleS}>PTS</th>
-            <th style={thStyleS}>GF</th>
-            <th style={thStyleS}>GC</th>
-            <th style={thStyleS}>DIF</th>
+            <th style={thStyleS}>{labels.plus}</th>
+            <th style={thStyleS}>{labels.minus}</th>
+            <th style={thStyleS}>{labels.diff}</th>
           </tr>
         </thead>
         <tbody>

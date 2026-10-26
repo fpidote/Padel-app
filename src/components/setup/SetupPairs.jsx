@@ -8,7 +8,7 @@ import { buildLigaFixture } from "../../logic/liga";
 
 const SCORING_OPTIONS = [
   { id: "timed", icon: "⏱️", name: "Por tiempo",   desc: "Se anota al terminar el tiempo" },
-  { id: "rally", icon: "🎯", name: "Rally scoring", desc: "Cada punto ganado cuenta" },
+  { id: "rally", icon: "🎯", name: "Por puntos", desc: "Cada punto ganado cuenta" },
   { id: "games", icon: "🏆", name: "Por games",     desc: "Primero en llegar a X games" },
 ];
 
@@ -75,7 +75,7 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
     ? need > 0
       ? `⚠️ Faltan ${need} ${isMixer ? "jugadores" : "parejas"}`
       : sit === 0
-        ? `✅ Canchas completas (Nadie descansa)`
+        ? `✅ Pistas completas (Nadie descansa)`
         : `⏳ Descansan ${sit} ${isMixer ? "jugadores" : "parejas"} por ronda`
     : `${tot} parejas · ${t.config.courts} pistas · ${Math.min(tot, act)} juegan` +
       (sit > 0 ? ` · ⏳ ${sit} descansan` : need > 0 ? ` · ⚠️ faltan ${need}` : " · ✓ listo");
@@ -440,7 +440,7 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
                     <div className="flex gap-2">
                       {[
                         { id: false, label: "Solo tabla" },
-                        { id: true, label: "Con playoff" },
+                        { id: true, label: "Con eliminatoria" },
                       ].map((opt) => (
                         <button key={String(opt.id)}
                           onClick={() => persist({ ...t, config: { ...t.config, playoffEnabled: opt.id } })}
@@ -452,7 +452,7 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
                   </div>
                   {t.config.playoffEnabled && (
                     <div>
-                      <label className="text-xs text-gray-400 font-semibold block mb-2">Parejas que avanzan al playoff</label>
+                      <label className="text-xs text-gray-400 font-semibold block mb-2">Parejas que pasan a la eliminatoria</label>
                       <div className="flex gap-2">
                         {[2, 4, 8].map(n => (
                           <button key={n}
@@ -657,7 +657,7 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
             <div style={{ display: "flex", gap: 8 }}>
               {[
                 { id: "fixed", label: "Parejas fijas" },
-                { id: "mixer", label: "Mixer (individual)" },
+                { id: "mixer", label: "Individual (cambia de pareja)" },
               ].map(({ id, label }) => (
                 <button
                   key={id}

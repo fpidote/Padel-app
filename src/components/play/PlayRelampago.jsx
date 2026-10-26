@@ -34,8 +34,8 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
 
   const isByeA = match.pairA?.id === "bye";
   const isByeB = match.pairB?.id === "bye";
-  const nameA = isByeA ? "BYE" : (match.pairA ? `${match.pairA.p1} / ${match.pairA.p2}` : "TBD");
-  const nameB = isByeB ? "BYE" : (match.pairB ? `${match.pairB.p1} / ${match.pairB.p2}` : "TBD");
+  const nameA = isByeA ? "Pasa directo" : (match.pairA ? `${match.pairA.p1} / ${match.pairA.p2}` : "Por definir");
+  const nameB = isByeB ? "Pasa directo" : (match.pairB ? `${match.pairB.p1} / ${match.pairB.p2}` : "Por definir");
   const isTBD = !match.pairA || !match.pairB;
   const isBye = isByeA || isByeB;
 
@@ -468,7 +468,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
         )}
 
         {tab === "standings" && (
-          <PairStandings pairs={t.pairs.map((p) => ({ ...p, played: countPlayed(t.bracket, p.id) }))} title="Posiciones" scoringFormat={t.config?.scoringFormat} />
+          <PairStandings pairs={t.pairs.map((p) => ({ ...p, played: countPlayed(t.bracket, p.id) }))} title="Posiciones" scoringFormat={t.config?.scoringFormat} config={t.config} />
         )}
 
         {tab === "rules" && (

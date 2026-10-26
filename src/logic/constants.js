@@ -37,8 +37,8 @@ export const TOURNAMENT_TYPES = [
     id: "mundialito",
     name: "Mundialito",
     icon: "🌍",
-    desc: "Fase de grupos estilo FIFA seguida de eliminatorias directas.",
-    tagline: "Como el Mundial, en tu cancha",
+    desc: "Fase de grupos seguida de eliminatorias directas.",
+    tagline: "Grupos y eliminatorias, en tu pista",
     landingDesc: "Fase de grupos y eliminatorias directas. Todos juegan, los mejores se clasifican.",
     tags: ["Grupos + KO", "8+ jugadores"],
     color: "#059669",
@@ -127,7 +127,7 @@ export function generateRules(type, config, context = {}) {
       return [
         `${config.groupCount ?? 2} ${(config.groupCount ?? 2) === 1 ? "grupo" : "grupos"} en fase inicial. Los ${config.advancePerGroup ?? 2} mejores de cada grupo avanzan a eliminatorias.`,
         "Clasifica quien gane más partidos. No hay empates.",
-        "Desempate: 1º diferencia de sets, 2º diferencia de juegos.",
+        "Desempate: 1º el resultado del partido entre las parejas igualadas, 2º diferencia entre lo que anotan a favor y en contra, 3º diferencia de games.",
         scoringDesc(),
         goldenPointDesc(),
       ];

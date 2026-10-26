@@ -287,11 +287,11 @@ export function precomputeAllRounds(entities, config) {
     for (const constraint of constraintsRelaxed) {
       let message;
       if (constraint === "partner_repeat") {
-        message = `Ronda ${r + 1}: repetición de pareja permitida (sin combinación válida disponible)`;
+        message = `Ronda ${r + 1}: se repite una pareja (no había otra combinación posible)`;
       } else if (constraint === "court_repeat") {
-        message = `Ronda ${r + 1}: repetición de cancha permitida (sin combinación sin repetición disponible)`;
+        message = `Ronda ${r + 1}: algún jugador repite pista (no había otra combinación posible)`;
       } else {
-        message = `Ronda ${r + 1}: pareja de nivel avanzado permitida (restricción relajada)`;
+        message = `Ronda ${r + 1}: dos jugadores avanzados forman pareja (no había otra combinación posible)`;
       }
       warnings.push({ round: r + 1, constraint, message });
     }

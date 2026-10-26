@@ -3,7 +3,7 @@ import { useState } from "react";
 import { generateRules } from "../../logic/constants";
 import { advanceBracket } from "../../logic/relampago";
 import { buildKnockoutFromGroups } from "../../logic/mundialito";
-import { computeStandings, sortStandings } from "../../logic/standings";
+import { computeStandings, sortStandings, standingsLabels } from "../../logic/standings";
 import { THeader, Tabs } from "../shared/Components";
 import MatchCard from "../shared/MatchCard";
 import PairStandings from "../shared/PairStandings";
@@ -21,6 +21,7 @@ export default function PlayMundialito({
 
   const isSetFormat =
     t.config?.scoringFormat === "sets3" || t.config?.scoringFormat === "sets5";
+  const labels = standingsLabels(t.config);
 
   // 👇 Aseguramos que todos los partidos tengan un "round" calculado
   const groupsWithRounds = (t.groups || []).map((g) => {
@@ -199,6 +200,9 @@ export default function PlayMundialito({
       <div className="flex flex-col gap-6 px-4">
         {tab === "groups" && (
           <>
+            <p className="text-[11px] text-[#475569]">
+              {labels.legend}
+            </p>
             {groupsWithRounds.map((group) => (
               <div
                 key={group.id}
@@ -227,14 +231,14 @@ export default function PlayMundialito({
                     <div className="flex-1">Pareja</div>
                     <div className="w-[30px] text-center">PJ</div>
                     <div className="w-[30px] text-center">
-                      {isSetFormat ? "SF" : "JF"}
+                      {labels.plus}
                     </div>
                     <div className="w-[30px] text-center">
-                      {isSetFormat ? "SC" : "JC"}
+                      {labels.minus}
                     </div>
                     {isSetFormat && (
                       <div className="w-[35px] text-center">
-                        DJ
+                        {labels.gamesDiff}
                       </div>
                     )}
                     <div
@@ -243,7 +247,7 @@ export default function PlayMundialito({
                       PG
                     </div>
                   </div>
-                  {sortStandings(group.standings)
+                  {sortStandings(group.standings, group.matches)
                     .map((s, si) => (
                       <div
                         key={s.id}
@@ -453,11 +457,12 @@ export default function PlayMundialito({
         {tab === "standings" && (
           <PairStandings
             pairs={allPairs}
-            title="Clasificación General"
+            title="Posiciones"
             scoringFormat={t.config?.scoringFormat}
+            config={t.config}
             extra={
               <div className="mb-3 text-[12px] text-[#94a3b8]">
-                Clasifica quien tenga más partidos ganados (PG). Desempate: diferencia de sets y luego de juegos.
+                Clasifica quien tenga más partidos ganados (PG). En el grupo, si hay empate, decide el partido entre las parejas igualadas y después la diferencia a favor y en contra.
               </div>
             }
           />

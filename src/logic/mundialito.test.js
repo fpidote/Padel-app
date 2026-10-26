@@ -17,6 +17,27 @@ describe("buildKnockoutFromGroups", () => {
   });
 });
 
+describe("buildKnockoutFromGroups — enfrentamiento directo", () => {
+  it("clasifica a la pareja que ganó el partido directo aunque la otra tenga mejor diferencia", () => {
+    // En el grupo A, 1 y 2 empatan a 1 victoria. 1 le ganó a 2 por poco; 2 tiene mejor diferencia.
+    const groups = [
+      {
+        standings: [pair(1, 1, 6, 5), pair(2, 1, 11, 6), pair(3, 0, 0, 6)],
+        matches: [
+          { pairA: { id: 1 }, pairB: { id: 2 }, scoreA: "6", scoreB: "5", saved: true },
+          { pairA: { id: 2 }, pairB: { id: 3 }, scoreA: "6", scoreB: "0", saved: true },
+        ],
+      },
+      { standings: [pair(4, 2, 12, 3), pair(5, 0, 3, 12)], matches: [] },
+    ];
+    const bracket = buildKnockoutFromGroups(groups, 1);
+    const ids = bracket
+      .flatMap((m) => [m.pairA?.id, m.pairB?.id])
+      .filter((id) => id && id !== "bye");
+    expect(new Set(ids)).toEqual(new Set([1, 4]));
+  });
+});
+
 describe("validateMundialitoConfig", () => {
   it("rechaza más grupos que parejas disponibles para formar cruces", () => {
     const result = validateMundialitoConfig(4, 3, 2);

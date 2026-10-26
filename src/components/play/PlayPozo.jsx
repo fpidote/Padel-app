@@ -336,7 +336,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
                         <div className="flex flex-col items-end self-center">
                           <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Pareja A</div>
                           <div className="text-sm font-bold text-gray-50 text-right">
-                            {court.pairA ? `${court.pairA.p1} / ${court.pairA.p2}` : "TBD"}
+                            {court.pairA ? `${court.pairA.p1} / ${court.pairA.p2}` : "Por definir"}
                           </div>
                           {court.saved && (() => {
                             const { text, cls } = resultBadge(
@@ -394,7 +394,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
                         <div className="flex flex-col items-start self-center">
                           <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Pareja B</div>
                           <div className="text-sm font-bold text-gray-50">
-                            {court.pairB ? `${court.pairB.p1} / ${court.pairB.p2}` : "TBD"}
+                            {court.pairB ? `${court.pairB.p1} / ${court.pairB.p2}` : "Por definir"}
                           </div>
                           {court.saved && (() => {
                             const { text, cls } = resultBadge(
@@ -526,7 +526,7 @@ function PozoAllRoundsView({ t, isAdmin, ls, setLs, onSaveCourt, onEditCourt, ma
   const isMixer = t.config?.pozoMode === "mixer";
 
   function renderPair(pair, highlight) {
-    const name = pair ? `${pair.p1} / ${pair.p2}` : "TBD";
+    const name = pair ? `${pair.p1} / ${pair.p2}` : "Por definir";
     return (
       <span className={`text-sm leading-snug ${highlight ? "font-black text-sky-300" : "font-bold text-gray-50"}`}>
         {name}

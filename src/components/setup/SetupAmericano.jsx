@@ -9,7 +9,7 @@ const COLOR = "#0284c7";
 
 const SCORING_OPTIONS = [
   { id: "timed",  icon: "⏱️", name: "Por tiempo",   desc: "Se anota al terminar el tiempo" },
-  { id: "rally",  icon: "🎯", name: "Rally scoring", desc: "Cada punto ganado cuenta" },
+  { id: "rally",  icon: "🎯", name: "Por puntos", desc: "Cada punto ganado cuenta" },
   { id: "games",  icon: "🏆", name: "Por games",     desc: "Primero en llegar a X games" },
 ];
 
@@ -122,7 +122,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
   const canShowMatchmakingTab = canReshuffle || (isManual && localManualRounds.length > 0);
   const roundsToPreview = isManual ? localManualRounds : localPrecomputedRounds;
 
-  const scoringLabel  = scoring === "timed" ? "Por tiempo" : scoring === "rally" ? "Rally scoring" : "Por games";
+  const scoringLabel  = scoring === "timed" ? "Por tiempo" : scoring === "rally" ? "Por puntos" : "Por games";
   const scoringDetail = scoring === "timed"
     ? `${t.config.matchMinutes ?? 10} min · ${(t.config.timedMetric ?? "games") === "games" ? "Games ganados" : "Puntos acumulados"}`
     : scoring === "rally"

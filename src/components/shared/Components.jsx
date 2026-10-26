@@ -117,7 +117,7 @@ export function PName({ pair }) {
 }
 
 export function PairName({ pair, showNames = true }) {
-  if (!pair) return <span className="text-[#64748b]">TBD</span>;
+  if (!pair) return <span className="text-[#64748b]">Por definir</span>;
   return (
     <span className="font-bold text-[#fbbf24]">
       {showNames ? `${pair.p1} / ${pair.p2}` : `Par ${pair.id + 1}`}

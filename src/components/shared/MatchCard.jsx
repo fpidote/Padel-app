@@ -112,7 +112,7 @@ export default function MatchCard({
           {/* Team A */}
           <div className="flex flex-col items-end self-center">
             <span className="text-sm font-bold text-gray-50 text-right">
-              {match.pairA ? `${match.pairA.p1} / ${match.pairA.p2}` : "TBD"}
+              {match.pairA ? `${match.pairA.p1} / ${match.pairA.p2}` : "Por definir"}
             </span>
           </div>
 
@@ -201,7 +201,7 @@ export default function MatchCard({
           {/* Team B */}
           <div className="flex flex-col items-start self-center">
             <span className="text-sm font-bold text-gray-50">
-              {match.pairB ? `${match.pairB.p1} / ${match.pairB.p2}` : "TBD"}
+              {match.pairB ? `${match.pairB.p1} / ${match.pairB.p2}` : "Por definir"}
             </span>
           </div>
         </div>

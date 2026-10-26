@@ -1,6 +1,7 @@
 // ── Standings compartidos (Mundialito, tablas generales) ─────
-// Criterio: 1º partidos ganados, 2º diferencia de sets (gf − gc), 3º diferencia de juegos.
-// En formato por games, gf/gc ya son juegos y el 3er criterio queda en 0.
+// Criterio: 1º partidos ganados, 2º enfrentamiento directo entre las igualadas (si se pasan
+// los partidos), 3º diferencia a favor y en contra (gf − gc), 4º diferencia de games.
+// En formato por games o puntos, gf/gc ya son esa unidad y el 4º criterio queda en 0.
 
 export function computeStandings(pairs, matches) {
   const standings = pairs.map((p) => ({
@@ -75,8 +76,77 @@ export function compareStandings(a, b) {
   );
 }
 
-export function sortStandings(standings) {
-  return [...standings].sort(compareStandings);
+// Victorias de cada pareja de `run` contando solo los partidos jugados entre ellas.
+function winsAmong(run, matches) {
+  const ids = new Set(run.map((p) => p.id));
+  const wins = new Map(run.map((p) => [p.id, 0]));
+  matches.forEach((m) => {
+    if (!m.saved || !m.pairA || !m.pairB) return;
+    if (!ids.has(m.pairA.id) || !ids.has(m.pairB.id)) return;
+    const sa = parseInt(m.scoreA);
+    const sb = parseInt(m.scoreB);
+    if (sa > sb) wins.set(m.pairA.id, wins.get(m.pairA.id) + 1);
+    else if (sb > sa) wins.set(m.pairB.id, wins.get(m.pairB.id) + 1);
+  });
+  return wins;
+}
+
+// Orden: 1º victorias, 2º victorias en los partidos entre las igualadas (enfrentamiento
+// directo), 3º diferencia de sets/games a favor y en contra, 4º diferencia de games.
+// Si no se pasan `matches` el enfrentamiento directo no interviene.
+export function sortStandings(standings, matches = []) {
+  const byWins = [...standings].sort((a, b) => winsOf(b) - winsOf(a));
+  if (!matches.length) return [...standings].sort(compareStandings);
+
+  const result = [];
+  for (let i = 0; i < byWins.length; ) {
+    let j = i + 1;
+    while (j < byWins.length && winsOf(byWins[j]) === winsOf(byWins[i])) j++;
+    const run = byWins.slice(i, j);
+    if (run.length > 1) {
+      const direct = winsAmong(run, matches);
+      run.sort((a, b) => direct.get(b.id) - direct.get(a.id) || compareStandings(a, b));
+    }
+    result.push(...run);
+    i = j;
+  }
+  return result;
+}
+
+// Siglas de las columnas de la tabla según cómo se anota el partido, para que la tabla diga
+// "puntos" cuando se cuentan puntos y "games" cuando se cuentan games.
+export function standingsLabels(config = {}) {
+  const cfg = config || {};
+  if (cfg.scoringFormat === "sets3" || cfg.scoringFormat === "sets5") {
+    return {
+      unit: "sets",
+      plus: "S+",
+      minus: "S−",
+      diff: "DS",
+      gamesDiff: "DG",
+      legend: "PJ jugados · PG ganados · S+ sets a favor · S− en contra · DS dif. de sets · DG dif. de games",
+    };
+  }
+  const system = cfg.scoringSystem || "timed";
+  const countsPoints = system === "rally" || (system === "timed" && cfg.timedMetric === "points");
+  if (countsPoints) {
+    return {
+      unit: "points",
+      plus: "P+",
+      minus: "P−",
+      diff: "DP",
+      gamesDiff: null,
+      legend: "PJ jugados · PG ganados · P+ puntos a favor · P− en contra · DP diferencia",
+    };
+  }
+  return {
+    unit: "games",
+    plus: "G+",
+    minus: "G−",
+    diff: "DG",
+    gamesDiff: null,
+    legend: "PJ jugados · PG ganados · G+ games a favor · G− en contra · DG diferencia",
+  };
 }
 
 // Suma (sign=1) o resta (sign=-1) el resultado de un partido a los acumulados de las parejas

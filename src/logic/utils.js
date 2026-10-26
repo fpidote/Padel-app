@@ -18,7 +18,7 @@ export function buildShareMessage(t, code) {
 
   const scoringLabels = {
     timed: `⏱️ ${t.config.matchMinutes || 10} min por partido · ${t.config.timedMetric === "points" ? "puntos acumulados" : "games ganados"}`,
-    rally: `🎯 Rally scoring · ${t.config.rallyPoints || 24} puntos por partido`,
+    rally: `🎯 Por puntos · ${t.config.rallyPoints || 24} puntos por partido`,
     games: `🏆 Al mejor de ${t.config.targetGames || 6} games`,
   };
   lines.push(scoringLabels[t.config.scoringSystem || "timed"]);

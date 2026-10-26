@@ -62,7 +62,7 @@ export function validateMundialitoConfig(pairCount, groupCount, advancePerGroup)
 export function buildKnockoutFromGroups(groups, advancePerGroup) {
   const qualifiers = [];
   groups.forEach((g) => {
-    const sorted = sortStandings(g.standings);
+    const sorted = sortStandings(g.standings, g.matches || []);
     qualifiers.push(...sorted.slice(0, advancePerGroup));
   });
   return buildBracket(qualifiers);

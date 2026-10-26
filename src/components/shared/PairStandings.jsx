@@ -1,12 +1,13 @@
 // src/components/shared/PairStandings.jsx
-import { sortStandings, winsOf } from "../../logic/standings";
+import { sortStandings, winsOf, standingsLabels } from "../../logic/standings";
 
 const TH = "px-2.5 py-2 text-[11px] font-bold text-[#475569] uppercase tracking-wide";
 const diffColor = (d) => (d > 0 ? "#4ade80" : d < 0 ? "#f87171" : "#64748b");
 const fmtDiff = (d) => (d > 0 ? `+${d}` : d);
 
-export default function PairStandings({ pairs, title, extra, scoringFormat = "games" }) {
+export default function PairStandings({ pairs, title, extra, scoringFormat = "games", config }) {
   const isSetFormat = scoringFormat === "sets3" || scoringFormat === "sets5";
+  const labels = standingsLabels({ ...(config || {}), scoringFormat });
   const sorted = sortStandings(pairs || []);
 
   return (
@@ -22,10 +23,10 @@ export default function PairStandings({ pairs, title, extra, scoringFormat = "ga
             <th className={`${TH} text-left`}>Pareja</th>
             <th className={`${TH} text-center`}>PJ</th>
             <th className={`${TH} text-center`}>PG</th>
-            <th className={`${TH} text-center`}>{isSetFormat ? "SF" : "JF"}</th>
-            <th className={`${TH} text-center`}>{isSetFormat ? "SC" : "JC"}</th>
-            <th className={`${TH} text-center`}>{isSetFormat ? "DS" : "DJ"}</th>
-            {isSetFormat && <th className={`${TH} text-center`}>DJ</th>}
+            <th className={`${TH} text-center`}>{labels.plus}</th>
+            <th className={`${TH} text-center`}>{labels.minus}</th>
+            <th className={`${TH} text-center`}>{labels.diff}</th>
+            {isSetFormat && <th className={`${TH} text-center`}>{labels.gamesDiff}</th>}
           </tr>
         </thead>
         <tbody>
@@ -62,6 +63,9 @@ export default function PairStandings({ pairs, title, extra, scoringFormat = "ga
           })}
         </tbody>
       </table>
+      <div className="px-4 py-2 text-[11px] text-[#475569]">
+        {labels.legend}
+      </div>
     </div>
   );
 }
