@@ -8,6 +8,8 @@ import { THeader, Tabs } from "../shared/Components";
 import PairStandings from "../shared/PairStandings";
 
 const SLOT_HEIGHT = 110;
+// Con sets la tarjeta abierta es más alta: más espacio por partido para que no tape a la vecina
+const SLOT_HEIGHT_SETS = 220;
 
 function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentColor, scoringFormat = "games", onToggle }) {
   const [expanded, setExpandedState] = useState(false);
@@ -239,7 +241,8 @@ function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, accentColor,
   });
 
   const r1Count = matchesByRound[rounds[0]].length;
-  const containerHeight = Math.max(r1Count * SLOT_HEIGHT, 100);
+  const isSetFormat = scoringFormat === "sets3" || scoringFormat === "sets5";
+  const containerHeight = Math.max(r1Count * (isSetFormat ? SLOT_HEIGHT_SETS : SLOT_HEIGHT), 100);
   const LABEL_H = 26;
 
   function matchCenterY(total, idx) {
