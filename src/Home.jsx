@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
-import { auth, db, googleProvider } from "./firebase";
+import { auth, db, googleProvider, trackEvent } from "./firebase";
 import { TOURNAMENT_TYPES } from "./logic/constants.js";
 import { genCode } from "./logic/utils.js";
 import { buildInitialTournament } from "./logic/initTournament.js";
@@ -74,6 +74,7 @@ export default function Home() {
         ownerUid: auth.currentUser.uid,
         createdAt: serverTimestamp(),
       });
+      trackEvent("tournament_created", { tournament_type: type });
       navigate(`/torneo/${code}`);
     } catch (err) {
       console.error("Error al crear:", err);
@@ -104,6 +105,7 @@ export default function Home() {
         setModalMsg("Código no encontrado");
         return;
       }
+      trackEvent("tournament_joined", { tournament_code: code });
       navigate(`/torneo/${code}`);
     } catch (err) {
       console.error("Error al unirse:", err);

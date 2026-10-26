@@ -1,11 +1,21 @@
-import { lazy, Suspense } from "react";
-import { Routes, Route } from "react-router-dom";
+import { lazy, Suspense, useEffect } from "react";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Home from "./Home.jsx";
 import TournamentPage from "./TournamentPage.jsx";
+import { trackEvent } from "./firebase";
 
 const Panel = lazy(() => import("./Panel.jsx"));
 
+function usePageViewTracking() {
+  const location = useLocation();
+  useEffect(() => {
+    trackEvent("page_view", { page_path: location.pathname });
+  }, [location.pathname]);
+}
+
 export default function App() {
+  usePageViewTracking();
+
   return (
     <Routes>
       <Route path="/" element={<Home />} />
