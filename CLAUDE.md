@@ -368,6 +368,19 @@ useEffect(() => {
 
 ---
 
+## 11b. Delegación a Codex (plan gratuito)
+
+Codex CLI está instalado y con login. Claude decide qué delegar, sin preguntar caso por caso.
+
+- **Delegar**: tareas sencillas pero voluminosas o mecánicas (migrar estilos inline/`B()` a Tailwind por componente, tests de lógica pura, renombrados repetitivos, revisión de un diff antes de commitear).
+- **No delegar**: decisiones de diseño, Firebase/Firestore/Rules, auth, cambios de una o dos líneas (el arranque de Codex cuesta más que hacerlo directo).
+- **Cuota**: cada llamada gasta ~17-36k tokens del plan gratuito. Agrupar el trabajo en pocas llamadas grandes y acotadas, no muchas chicas.
+- **Comando**: `codex exec --sandbox workspace-write "<tarea>"` desde la raíz del proyecto, con archivos permitidos explícitos y "no hagas commits". Para solo leer, `--sandbox read-only`.
+- **Revisión obligatoria**: Claude lee el diff y corre `npx vitest run` antes de dar la tarea por buena. No fiarse del resumen de Codex.
+- Si Codex falla por límite de cuota, Claude hace la tarea directamente.
+
+---
+
 ## 12. Checklist antes de cada PR
 
 - [ ] Build limpio (`npm run build` sin errores)
