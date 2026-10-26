@@ -24,3 +24,12 @@ dist-ssr
 *.sw?
 .env    
 .superpowers/
+# Archivos generados y de herramientas locales
+.firebase/
+playwright-report/
+test-results/
+.agents/
+.claude/skills
+.claude/settings.local.json
+.claude/worktrees/
+simulate_*.mjs
