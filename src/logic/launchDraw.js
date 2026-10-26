@@ -3,11 +3,19 @@
 // que se guarda al iniciar (startPatch recibe el sorteo en vez de volver a generarlo).
 import { buildGroups } from "./mundialito";
 import { buildLigaFixture } from "./liga";
+import { buildBracket } from "./relampago";
+import { shuffle } from "./utils";
 
-const TYPES_WITH_DRAW = ["mundialito", "liga"];
+const TYPES_WITH_DRAW = ["mundialito", "liga", "relampago"];
 
 export function hasDraw(type) {
   return TYPES_WITH_DRAW.includes(type);
+}
+
+// ¿Re-sortear da un resultado distinto? El Relámpago con orden de carga es siempre el mismo cuadro.
+export function drawIsRandom(t) {
+  if (!hasDraw(t.type)) return false;
+  return t.type === "relampago" ? !t.config?.seedByOrder : true;
 }
 
 export function pairsForStart(pairInputs) {
@@ -16,7 +24,7 @@ export function pairsForStart(pairInputs) {
 
 // Identifica los datos de los que depende el sorteo. Si cambia, el sorteo guardado ya no vale.
 export function drawKey(t) {
-  return JSON.stringify([t.type, t.pairInputs, t.config?.groupCount, t.config?.idaYVuelta]);
+  return JSON.stringify([t.type, t.pairInputs, t.config?.groupCount, t.config?.idaYVuelta, !!t.config?.seedByOrder]);
 }
 
 export function buildStartDraw(t) {
@@ -27,6 +35,12 @@ export function buildStartDraw(t) {
   if (t.type === "liga") {
     const { rounds, matches, pairs: standings } = buildLigaFixture(pairs, t.config?.idaYVuelta || false);
     return { rounds, matches, standings };
+  }
+  if (t.type === "relampago") {
+    // Sin orden de carga el cuadro se sortea. Las parejas conservan su numeración (el sorteo
+    // solo reordena el cuadro), igual que antes de que existiera el sorteo.
+    const seeding = t.config?.seedByOrder ? pairs : shuffle(pairs);
+    return { bracket: buildBracket(seeding) };
   }
   return null;
 }
@@ -39,6 +53,9 @@ export function startPatch(t, draw) {
   }
   if (t.type === "liga") {
     return { rounds: d.rounds, matches: d.matches, pairs: d.standings, phase: "fixture" };
+  }
+  if (t.type === "relampago") {
+    return { bracket: d.bracket, pairs: pairsForStart(t.pairInputs), phase: "bracket" };
   }
   return {};
 }

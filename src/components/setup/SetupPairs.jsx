@@ -1,13 +1,12 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { shuffle, buildShareMessage } from "../../logic/utils";
-import { buildBracket } from "../../logic/relampago";
 import { validateMundialitoConfig } from "../../logic/mundialito";
 import { buildPozoRound, shufflePlayers } from "../../logic/pozo";
 import MatchFormatPicker from "../shared/MatchFormatPicker";
 import LaunchModal, { SummaryRow, SummaryCard } from "../shared/LaunchModal";
-import { GroupsPreview, FixturePreview } from "./DrawPreview";
-import { hasDraw, drawKey, buildStartDraw, startPatch } from "../../logic/launchDraw";
+import { GroupsPreview, FixturePreview, BracketPreview } from "./DrawPreview";
+import { hasDraw, drawIsRandom, drawKey, buildStartDraw, startPatch } from "../../logic/launchDraw";
 import { matchFormatSummary } from "../../logic/matchFormat";
 
 function SectionHeader({ children }) {
@@ -144,10 +143,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
     const pairsToStart = t.pairInputs.map((p, i) => ({ ...p, id: i, pts: 0, gf: 0, gc: 0 }));
     const finalConfig = { ...t.config, scoringSystem: t.config.scoringSystem || "timed" };
 
-    if (t.type === "relampago") {
-      const bracket = buildBracket(pairsToStart);
-      await persist({ ...t, config: finalConfig, bracket, pairs: pairsToStart, phase: "bracket", status: "playing" });
-    } else if (hasDraw(t.type)) {
+    if (hasDraw(t.type)) {
       await persist({ ...t, config: finalConfig, ...startPatch(t, activeDraw), status: "playing" });
     } else if (t.type === "pozo") {
       if (t.config.pozoMode === "mixer") {
@@ -721,6 +717,25 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
                     {t.config.goldenPoint !== false ? "ON" : "OFF"}
                   </button>
                 </div>
+                {t.type === "relampago" && (
+                  <div className="flex items-center justify-between gap-4 mt-4 pt-4 border-t border-gray-700">
+                    <div>
+                      <div className="text-sm font-semibold text-gray-200">Cabezas de serie</div>
+                      <div className="text-xs text-gray-500 mt-0.5">Respetar el orden de carga en vez de sortear el cuadro</div>
+                    </div>
+                    <button
+                      onClick={() => persist({ ...t, config: { ...t.config, seedByOrder: !t.config.seedByOrder } })}
+                      className="px-4 py-1.5 rounded-lg text-sm font-bold cursor-pointer shrink-0"
+                      style={{
+                        background: t.config.seedByOrder ? "#16a34a30" : "#374151",
+                        color:      t.config.seedByOrder ? "#4ade80"   : "#94a3b8",
+                        border:     `1px solid ${t.config.seedByOrder ? "#4ade8040" : "transparent"}`,
+                      }}
+                    >
+                      {t.config.seedByOrder ? "ON" : "OFF"}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -754,11 +769,11 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
     {showLaunch && activeDraw && (
       <LaunchModal
         color={color}
-        tabs={[{ id: "sorteo", label: t.type === "liga" ? "🎲 Fixture" : "🎲 Sorteo" }, { id: "resumen", label: "📋 Resumen" }]}
+        tabs={[{ id: "sorteo", label: t.type === "liga" ? "🎲 Fixture" : t.type === "relampago" ? "🎲 Cuadro" : "🎲 Sorteo" }, { id: "resumen", label: "📋 Resumen" }]}
         activeTab={launchTab}
         onTab={setLaunchTab}
         onClose={() => setShowLaunch(false)}
-        onReshuffle={launchTab === "sorteo" ? reshuffleDraw : null}
+        onReshuffle={launchTab === "sorteo" && drawIsRandom(t) ? reshuffleDraw : null}
         onStart={onStart}
         saving={saving}
       >
@@ -767,6 +782,9 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
         )}
         {launchTab === "sorteo" && t.type === "liga" && (
           <FixturePreview rounds={activeDraw.rounds} matches={activeDraw.matches} />
+        )}
+        {launchTab === "sorteo" && t.type === "relampago" && (
+          <BracketPreview bracket={activeDraw.bracket} seeded={!!t.config.seedByOrder} />
         )}
         {launchTab === "resumen" && (() => {
           const fmt = matchFormatSummary({ ...t.config, scoringFormat: t.config.scoringFormat || (t.type === "liga" ? "sets3" : undefined) });
@@ -782,6 +800,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
                 <SummaryRow label="Pistas" value={t.config.courts} />
                 {t.type === "mundialito" && <SummaryRow label="Grupos" value={t.config.groupCount || 2} />}
                 {t.type === "mundialito" && <SummaryRow label="Avanzan por grupo" value={t.config.advancePerGroup ?? 2} />}
+                {t.type === "relampago" && <SummaryRow label="Cuadro" value={t.config.seedByOrder ? "Por orden de carga" : "Sorteado al azar"} />}
                 {t.type === "liga" && <SummaryRow label="Jornadas" value={activeDraw.rounds.length} />}
                 {t.type === "liga" && <SummaryRow label="Ida y vuelta" value={t.config.idaYVuelta ? "Sí" : "No"} />}
                 {t.type === "liga" && <SummaryRow label="Eliminatoria final" value={t.config.playoffEnabled ? `Sí (${t.config.advanceQualifiers ?? 4} parejas)` : "No"} />}

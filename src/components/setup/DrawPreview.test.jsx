@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { GroupsPreview, FixturePreview } from "./DrawPreview";
+import { GroupsPreview, FixturePreview, BracketPreview } from "./DrawPreview";
+import { buildBracket } from "../../logic/relampago";
 
 const pair = (id) => ({ id, p1: `Ana${id}`, p2: `Eva${id}` });
 
@@ -55,5 +56,30 @@ describe("FixturePreview", () => {
     expect(html).toContain("Ana0 / Eva0");
     expect(html).toContain("Ana1 / Eva1");
     expect(html).toContain("vs");
+  });
+});
+
+describe("BracketPreview", () => {
+  const pairs = (n) => Array.from({ length: n }, (_, i) => pair(i));
+
+  it("muestra la primera ronda con cada enfrentamiento", () => {
+    const html = renderToStaticMarkup(<BracketPreview bracket={buildBracket(pairs(4))} />);
+    expect(html).toContain("Primera ronda");
+    expect(html).toContain("vs");
+    ["Ana0 / Eva0", "Ana1 / Eva1", "Ana2 / Eva2", "Ana3 / Eva3"].forEach((n) => expect(html).toContain(n));
+  });
+
+  it("marca como pasa directo a quien no tiene rival y nunca muestra BYE", () => {
+    const html = renderToStaticMarkup(<BracketPreview bracket={buildBracket(pairs(5))} />);
+    expect(html).toContain("Pasa directo");
+    expect(html).not.toContain("BYE");
+    expect(html.match(/Pasa directo/g)).toHaveLength(3);
+  });
+
+  it("con orden de carga avisa que se respetan los cabezas de serie", () => {
+    const seeded = renderToStaticMarkup(<BracketPreview bracket={buildBracket(pairs(4))} seeded />);
+    expect(seeded).toContain("orden de carga");
+    const random = renderToStaticMarkup(<BracketPreview bracket={buildBracket(pairs(4))} />);
+    expect(random).not.toContain("orden de carga");
   });
 });

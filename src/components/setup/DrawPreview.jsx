@@ -52,3 +52,43 @@ export function FixturePreview({ rounds, matches }) {
     </div>
   );
 }
+
+const isBye = (p) => !p || p.id === "bye";
+
+export function BracketPreview({ bracket, seeded = false }) {
+  const first = bracket
+    .filter((m) => m.bracket === "winners" && m.round === 1)
+    .sort((a, b) => a.matchIndex - b.matchIndex);
+  return (
+    <div className="px-4 py-4 space-y-3">
+      <p className="text-xs text-gray-500">
+        {seeded
+          ? "Cabezas de serie: se respeta el orden de carga y las primeras parejas pasan directo cuando sobran lugares."
+          : "Quien pierde pasa al cuadro de revancha."}
+      </p>
+      <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Primera ronda</div>
+      <div className="space-y-2">
+        {first.map((m) => {
+          const free = isBye(m.pairA) || isBye(m.pairB);
+          const real = isBye(m.pairA) ? m.pairB : m.pairA;
+          return (
+            <div key={m.id} className="bg-[#1f2937] rounded-xl px-3 py-2.5 border border-gray-700 text-sm text-gray-100 flex flex-wrap items-center gap-x-1">
+              {free ? (
+                <>
+                  <span className="font-medium">{names(real)}</span>
+                  <span className="ml-2 text-xs font-bold text-green-400">Pasa directo</span>
+                </>
+              ) : (
+                <>
+                  <span className="font-medium">{names(m.pairA)}</span>
+                  <span className="text-gray-500 text-xs font-bold mx-1">vs</span>
+                  <span className="font-medium">{names(m.pairB)}</span>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
