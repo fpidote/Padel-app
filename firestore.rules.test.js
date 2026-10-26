@@ -16,6 +16,7 @@ import {
   where,
   orderBy,
   getDocs,
+  addDoc,
   serverTimestamp,
 } from "firebase/firestore";
 import { readFileSync } from "fs";
@@ -225,5 +226,118 @@ describe("delete — borrado de torneo", () => {
     await crearTorneo("DEL3", "owner1");
     const ctx = testEnv.unauthenticatedContext();
     await assertFails(deleteDoc(doc(ctx.firestore(), "torneos", "DEL3")));
+  });
+});
+
+// ─── CAMPOS PERMITIDOS ─────────────────────────────────────────
+
+describe("campos permitidos del documento", () => {
+  test("no se puede crear un torneo con campos extra", async () => {
+    const ctx = testEnv.authenticatedContext("user1");
+    await assertFails(
+      setDoc(doc(ctx.firestore(), "torneos", "EXTRA"), {
+        data: JSON.stringify({ ver: 1 }),
+        ownerUid: "user1",
+        createdAt: serverTimestamp(),
+        basura: "x".repeat(1000),
+      })
+    );
+  });
+
+  test("el dueño no puede añadir campos extra al actualizar", async () => {
+    await crearTorneo("EXTRA2", "owner1");
+    const ctx = testEnv.authenticatedContext("owner1");
+    await assertFails(
+      updateDoc(doc(ctx.firestore(), "torneos", "EXTRA2"), {
+        data: JSON.stringify({ ver: 2 }),
+        basura: "x",
+      })
+    );
+  });
+
+  test("el persist con merge (solo data) sigue funcionando", async () => {
+    await crearTorneo("MERGE1", "owner1");
+    const ctx = testEnv.authenticatedContext("owner1");
+    await assertSucceeds(
+      setDoc(
+        doc(ctx.firestore(), "torneos", "MERGE1"),
+        { data: JSON.stringify({ ver: 3 }) },
+        { merge: true }
+      )
+    );
+  });
+});
+
+// ─── CUENTAS ANÓNIMAS ──────────────────────────────────────────
+
+describe("create — cuentas anónimas", () => {
+  test("una sesión anónima de Firebase no puede crear torneos", async () => {
+    const ctx = testEnv.authenticatedContext("anon1", { firebase: { sign_in_provider: "anonymous" } });
+    await assertFails(
+      setDoc(doc(ctx.firestore(), "torneos", "ANON2"), {
+        data: JSON.stringify({ ver: 1 }),
+        ownerUid: "anon1",
+        createdAt: serverTimestamp(),
+      })
+    );
+  });
+
+  test("una sesión con Google sí puede crear torneos", async () => {
+    const ctx = testEnv.authenticatedContext("g1", { firebase: { sign_in_provider: "google.com" } });
+    await assertSucceeds(
+      setDoc(doc(ctx.firestore(), "torneos", "GOOG"), {
+        data: JSON.stringify({ ver: 1 }),
+        ownerUid: "g1",
+        createdAt: serverTimestamp(),
+      })
+    );
+  });
+});
+
+// ─── REGISTRO DE PARTIDOS (El Pozo) ────────────────────────────
+
+describe("matches — registro de partidos del Pozo", () => {
+  const registro = { roundNum: 1, courtNum: 1, mode: "fixed", result: { scoreA: 6, scoreB: 3, winningSide: "A" } };
+
+  test("el dueño del torneo puede registrar partidos", async () => {
+    await crearTorneo("POZO1", "owner1");
+    const ctx = testEnv.authenticatedContext("owner1");
+    await assertSucceeds(addDoc(collection(ctx.firestore(), "torneos", "POZO1", "matches"), registro));
+  });
+
+  test("un usuario ajeno no puede registrar partidos", async () => {
+    await crearTorneo("POZO2", "owner1");
+    const ctx = testEnv.authenticatedContext("intruso");
+    await assertFails(addDoc(collection(ctx.firestore(), "torneos", "POZO2", "matches"), registro));
+  });
+
+  test("sin login no se pueden registrar partidos", async () => {
+    await crearTorneo("POZO3", "owner1");
+    const ctx = testEnv.unauthenticatedContext();
+    await assertFails(addDoc(collection(ctx.firestore(), "torneos", "POZO3", "matches"), registro));
+  });
+
+  test("el registro no se puede modificar ni borrar", async () => {
+    await crearTorneo("POZO4", "owner1");
+    let ref;
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      ref = await addDoc(collection(ctx.firestore(), "torneos", "POZO4", "matches"), registro);
+    });
+    const ctx = testEnv.authenticatedContext("owner1");
+    const mine = doc(ctx.firestore(), "torneos", "POZO4", "matches", ref.id);
+    await assertFails(updateDoc(mine, { mode: "mixer" }));
+    await assertFails(deleteDoc(mine));
+  });
+
+  test("solo el dueño puede leer el registro", async () => {
+    await crearTorneo("POZO5", "owner1");
+    let ref;
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      ref = await addDoc(collection(ctx.firestore(), "torneos", "POZO5", "matches"), registro);
+    });
+    const owner = testEnv.authenticatedContext("owner1");
+    const other = testEnv.authenticatedContext("intruso");
+    await assertSucceeds(getDoc(doc(owner.firestore(), "torneos", "POZO5", "matches", ref.id)));
+    await assertFails(getDoc(doc(other.firestore(), "torneos", "POZO5", "matches", ref.id)));
   });
 });

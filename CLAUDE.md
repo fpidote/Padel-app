@@ -20,7 +20,8 @@ npm run lint         # ESLint sobre todo el proyecto
 npm run test         # Ejecutar todos los tests con Vitest
 npx vitest run src/logic/americano.test.js   # Ejecutar un archivo de test individual
 npx vitest run --reporter=verbose            # Tests con output detallado
-npm run test:rules   # Tests de Firestore Security Rules (requiere emulador)
+npm run test:rules   # Tests de Firestore Security Rules (levanta el emulador solo)
+npm run test:e2e     # Tests e2e con Playwright contra los emuladores de Firebase (para el servidor de dev antes, si no usa el emulador)
 ```
 
 Los tests usan **Vitest**. Para mockear dependencias no-deterministas (como `shuffle`) usar `vi.mock('./utils.js', ...)`.
@@ -338,7 +339,7 @@ useEffect(() => {
 - **Admin**: verificado siempre via `auth.currentUser.uid === t.ownerUid`
 - **Nunca** usar `localStorage` para determinar permisos de admin
 - **Nunca** confiar en datos del cliente para operaciones sensibles
-- Las Firestore Rules deben validar `ownerUid` en producción (pendiente reforzar antes del deploy)
+- Las Firestore Rules (`firestore.rules`) validan `ownerUid`, los campos permitidos del documento y que quien crea no sea una sesión anónima; el registro de partidos del Pozo (`torneos/{code}/matches`) solo lo escribe y lo lee el dueño. Cualquier cambio en las reglas se cubre en `firestore.rules.test.js` (`npm run test:rules`, usa `vitest.rules.config.js`) y se despliega a mano con `firebase deploy --only firestore:rules`
 
 ---
 
