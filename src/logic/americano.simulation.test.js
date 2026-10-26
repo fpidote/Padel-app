@@ -71,4 +71,42 @@ describe("Simulación — algoritmo de emparejamiento", () => {
     const minRest = Math.min(...counts);
     expect(maxRest - minRest).toBeLessThanOrEqual(1);
   });
+
+  // T-SIM-03: T-SIM-01 es una sola corrida aleatoria, así que un algoritmo que repite
+  // parejas en ~39% de los torneos pasa a veces por suerte. Este test mide la tasa real.
+  test("T-SIM-03: menos del 2% de torneos repiten pareja — 20 jugadores, nivel mixto, 5 rondas", () => {
+    const RUNS = 200;
+    let tournamentsWithRepeats = 0;
+
+    for (let run = 0; run < RUNS; run++) {
+      const players = Array.from({ length: 20 }, (_, i) => ({
+        id: i,
+        name: `J${i}`,
+        level: (i % 3) + 1,
+        pts: 0,
+        gf: 0,
+        gc: 0,
+      }));
+
+      const { rounds } = precomputeAllRounds(players, {
+        courts: 5,
+        mode: "individual",
+        maxRounds: 5,
+      });
+
+      const partnerCounts = {};
+      rounds.forEach((round) => {
+        round.courts.forEach((court) => {
+          const kA = pk(court.pairA[0].id, court.pairA[1].id);
+          const kB = pk(court.pairB[0].id, court.pairB[1].id);
+          partnerCounts[kA] = (partnerCounts[kA] || 0) + 1;
+          partnerCounts[kB] = (partnerCounts[kB] || 0) + 1;
+        });
+      });
+
+      if (Object.values(partnerCounts).some((v) => v > 1)) tournamentsWithRepeats++;
+    }
+
+    expect(tournamentsWithRepeats / RUNS).toBeLessThan(0.02);
+  }, 30000);
 });

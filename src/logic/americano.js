@@ -18,7 +18,15 @@ export const PENALTY = {
 // index 2 = relax partner repeat, attempt 3 uses Infinity (always accept).
 export const RELAX_THRESHOLDS = [2000, 6000, 15000];
 
-const GROUPING_CANDIDATES = 20;
+// Candidatos de agrupamiento por ronda. Con 20 la tasa de torneos con parejas repetidas
+// era ~39% (20 jugadores, nivel mixto, 5 rondas); con 80 y el scoring por mejor split baja a ~0%.
+const GROUPING_CANDIDATES = 80;
+
+// Peso de PARTNER_REPEAT en los intentos estrictos (0 y 1) de precomputeAllRounds.
+// Con el valor base (1000) una repetición costaba menos que la suma de desbalance de nivel,
+// rivales y canchas repetidas, y el algoritmo la elegía teniendo un split limpio disponible.
+// No se toca PENALTY.PARTNER_REPEAT porque bestSplit lo usa como divisor.
+const STRICT_PARTNER_REPEAT = 3000;
 
 // ── scoredSplit ───────────────────────────────────────────────
 // Evaluates the 3 possible pair-splits for a group of 4 players and
@@ -180,7 +188,6 @@ export function precomputeAllRounds(entities, config) {
   const ph = {};            // historial de parejas: { "0_1": 2, ... }
   const oh = {};            // historial de rivales: { "0_1": 3, ... }
   const courtHistory = {};  // historial de canchas: { "3_c0": 1, ... }
-  const gmh = {};           // co-cancha: los 6 pares C(4,2) de cada grupo — { "0_1": 2, ... }
   const soh = {};           // historial de descanso: { 5: 1, ... }
   const streak = {};        // rondas consecutivas jugadas sin descanso: { 5: 3, ... }
 
@@ -192,14 +199,14 @@ export function precomputeAllRounds(entities, config) {
   const RELAX_CONFIGS = [
     {
       weights: advancedPairingAllowed
-        ? { ...PENALTY, ADVANCED_PAIR: 0 }
-        : { ...PENALTY },
+        ? { ...PENALTY, PARTNER_REPEAT: STRICT_PARTNER_REPEAT, ADVANCED_PAIR: 0 }
+        : { ...PENALTY, PARTNER_REPEAT: STRICT_PARTNER_REPEAT },
       threshold: RELAX_THRESHOLDS[0], // 2000 — estricto
     },
     {
       weights: advancedPairingAllowed
-        ? { ...PENALTY, COURT_REPEAT: 0, ADVANCED_PAIR: 0 }
-        : { ...PENALTY, COURT_REPEAT: 0 },
+        ? { ...PENALTY, PARTNER_REPEAT: STRICT_PARTNER_REPEAT, COURT_REPEAT: 0, ADVANCED_PAIR: 0 }
+        : { ...PENALTY, PARTNER_REPEAT: STRICT_PARTNER_REPEAT, COURT_REPEAT: 0 },
       threshold: RELAX_THRESHOLDS[1], // 6000 — relajar repetición de cancha
     },
     {
@@ -222,9 +229,10 @@ export function precomputeAllRounds(entities, config) {
     const constraintsRelaxed = new Set();
     let maxAttemptUsed = 0;
 
-    // Probar GROUPING_CANDIDATES shuffles y elegir el agrupamiento con menor overlap de gmh.
-    // Nota: gmh optimiza quién comparte cancha — scoredSplit optimiza las parejas dentro del grupo.
-    // Son dos pasos independientes; gmh no tiene visión de ph/oh.
+    // Probar GROUPING_CANDIDATES shuffles y elegir el agrupamiento cuyos grupos tengan el mejor
+    // split posible (menor costo de scoredSplit con los pesos estrictos). Evaluar el split real
+    // evita armar grupos donde toda división aceptable repite pareja. El historial de canchas
+    // se omite acá: la cancha física se asigna después en optimalCourtsAssignment.
     let bestGroups = [];
     let bestGroupScore = Infinity;
     for (let attempt = 0; attempt < GROUPING_CANDIDATES; attempt++) {
@@ -237,9 +245,7 @@ export function precomputeAllRounds(entities, config) {
       }
       let score = 0;
       candidate.forEach((group) => {
-        for (let i = 0; i < 4; i++)
-          for (let j = i + 1; j < 4; j++)
-            score += gmh[pk(group[i].id, group[j].id)] || 0;
+        score += scoredSplit(group, 0, { ph, oh, courtHistory: {} }, RELAX_CONFIGS[0].weights).score;
       });
       if (score < bestGroupScore) {
         bestGroupScore = score;
@@ -310,13 +316,6 @@ export function precomputeAllRounds(entities, config) {
         const key = `${p.id}_c${ci}`;
         courtHistory[key] = (courtHistory[key] || 0) + 1;
       });
-
-      const four = [...court.pairA, ...court.pairB];
-      for (let i = 0; i < 4; i++)
-        for (let j = i + 1; j < 4; j++) {
-          const k = pk(four[i].id, four[j].id);
-          gmh[k] = (gmh[k] || 0) + 1;
-        }
     });
 
     sittingOut.forEach((p) => {
