@@ -174,7 +174,7 @@ export default function PlayMundialito({
   const allPairs = groupsWithRounds.flatMap((g) => g.standings);
 
   return (
-    <div style={{ paddingBottom: 80 }}>
+    <div className="pb-[80px]">
       <THeader
         t={t}
         code={code}
@@ -183,7 +183,7 @@ export default function PlayMundialito({
         subtitle="Fase de Grupos y Eliminatoria"
         onEdit={isAdmin ? onEditTournament : undefined}
       />
-      <div style={{ padding: 16 }}>
+      <div className="p-4">
         <Tabs
           tabs={[
             ["groups", "🏁 Grupos"],
@@ -196,78 +196,49 @@ export default function PlayMundialito({
         />
       </div>
 
-      <div
-        style={{
-          padding: "0 16px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 24,
-        }}
-      >
+      <div className="flex flex-col gap-6 px-4">
         {tab === "groups" && (
           <>
             {groupsWithRounds.map((group) => (
               <div
                 key={group.id}
-                style={{ background: "#1e293b", borderRadius: 12, padding: 16 }}
+                className="rounded-xl bg-[#1e293b] p-4"
               >
                 <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: 12,
-                  }}
+                  className="mb-3 flex items-center justify-between"
                 >
                   <div
-                    style={{ fontWeight: 800, fontSize: 16, color: "#f1f5f9" }}
+                    className="text-[16px] font-extrabold text-[#f1f5f9]"
                   >
                     {group.name}
                   </div>
                   <div
-                    style={{
-                      fontSize: 12,
-                      color: "#64748b",
-                      background: "#334155",
-                      padding: "2px 8px",
-                      borderRadius: 99,
-                    }}
+                    className="rounded-[99px] bg-[#334155] px-2 py-[2px] text-[12px] text-[#64748b]"
                   >
                     {group.matches.filter((m) => m.saved).length}/
                     {group.matches.length} partidos
                   </div>
                 </div>
 
-                <div style={{ marginBottom: 16 }}>
+                <div className="mb-4">
                   <div
-                    style={{
-                      display: "flex",
-                      fontSize: 10,
-                      color: "#64748b",
-                      textTransform: "uppercase",
-                      fontWeight: 700,
-                      padding: "4px 8px",
-                    }}
+                    className="flex px-2 py-1 text-[10px] font-bold uppercase text-[#64748b]"
                   >
-                    <div style={{ flex: 1 }}>Pareja</div>
-                    <div style={{ width: 30, textAlign: "center" }}>PJ</div>
-                    <div style={{ width: 30, textAlign: "center" }}>
+                    <div className="flex-1">Pareja</div>
+                    <div className="w-[30px] text-center">PJ</div>
+                    <div className="w-[30px] text-center">
                       {isSetFormat ? "SF" : "JF"}
                     </div>
-                    <div style={{ width: 30, textAlign: "center" }}>
+                    <div className="w-[30px] text-center">
                       {isSetFormat ? "SC" : "JC"}
                     </div>
                     {isSetFormat && (
-                      <div style={{ width: 35, textAlign: "center" }}>
+                      <div className="w-[35px] text-center">
                         DJ
                       </div>
                     )}
                     <div
-                      style={{
-                        width: 30,
-                        textAlign: "center",
-                        fontWeight: 800,
-                      }}
+                      className="w-[30px] text-center font-extrabold"
                     >
                       PG
                     </div>
@@ -276,12 +247,8 @@ export default function PlayMundialito({
                     .map((s, si) => (
                       <div
                         key={s.id}
+                        className="flex items-center rounded-[4px] px-2 py-[6px] text-[13px]"
                         style={{
-                          display: "flex",
-                          alignItems: "center",
-                          fontSize: 13,
-                          padding: "6px 8px",
-                          borderRadius: 4,
                           background:
                             si < (t.config.advancePerGroup || 2)
                               ? "#16a34a22"
@@ -289,46 +256,29 @@ export default function PlayMundialito({
                         }}
                       >
                         <div
-                          style={{ flex: 1, fontWeight: 700, color: "#f1f5f9" }}
+                          className="flex-1 font-bold text-[#f1f5f9]"
                         >
                           {si < (t.config.advancePerGroup || 2) && "⚡ "}
                           {s.p1} / {s.p2}
                         </div>
                         <div
-                          style={{
-                            width: 30,
-                            textAlign: "center",
-                            color: "#94a3b8",
-                          }}
+                          className="w-[30px] text-center text-[#94a3b8]"
                         >
                           {s.played}
                         </div>
                         <div
-                          style={{
-                            width: 30,
-                            textAlign: "center",
-                            color: "#94a3b8",
-                          }}
+                          className="w-[30px] text-center text-[#94a3b8]"
                         >
                           {s.gf}
                         </div>
                         <div
-                          style={{
-                            width: 30,
-                            textAlign: "center",
-                            color: "#94a3b8",
-                          }}
+                          className="w-[30px] text-center text-[#94a3b8]"
                         >
                           {s.gc}
                         </div>
                         {isSetFormat && (
                           <div
-                            style={{
-                              width: 35,
-                              textAlign: "center",
-                              color: "#94a3b8",
-                              fontSize: 11,
-                            }}
+                            className="w-[35px] text-center text-[11px] text-[#94a3b8]"
                           >
                             {(s.gamesFor || 0) - (s.gamesAgainst || 0) > 0
                               ? "+"
@@ -337,12 +287,7 @@ export default function PlayMundialito({
                           </div>
                         )}
                         <div
-                          style={{
-                            width: 30,
-                            textAlign: "center",
-                            fontWeight: 800,
-                            color: "#38bdf8",
-                          }}
+                          className="w-[30px] text-center font-extrabold text-[#38bdf8]"
                         >
                           {s.wins}
                         </div>
@@ -387,12 +332,7 @@ export default function PlayMundialito({
             )}
             {!isAdmin && !allGroupsDone && (
               <div
-                style={{
-                  textAlign: "center",
-                  color: "#64748b",
-                  padding: 20,
-                  fontSize: 14,
-                }}
+                className="p-5 text-center text-[14px] text-[#64748b]"
               >
                 👀 Modo vista · Esperando resultados de la fase de grupos
               </div>
@@ -404,32 +344,21 @@ export default function PlayMundialito({
           <>
             {t.phase === "groups" && (
               <div
-                style={{ background: "#1e293b", padding: 20, borderRadius: 12 }}
+                className="rounded-xl bg-[#1e293b] p-5"
               >
                 <h3
-                  style={{
-                    textAlign: "center",
-                    color: "#38bdf8",
-                    fontWeight: 900,
-                    fontSize: 18,
-                    marginBottom: 8,
-                  }}
+                  className="mb-2 text-center text-[18px] font-black text-[#38bdf8]"
                 >
                   🔮 Proyección de Cruces
                 </h3>
                 <p
-                  style={{
-                    fontSize: 13,
-                    color: "#94a3b8",
-                    marginBottom: 20,
-                    textAlign: "center",
-                  }}
+                  className="mb-5 text-center text-[13px] text-[#94a3b8]"
                 >
                   Al terminar los grupos, los cruces se armarán enfrentando a
                   los líderes contra los peores clasificados.
                 </p>
                 <div
-                  style={{ display: "flex", flexDirection: "column", gap: 12 }}
+                  className="flex flex-col gap-3"
                 >
                   {Array.from({
                     length:
@@ -443,44 +372,22 @@ export default function PlayMundialito({
                     return (
                       <div
                         key={i}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          background: "#0f172a",
-                          padding: "12px 16px",
-                          borderRadius: 8,
-                          alignItems: "center",
-                          border: "1px solid #334155",
-                        }}
+                        className="flex items-center justify-between rounded-lg border border-[#334155] bg-[#0f172a] px-4 py-3"
                       >
                         <span
-                          style={{
-                            fontWeight: 800,
-                            color: "#f1f5f9",
-                            flex: 1,
-                            textAlign: "right",
-                          }}
+                          className="flex-1 text-right font-extrabold text-[#f1f5f9]"
                         >
                           1º{" "}
                           {groupsWithRounds[groupA]?.name ||
                             `Grupo ${groupA + 1}`}
                         </span>
                         <span
-                          style={{
-                            color: "#38bdf8",
-                            fontWeight: 900,
-                            margin: "0 16px",
-                          }}
+                          className="mx-4 font-black text-[#38bdf8]"
                         >
                           VS
                         </span>
                         <span
-                          style={{
-                            fontWeight: 800,
-                            color: "#94a3b8",
-                            flex: 1,
-                            textAlign: "left",
-                          }}
+                          className="flex-1 text-left font-extrabold text-[#94a3b8]"
                         >
                           {worstRank}º{" "}
                           {groupsWithRounds[groupB]?.name ||
@@ -497,32 +404,16 @@ export default function PlayMundialito({
               <>
                 {champion && (
                   <div
-                    style={{
-                      background: "#1e293b",
-                      padding: 16,
-                      borderRadius: 12,
-                      textAlign: "center",
-                      border: "2px solid #f59e0b",
-                    }}
+                    className="rounded-xl border-2 border-[#f59e0b] bg-[#1e293b] p-4 text-center"
                   >
-                    <div style={{ fontSize: 24 }}>🏆</div>
+                    <div className="text-[24px]">🏆</div>
                     <div
-                      style={{
-                        color: "#f59e0b",
-                        fontWeight: 700,
-                        textTransform: "uppercase",
-                        fontSize: 12,
-                        marginBottom: 4,
-                      }}
+                      className="mb-1 text-[12px] font-bold uppercase text-[#f59e0b]"
                     >
                       Campeón del Mundialito
                     </div>
                     <div
-                      style={{
-                        color: "#f1f5f9",
-                        fontWeight: 800,
-                        fontSize: 18,
-                      }}
+                      className="text-[18px] font-extrabold text-[#f1f5f9]"
                     >
                       {champion.p1} / {champion.p2}
                     </div>
@@ -531,13 +422,7 @@ export default function PlayMundialito({
                 {koRounds.map((round) => (
                   <div key={round}>
                     <div
-                      style={{
-                        color: "#94a3b8",
-                        fontWeight: 700,
-                        marginBottom: 8,
-                        textTransform: "uppercase",
-                        fontSize: 13,
-                      }}
+                      className="mb-2 text-[13px] font-bold uppercase text-[#94a3b8]"
                     >
                       {round === Math.max(...koRounds)
                         ? "Final"
@@ -571,7 +456,7 @@ export default function PlayMundialito({
             title="Clasificación General"
             scoringFormat={t.config?.scoringFormat}
             extra={
-              <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 12 }}>
+              <div className="mb-3 text-[12px] text-[#94a3b8]">
                 Clasifica quien tenga más partidos ganados (PG). Desempate: diferencia de sets y luego de juegos.
               </div>
             }
@@ -579,28 +464,15 @@ export default function PlayMundialito({
         )}
 
         {tab === "rules" && (
-          <div style={{ background: "#1e293b", padding: 20, borderRadius: 12 }}>
-            <h3
-              style={{
-                fontSize: 18,
-                fontWeight: 800,
-                color: "#38bdf8",
-                marginBottom: 16,
-              }}
-            >
+          <div className="rounded-xl bg-[#1e293b] p-5">
+            <h3 className="mb-4 text-[18px] font-extrabold text-[#38bdf8]">
               Reglas del Mundialito
             </h3>
             <ul
-              style={{
-                color: "#cbd5e1",
-                fontSize: 14,
-                lineHeight: "1.6",
-                paddingLeft: 20,
-                listStyleType: "disc",
-              }}
+              className="list-disc pl-5 text-[14px] leading-[1.6] text-[#cbd5e1]"
             >
               {generateRules(t.type, t.config).map((rule, i) => (
-                <li key={i} style={{ marginBottom: 10 }}>
+                <li key={i} className="mb-[10px]">
                   {rule}
                 </li>
               ))}
@@ -628,41 +500,22 @@ function RoundAccordion({
   const [isOpen, setIsOpen] = useState(hasUnsaved || roundNum === 1);
 
   return (
-    <div
-      style={{
-        marginBottom: 16,
-        background: "#0f172a",
-        borderRadius: 8,
-        overflow: "hidden",
-        border: "1px solid #334155",
-      }}
-    >
+    <div className="mb-4 overflow-hidden rounded-lg border border-[#334155] bg-[#0f172a]">
       <div
         onClick={() => setIsOpen(!isOpen)}
-        style={{
-          padding: "12px 16px",
-          background: "#1e293b",
-          cursor: "pointer",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          fontWeight: 800,
-          color: hasUnsaved ? "#38bdf8" : "#4ade80",
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-          fontSize: 13,
-        }}
+        className="flex cursor-pointer items-center justify-between bg-[#1e293b] px-4 py-3 text-[13px] font-extrabold uppercase tracking-[0.05em]"
+        style={{ color: hasUnsaved ? "#38bdf8" : "#4ade80" }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="flex items-center gap-2">
           <span>Ronda {roundNum}</span>
-          {!hasUnsaved && <span style={{ fontSize: 16 }}>✓</span>}
+          {!hasUnsaved && <span className="text-[16px]">✓</span>}
         </div>
-        <span style={{ color: "#64748b", fontSize: 12 }}>
+        <span className="text-[12px] text-[#64748b]">
           {isOpen ? "▲ OCULTAR" : "▼ VER PARTIDOS"}
         </span>
       </div>
       {isOpen && (
-        <div style={{ padding: 16 }}>
+        <div className="p-4">
           {matches.map((match) => (
             <MatchCard
               key={match.id}
