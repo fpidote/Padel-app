@@ -220,3 +220,53 @@ test("Relámpago por sets: guarda sets, actualiza posiciones y revierte al edita
   expect(w2.gamesFor).toBe(0);
   expect(w2.played).toBe(0);
 });
+
+test("Mundialito por sets: rechaza sets inválidos con mensaje y deja guardar al corregir", async ({ page }) => {
+  await seedTournament(CODE, setupTournament("mundialito", "sets3", 4, { groupCount: 1, advancePerGroup: 2 }));
+  await startTournament(page);
+  await expect(page.getByText("MEJOR DE 3").first()).toBeVisible({ timeout: 8000 });
+
+  const inputs = page.locator('input[type="number"]');
+  const save = page.getByRole("button", { name: "Guardar resultado" }).first();
+
+  await inputs.nth(0).fill("6");
+  await inputs.nth(1).fill("6");
+  await expect(page.getByText(/no puede terminar empatado/i)).toBeVisible();
+  await expect(save).toBeDisabled();
+
+  await inputs.nth(1).fill("9");
+  await expect(page.getByText(/Set inválido/i)).toBeVisible();
+
+  await inputs.nth(0).fill("6");
+  await inputs.nth(1).fill("4");
+  await expect(page.getByText(/Set inválido|empatado/i)).toHaveCount(0);
+  await inputs.nth(2).fill("6");
+  await inputs.nth(3).fill("3");
+  await expect(save).toBeEnabled();
+});
+
+test("Relámpago por sets: rechaza 5-3, acepta 7-6 y guarda", async ({ page }) => {
+  await seedTournament(CODE, setupTournament("relampago", "sets3", 4));
+  await startTournament(page);
+
+  const data = await getTournamentData(CODE);
+  const first = data.bracket.find((m) => m.bracket === "winners" && m.round === 1 && m.pairA && m.pairB && m.pairA.id !== "bye" && m.pairB.id !== "bye");
+
+  await page.getByText(`${first.pairA.p1} / ${first.pairA.p2}`).first().click();
+  const inputs = page.locator('input[type="number"]');
+  await inputs.nth(0).fill("5");
+  await inputs.nth(1).fill("3");
+  await expect(page.getByText(/Set inválido/i)).toBeVisible();
+  await expect(page.getByRole("button", { name: /Guardar/ })).toHaveCount(0);
+
+  await inputs.nth(0).fill("7");
+  await inputs.nth(1).fill("6");
+  await expect(page.getByText(/Set inválido/i)).toHaveCount(0);
+  await inputs.nth(2).fill("6");
+  await inputs.nth(3).fill("2");
+  await page.getByRole("button", { name: /Guardar/ }).click();
+
+  await expect.poll(async () => (await getTournamentData(CODE)).bracket.find((m) => m.id === first.id).saved).toBe(true);
+  const saved = (await getTournamentData(CODE)).bracket.find((m) => m.id === first.id);
+  expect(saved.sets).toEqual([{ a: 7, b: 6 }, { a: 6, b: 2 }]);
+});
