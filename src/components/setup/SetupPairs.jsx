@@ -437,8 +437,33 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
               )}
             </div>
 
-            {/* ── Puntuación (no aplica a Pozo) ── */}
-            {t.type !== "pozo" && (
+            {(t.type === "mundialito" || t.type === "relampago") && (
+              <>
+                <SectionHeader>🎾 Formato de partido</SectionHeader>
+                <div className="flex gap-2">
+                  {[
+                    { id: "games", label: "Por games" },
+                    { id: "sets3", label: "Mejor de 3 sets" },
+                    { id: "sets5", label: "Mejor de 5 sets" },
+                  ].map(opt => (
+                    <button key={opt.id}
+                      onClick={() => persist({ ...t, config: { ...t.config, scoringFormat: opt.id } })}
+                      className="flex-1 py-2.5 rounded-xl font-bold text-xs transition-colors cursor-pointer"
+                      style={{
+                        background: (t.config.scoringFormat || "games") === opt.id ? color : "#1f2937",
+                        color:      (t.config.scoringFormat || "games") === opt.id ? "#fff" : "#94a3b8",
+                      }}
+                    >{opt.label}</button>
+                  ))}
+                </div>
+                {(t.config.scoringFormat || "games") !== "games" && (
+                  <p className="text-xs text-gray-500 mt-2">Se carga el resultado set por set (ej. 6-2, 6-4).</p>
+                )}
+              </>
+            )}
+
+            {/* ── Puntuación (no aplica a Pozo ni a formatos por sets) ── */}
+            {t.type !== "pozo" && (t.config.scoringFormat || "games") === "games" && (
               <>
                 <SectionHeader>🎯 Puntuación</SectionHeader>
                 <div className="flex flex-col gap-2">

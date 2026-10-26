@@ -57,6 +57,8 @@ export const TOURNAMENT_TYPES = [
 
 export function generateRules(type, config, context = {}) {
   function scoringDesc() {
+    if (config.scoringFormat === "sets3") return "Partidos al mejor de 3 sets. Se carga el resultado set por set.";
+    if (config.scoringFormat === "sets5") return "Partidos al mejor de 5 sets. Se carga el resultado set por set.";
     const s = config.scoringSystem || "timed";
     if (s === "rally") return `Partidos en rally scoring a ${config.rallyPoints ?? 24} puntos.`;
     if (s === "games") return `Partidos al primero en llegar a ${config.targetGames ?? 6} juegos.`;
@@ -114,8 +116,8 @@ export function generateRules(type, config, context = {}) {
     case "mundialito":
       return [
         `${config.groupCount ?? 2} ${(config.groupCount ?? 2) === 1 ? "grupo" : "grupos"} en fase inicial. Los ${config.advancePerGroup ?? 2} mejores de cada grupo avanzan a eliminatorias.`,
-        "Victoria = 3 puntos · Empate = 1 punto · Derrota = 0 puntos.",
-        "El desempate en tabla se define por diferencia de juegos (GF − GC).",
+        "Clasifica quien gane más partidos. No hay empates.",
+        "Desempate: 1º diferencia de sets, 2º diferencia de juegos.",
         scoringDesc(),
         goldenPointDesc(),
       ];

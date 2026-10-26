@@ -3,6 +3,7 @@ import { useState } from "react";
 import { generateRules } from "../../logic/constants";
 import { advanceBracket } from "../../logic/relampago";
 import { buildKnockoutFromGroups } from "../../logic/mundialito";
+import { computeStandings, sortStandings } from "../../logic/standings";
 import { THeader, Tabs } from "../shared/Components";
 import MatchCard from "../shared/MatchCard";
 import PairStandings from "../shared/PairStandings";
@@ -78,52 +79,7 @@ export default function PlayMundialito({
             } // 👈 SE GUARDA EL ARRAY DE SETS
           : m,
       );
-      const standings = g.pairs.map((p) => ({
-        ...p,
-        pts: 0,
-        gf: 0,
-        gc: 0,
-        gamesFor: 0,
-        gamesAgainst: 0,
-        played: 0,
-        wins: 0,
-      }));
-      updatedMatches
-        .filter((m) => m.saved)
-        .forEach((m) => {
-          const sa = parseInt(m.scoreA),
-            sb = parseInt(m.scoreB);
-
-          let ga = 0,
-            gb = 0;
-          if (m.sets) {
-            m.sets.forEach((set) => {
-              ga += parseInt(set.a || 0);
-              gb += parseInt(set.b || 0);
-            });
-          }
-
-          const idxA = standings.findIndex((s) => s.id === m.pairA.id);
-          const idxB = standings.findIndex((s) => s.id === m.pairB.id);
-          if (idxA >= 0) {
-            standings[idxA].played++;
-            standings[idxA].gf += sa;
-            standings[idxA].gc += sb;
-            standings[idxA].gamesFor += ga;
-            standings[idxA].gamesAgainst += gb;
-            standings[idxA].pts += sa > sb ? 3 : sb > sa ? 0 : 1;
-            if (sa > sb) standings[idxA].wins++;
-          }
-          if (idxB >= 0) {
-            standings[idxB].played++;
-            standings[idxB].gf += sb;
-            standings[idxB].gc += sa;
-            standings[idxB].gamesFor += gb;
-            standings[idxB].gamesAgainst += ga;
-            standings[idxB].pts += sb > sa ? 3 : sa > sb ? 0 : 1;
-            if (sb > sa) standings[idxB].wins++;
-          }
-        });
+      const standings = computeStandings(g.pairs, updatedMatches);
       return { ...g, matches: updatedMatches, standings };
     });
 
@@ -142,52 +98,7 @@ export default function PlayMundialito({
       const updatedMatches = g.matches.map((m) =>
         m.id === matchId ? { ...m, saved: false } : m,
       );
-      const standings = g.pairs.map((p) => ({
-        ...p,
-        pts: 0,
-        gf: 0,
-        gc: 0,
-        gamesFor: 0,
-        gamesAgainst: 0,
-        played: 0,
-        wins: 0,
-      }));
-      updatedMatches
-        .filter((m) => m.saved)
-        .forEach((m) => {
-          const sa = parseInt(m.scoreA),
-            sb = parseInt(m.scoreB);
-
-          let ga = 0,
-            gb = 0;
-          if (m.sets) {
-            m.sets.forEach((set) => {
-              ga += parseInt(set.a || 0);
-              gb += parseInt(set.b || 0);
-            });
-          }
-
-          const idxA = standings.findIndex((s) => s.id === m.pairA.id);
-          const idxB = standings.findIndex((s) => s.id === m.pairB.id);
-          if (idxA >= 0) {
-            standings[idxA].played++;
-            standings[idxA].gf += sa;
-            standings[idxA].gc += sb;
-            standings[idxA].gamesFor += ga;
-            standings[idxA].gamesAgainst += gb;
-            standings[idxA].pts += sa > sb ? 3 : sb > sa ? 0 : 1;
-            if (sa > sb) standings[idxA].wins++;
-          }
-          if (idxB >= 0) {
-            standings[idxB].played++;
-            standings[idxB].gf += sb;
-            standings[idxB].gc += sa;
-            standings[idxB].gamesFor += gb;
-            standings[idxB].gamesAgainst += ga;
-            standings[idxB].pts += sb > sa ? 3 : sa > sb ? 0 : 1;
-            if (sb > sa) standings[idxB].wins++;
-          }
-        });
+      const standings = computeStandings(g.pairs, updatedMatches);
       return { ...g, matches: updatedMatches, standings };
     });
     await persist({ ...t, groups: updatedGroups });
@@ -199,16 +110,21 @@ export default function PlayMundialito({
 
   async function onStartKnockout() {
     if (!allGroupsDone) return;
-    const bracket = buildKnockoutFromGroups(
-      groupsWithRounds,
-      t.config.advancePerGroup || 2,
-    );
-    await persist({
-      ...t,
-      groups: groupsWithRounds,
-      knockoutBracket: bracket,
-      phase: "knockout",
-    });
+    try {
+      const bracket = buildKnockoutFromGroups(
+        groupsWithRounds,
+        t.config.advancePerGroup || 2,
+      );
+      await persist({
+        ...t,
+        groups: groupsWithRounds,
+        knockoutBracket: bracket,
+        phase: "knockout",
+      });
+    } catch (err) {
+      console.error("Error al iniciar la fase eliminatoria:", err);
+      alert("No se pudo iniciar la fase eliminatoria. Intenta de nuevo.");
+    }
   }
 
   // 👇 AHORA RECIBE EL PARÁMETRO 'sets'
@@ -336,14 +252,14 @@ export default function PlayMundialito({
                     <div style={{ flex: 1 }}>Pareja</div>
                     <div style={{ width: 30, textAlign: "center" }}>PJ</div>
                     <div style={{ width: 30, textAlign: "center" }}>
-                      {isSetFormat ? "SF" : "GF"}
+                      {isSetFormat ? "SF" : "JF"}
                     </div>
                     <div style={{ width: 30, textAlign: "center" }}>
-                      {isSetFormat ? "SC" : "GC"}
+                      {isSetFormat ? "SC" : "JC"}
                     </div>
                     {isSetFormat && (
                       <div style={{ width: 35, textAlign: "center" }}>
-                        DIF.G
+                        DJ
                       </div>
                     )}
                     <div
@@ -353,20 +269,10 @@ export default function PlayMundialito({
                         fontWeight: 800,
                       }}
                     >
-                      Pts
+                      PG
                     </div>
                   </div>
-                  {[...group.standings]
-                    .sort((a, b) => {
-                      if (b.pts !== a.pts) return b.pts - a.pts;
-                      if (b.gf - b.gc !== a.gf - a.gc)
-                        return b.gf - b.gc - (a.gf - a.gc);
-                      return (
-                        (b.gamesFor || 0) -
-                        (b.gamesAgainst || 0) -
-                        ((a.gamesFor || 0) - (a.gamesAgainst || 0))
-                      );
-                    })
+                  {sortStandings(group.standings)
                     .map((s, si) => (
                       <div
                         key={s.id}
@@ -438,7 +344,7 @@ export default function PlayMundialito({
                             color: "#38bdf8",
                           }}
                         >
-                          {s.pts}
+                          {s.wins}
                         </div>
                       </div>
                     ))}
@@ -666,7 +572,7 @@ export default function PlayMundialito({
             scoringFormat={t.config?.scoringFormat}
             extra={
               <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 12 }}>
-                Puntos fase de grupos: Victoria=3, Empate=1, Derrota=0
+                Clasifica quien tenga más partidos ganados (PG). Desempate: diferencia de sets y luego de juegos.
               </div>
             }
           />

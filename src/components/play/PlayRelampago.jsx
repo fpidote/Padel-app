@@ -7,8 +7,33 @@ import PairStandings from "../shared/PairStandings";
 
 const SLOT_HEIGHT = 110;
 
-function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentColor }) {
-  const [expanded, setExpanded] = useState(false);
+function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentColor, scoringFormat = "games", onToggle }) {
+  const [expanded, setExpandedState] = useState(false);
+  function setExpanded(next) {
+    setExpandedState(next);
+    onToggle?.(next);
+  }
+
+  const isSetFormat = scoringFormat === "sets3" || scoringFormat === "sets5";
+  const maxSets = scoringFormat === "sets5" ? 5 : 3;
+  const setsNeeded = maxSets === 5 ? 3 : 2;
+
+  // Sets cargados hasta ahora (se corta en el primer set incompleto o cuando alguien ya ganó)
+  const liveSets = [];
+  let liveA = 0;
+  let liveB = 0;
+  if (isSetFormat) {
+    for (let i = 0; i < maxSets && liveA < setsNeeded && liveB < setsNeeded; i++) {
+      const a = parseInt(ls[`${match.id}_set${i}_A`]);
+      const b = parseInt(ls[`${match.id}_set${i}_B`]);
+      if (isNaN(a) || isNaN(b) || a < 0 || b < 0 || a === b) break;
+      liveSets.push({ a, b });
+      if (a > b) liveA++;
+      else liveB++;
+    }
+  }
+  const setsDone = liveA === setsNeeded || liveB === setsNeeded;
+  const visibleSetRows = setsDone ? liveSets.length : Math.min(liveSets.length + 1, maxSets);
 
   const isByeA = match.pairA?.id === "bye";
   const isByeB = match.pairB?.id === "bye";
@@ -19,10 +44,11 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
 
   const aVal = ls[`${match.id}_A`] ?? "";
   const bVal = ls[`${match.id}_B`] ?? "";
-  const canSave =
-    aVal !== "" && bVal !== "" &&
-    Number(aVal) >= 0 && Number(bVal) >= 0 &&
-    Number(aVal) !== Number(bVal);
+  const canSave = isSetFormat
+    ? setsDone
+    : aVal !== "" && bVal !== "" &&
+      Number(aVal) >= 0 && Number(bVal) >= 0 &&
+      Number(aVal) !== Number(bVal);
 
   const wonA = match.saved && match.winner?.id === match.pairA?.id;
   const wonB = match.saved && match.winner?.id === match.pairB?.id;
@@ -53,7 +79,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
 
   function handleCardClick() {
     if (!isAdmin || isTBD || isBye || match.saved) return;
-    setExpanded((e) => !e);
+    setExpanded(!expanded);
   }
 
   function nameColor(isByePair, wonPair, hasPair) {
@@ -93,7 +119,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
         }}>
           {nameA}
         </span>
-        {expanded ? (
+        {expanded && !isSetFormat ? (
           <input
             type="number" min="0"
             value={aVal}
@@ -104,7 +130,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
           />
         ) : (
           <span style={{ fontSize: 16, fontWeight: 800, color: match.saved ? (wonA ? "#4ade80" : "#475569") : "#334155", minWidth: 28, textAlign: "right" }}>
-            {match.saved ? match.scoreA : "–"}
+            {expanded && isSetFormat ? liveA : match.saved ? match.scoreA : "–"}
           </span>
         )}
       </div>
@@ -121,7 +147,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
         }}>
           {nameB}
         </span>
-        {expanded ? (
+        {expanded && !isSetFormat ? (
           <input
             type="number" min="0"
             value={bVal}
@@ -132,16 +158,50 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
           />
         ) : (
           <span style={{ fontSize: 16, fontWeight: 800, color: match.saved ? (wonB ? "#4ade80" : "#475569") : "#334155", minWidth: 28, textAlign: "right" }}>
-            {match.saved ? match.scoreB : "–"}
+            {expanded && isSetFormat ? liveB : match.saved ? match.scoreB : "–"}
           </span>
         )}
       </div>
+
+      {match.saved && isSetFormat && match.sets?.length > 0 && (
+        <div style={{ marginTop: 6, display: "flex", gap: 6, flexWrap: "wrap", fontSize: 11, color: "#94a3b8", fontWeight: 700 }}>
+          {match.sets.map((set, i) => (
+            <span key={i} style={{ background: "#0f172a", padding: "1px 6px", borderRadius: 4 }}>
+              {set.a}-{set.b}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {expanded && isSetFormat && (
+        <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+          {Array.from({ length: visibleSetRows }).map((_, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: "#64748b", width: 36 }}>SET {i + 1}</span>
+              {["A", "B"].map((side, si) => (
+                <Fragment key={side}>
+                  {si === 1 && <span style={{ color: "#64748b", fontWeight: 700 }}>-</span>}
+                  <input
+                    type="number" min="0"
+                    value={ls[`${match.id}_set${i}_${side}`] ?? ""}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => setLs((prev) => ({ ...prev, [`${match.id}_set${i}_${side}`]: e.target.value }))}
+                    onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
+                    style={{ width: 36, height: 28, borderRadius: 6, background: "#0f172a", border: "1px solid #334155", textAlign: "center", color: "#38bdf8", fontWeight: 700, fontSize: 14, outline: "none" }}
+                  />
+                </Fragment>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
 
       {expanded && canSave && (
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onSave(match.id, parseInt(aVal), parseInt(bVal));
+            if (isSetFormat) onSave(match.id, liveA, liveB, liveSets);
+            else onSave(match.id, parseInt(aVal), parseInt(bVal));
             setExpanded(false);
           }}
           style={{ marginTop: 8, width: "100%", padding: "5px 0", borderRadius: 6, background: accentColor, color: "#fff", fontWeight: 700, fontSize: 12, border: "none", cursor: "pointer" }}
@@ -162,7 +222,9 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
   );
 }
 
-function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, accentColor }) {
+function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, accentColor, scoringFormat }) {
+  // La tarjeta abierta se eleva: con sets es más alta que su slot y se solaparía con la siguiente
+  const [openId, setOpenId] = useState(null);
   const rounds = [...new Set(matches.map((m) => m.round))].sort((a, b) => a - b);
   if (rounds.length === 0) return null;
 
@@ -243,7 +305,7 @@ function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, accentColor 
                   return (
                     <div
                       key={match.id}
-                      style={{ position: "absolute", top: centerY, left: 0, right: 0, transform: "translateY(-50%)" }}
+                      style={{ position: "absolute", top: centerY, left: 0, right: 0, transform: "translateY(-50%)", zIndex: openId === match.id ? 20 : 1 }}
                     >
                       <BracketMatchCard
                         match={match}
@@ -253,6 +315,8 @@ function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, accentColor 
                         onSave={onSave}
                         onEdit={onEdit}
                         accentColor={accentColor}
+                        scoringFormat={scoringFormat}
+                        onToggle={(open) => setOpenId(open ? match.id : null)}
                       />
                     </div>
                   );
@@ -265,6 +329,36 @@ function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, accentColor 
       })}
     </div>
   );
+}
+
+// Suma (sign=1) o resta (sign=-1) el resultado de un partido a los acumulados de las parejas
+function applyMatchToPairs(pairs, match, a, b, sets, sign) {
+  let ga = 0;
+  let gb = 0;
+  (sets || []).forEach((set) => {
+    ga += parseInt(set.a || 0);
+    gb += parseInt(set.b || 0);
+  });
+  const next = [...pairs];
+  [
+    [match.pairA, a, b, ga, gb],
+    [match.pairB, b, a, gb, ga],
+  ].forEach(([pair, sf, sc, jf, jc]) => {
+    if (!pair) return;
+    const idx = next.findIndex((p) => p.id === pair.id);
+    if (idx < 0) return;
+    const won = sf > sc ? 1 : 0;
+    next[idx] = {
+      ...next[idx],
+      pts: next[idx].pts + sign * won,
+      played: Math.max(0, (next[idx].played || 0) + sign),
+      gf: next[idx].gf + sign * sf,
+      gc: next[idx].gc + sign * sc,
+      gamesFor: (next[idx].gamesFor || 0) + sign * jf,
+      gamesAgainst: (next[idx].gamesAgainst || 0) + sign * jc,
+    };
+  });
+  return next;
 }
 
 export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onEditTournament }) {
@@ -282,24 +376,12 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
 
     setLs((prev) => {
       const n = { ...prev };
-      delete n[`${matchId}_A`];
-      delete n[`${matchId}_B`];
+      Object.keys(n).forEach((k) => {
+        if (k.startsWith(`${matchId}_`)) delete n[k];
+      });
       return n;
     });
-    const pairs = [...t.pairs];
-    const wPair = a > b ? match.pairA : match.pairB;
-    const lPair = a > b ? match.pairB : match.pairA;
-    [wPair, lPair].forEach((pair, pi) => {
-      if (!pair) return;
-      const idx = pairs.findIndex((p) => p.id === pair.id);
-      if (idx < 0) return;
-      pairs[idx] = {
-        ...pairs[idx],
-        pts: pairs[idx].pts + (pi === 0 ? 1 : 0),
-        gf: pairs[idx].gf + (pi === 0 ? a : b),
-        gc: pairs[idx].gc + (pi === 0 ? b : a),
-      };
-    });
+    const pairs = applyMatchToPairs(t.pairs, match, a, b, sets, 1);
     await persist({ ...t, bracket: updated, pairs, scoringStarted: true });
   }
 
@@ -311,21 +393,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
 
     const a = parseInt(match.scoreA);
     const b = parseInt(match.scoreB);
-    const pairs = [...t.pairs];
-    const wPair = a > b ? match.pairA : match.pairB;
-    const lPair = a > b ? match.pairB : match.pairA;
-    [wPair, lPair].forEach((pair, pi) => {
-      if (!pair) return;
-      const idx = pairs.findIndex((p) => p.id === pair.id);
-      if (idx >= 0) {
-        pairs[idx] = {
-          ...pairs[idx],
-          pts: pairs[idx].pts - (pi === 0 ? 1 : 0),
-          gf: pairs[idx].gf - (pi === 0 ? a : b),
-          gc: pairs[idx].gc - (pi === 0 ? b : a),
-        };
-      }
-    });
+    const pairs = applyMatchToPairs(t.pairs, match, a, b, match.sets, -1);
 
     if (match.nextMatchId && match.winner) {
       const nextM = updatedBracket.find((m) => m.id === match.nextMatchId);
@@ -404,6 +472,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
               onSave={onSaveMatch}
               onEdit={onEditMatch}
               accentColor="#7c3aed"
+              scoringFormat={t.config?.scoringFormat || "games"}
             />
           </div>
         )}
@@ -434,12 +503,13 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
               onSave={onSaveMatch}
               onEdit={onEditMatch}
               accentColor="#0284c7"
+              scoringFormat={t.config?.scoringFormat || "games"}
             />
           </div>
         )}
 
         {tab === "standings" && (
-          <PairStandings pairs={t.pairs} title="Posiciones" />
+          <PairStandings pairs={t.pairs} title="Posiciones" scoringFormat={t.config?.scoringFormat} />
         )}
 
         {tab === "rules" && (
