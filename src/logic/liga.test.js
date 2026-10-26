@@ -379,3 +379,24 @@ describe("reglas de la Liga según el formato de partido", () => {
     expect(r).toContain("los 4 mejores");
   });
 });
+
+describe("buildLigaKnockout — enfrentamiento directo", () => {
+  const pair = (id, pts, gf, gc) => ({ id, p1: `A${id}`, p2: `B${id}`, pts, wins: pts, gf, gc, gamesFor: 0, gamesAgainst: 0 });
+  test("entre parejas igualadas en victorias clasifica quien ganó el partido entre ellas", () => {
+    // 1 y 2 igualan en victorias; 2 tiene mejor diferencia pero 1 le ganó directo
+    const pairs = [pair(1, 2, 4, 4), pair(2, 2, 6, 2), pair(3, 0, 0, 6)];
+    const matches = [{ saved: true, pairA: { id: 1 }, pairB: { id: 2 }, scoreA: "2", scoreB: "0" }];
+    const ids = (b) => b.filter((m) => m.round === 1).flatMap((m) => [m.pairA, m.pairB]).map((p) => p?.id);
+    const withDirect = buildLigaKnockout(pairs, 2, matches);
+    const without = buildLigaKnockout(pairs, 2);
+    expect(withDirect.find((m) => m.round === 1).pairA.id).toBe(1);
+    expect(without.find((m) => m.round === 1).pairA.id).toBe(2);
+    expect(ids(withDirect)).toContain(1);
+  });
+});
+
+describe("reglas de la Liga — desempate", () => {
+  test("menciona el enfrentamiento directo", () => {
+    expect(generateRules("liga", { scoringFormat: "sets3" }).join(" ")).toContain("partido entre las parejas igualadas");
+  });
+});

@@ -6,18 +6,7 @@ import { recomputeLigaStandings, buildLigaKnockout, ligaQualifiers } from "../..
 import { THeader, Tabs } from "../shared/Components";
 import MatchCard from "../shared/MatchCard";
 import PairStandings from "../shared/PairStandings";
-import { standingsLabels } from "../../logic/standings";
-
-function sortStandings(pairs) {
-  return [...(pairs || [])].sort((a, b) => {
-    if (b.pts !== a.pts) return b.pts - a.pts;
-    if (b.gf - b.gc !== a.gf - a.gc) return b.gf - b.gc - (a.gf - a.gc);
-    return (
-      (b.gamesFor || 0) - (b.gamesAgainst || 0) -
-      ((a.gamesFor || 0) - (a.gamesAgainst || 0))
-    );
-  });
-}
+import { sortStandings, standingsLabels } from "../../logic/standings";
 
 export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTournament }) {
   const [tab, setTab] = useState("fixture");
@@ -67,7 +56,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
 
   async function onStartKnockout() {
     if (!allMatchesDone) return;
-    const bracket = buildLigaKnockout(t.pairs, ligaQualifiers(t.config, t.pairs.length));
+    const bracket = buildLigaKnockout(t.pairs, ligaQualifiers(t.config, t.pairs.length), matches);
     await persist({ ...t, knockoutBracket: bracket, phase: "playoff" });
   }
 
@@ -109,7 +98,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
   const champion = playoffEnabled
     ? t.knockoutBracket?.find((m) => !m.nextMatchId && m.saved)?.winner
     : allMatchesDone
-      ? sortStandings(t.pairs)[0]
+      ? sortStandings(t.pairs, matches)[0]
       : null;
 
   const tabs = [
@@ -184,9 +173,10 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
               title="Tabla de posiciones"
               scoringFormat={t.config?.scoringFormat || "sets3"}
               config={t.config}
+              matches={matches}
               extra={
                 <p className="text-xs text-gray-500 mb-3">
-                  Victoria = 1 punto · Derrota = 0 puntos · Desempate por diferencia de{" "}
+                  Victoria = 1 punto · Derrota = 0 puntos · Desempate: partido entre las igualadas y luego diferencia de{" "}
                   {bySets ? "sets y luego de games" : standingsLabels(t.config).unit === "points" ? "puntos" : "games"}
                 </p>
               }

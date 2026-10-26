@@ -5,10 +5,10 @@ const TH = "px-2.5 py-2 text-[11px] font-bold text-[#475569] uppercase tracking-
 const diffColor = (d) => (d > 0 ? "#4ade80" : d < 0 ? "#f87171" : "#64748b");
 const fmtDiff = (d) => (d > 0 ? `+${d}` : d);
 
-export default function PairStandings({ pairs, title, extra, scoringFormat = "games", config }) {
+export default function PairStandings({ pairs, title, extra, scoringFormat = "games", config, matches = [] }) {
   const isSetFormat = scoringFormat === "sets3" || scoringFormat === "sets5";
   const labels = standingsLabels({ ...(config || {}), scoringFormat });
-  const sorted = sortStandings(pairs || []);
+  const sorted = sortStandings(pairs || [], matches);
 
   return (
     <div className="bg-[#0f172a] rounded-xl overflow-hidden mb-4">

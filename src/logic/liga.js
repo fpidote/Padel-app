@@ -1,6 +1,7 @@
 // ── Liga Logic ───────────────────────────────────────────────
 import { shuffle } from "./utils";
 import { buildBracket } from "./relampago";
+import { sortStandings } from "./standings";
 
 // Método del calendario (circle method): arma todas las rondas de un
 // round-robin simple. Si `pairs` tiene cantidad impar, se usa un `null`
@@ -142,17 +143,10 @@ export function recomputeLigaStandings(pairs, matches) {
   return standings;
 }
 
-// Arma el bracket de playoff con el top `advanceQualifiers` de la tabla,
-// usando el mismo orden de desempate que PairStandings.jsx (pts → gf-gc → gamesFor-gamesAgainst).
-export function buildLigaKnockout(pairs, advanceQualifiers) {
-  const sorted = [...pairs].sort((a, b) => {
-    if (b.pts !== a.pts) return b.pts - a.pts;
-    if (b.gf - b.gc !== a.gf - a.gc) return b.gf - b.gc - (a.gf - a.gc);
-    return (
-      (b.gamesFor || 0) - (b.gamesAgainst || 0) -
-      ((a.gamesFor || 0) - (a.gamesAgainst || 0))
-    );
-  });
+// Arma el bracket de playoff con el top `advanceQualifiers` de la tabla, con el mismo orden que la
+// tabla de posiciones (victorias → enfrentamiento directo → diferencia → games).
+export function buildLigaKnockout(pairs, advanceQualifiers, matches = []) {
+  const sorted = sortStandings(pairs, matches);
   return buildBracket(sorted.slice(0, advanceQualifiers), { consolation: false });
 }
 

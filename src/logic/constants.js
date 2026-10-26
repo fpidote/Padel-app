@@ -162,8 +162,8 @@ export function generateRules(type, config, context = {}) {
         "Victoria = 1 punto · Derrota = 0 puntos (no hay empates).",
         scoringDescFor(ligaConfig),
         bySets
-          ? "El desempate en la tabla se define primero por diferencia de sets y luego por diferencia de games."
-          : "El desempate en la tabla se define por la diferencia entre lo anotado a favor y en contra.",
+          ? "Desempate: 1º el resultado del partido entre las parejas igualadas, 2º diferencia de sets, 3º diferencia de games."
+          : "Desempate: 1º el resultado del partido entre las parejas igualadas, 2º diferencia entre lo anotado a favor y en contra.",
       ];
       if (config.playoffEnabled) {
         rules.push(`Al terminar la tabla, los ${context.pairCount ? ligaQualifiers(config, context.pairCount) : (config.advanceQualifiers ?? 4)} mejores clasificados juegan una fase eliminatoria.`);
