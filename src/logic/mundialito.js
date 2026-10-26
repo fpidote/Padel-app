@@ -43,6 +43,22 @@ export function buildGroups(pairs, groupCount) {
   return groups;
 }
 
+// Cada grupo necesita al menos 2 parejas para tener partidos, y no pueden
+// avanzar más parejas que las del grupo más chico.
+export function validateMundialitoConfig(pairCount, groupCount, advancePerGroup) {
+  const maxGroups = Math.floor(pairCount / 2);
+  const maxAdvance = groupCount >= 1 ? Math.floor(pairCount / groupCount) : 0;
+  let error = null;
+  if (pairCount < 4) {
+    error = "Necesitas al menos 4 parejas";
+  } else if (groupCount < 1 || groupCount > maxGroups) {
+    error = `Con ${pairCount} parejas el máximo es ${maxGroups} ${maxGroups === 1 ? "grupo" : "grupos"}`;
+  } else if (advancePerGroup > maxAdvance) {
+    error = `Con ${groupCount} grupos pueden avanzar como máximo ${maxAdvance} por grupo`;
+  }
+  return { ok: error === null, maxGroups, maxAdvance, error };
+}
+
 export function buildKnockoutFromGroups(groups, advancePerGroup) {
   const qualifiers = [];
   groups.forEach((g) => {

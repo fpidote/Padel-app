@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { shuffle, buildShareMessage } from "../../logic/utils";
 import { buildBracket } from "../../logic/relampago";
-import { buildGroups } from "../../logic/mundialito";
+import { buildGroups, validateMundialitoConfig } from "../../logic/mundialito";
 import { buildPozoRound, shufflePlayers } from "../../logic/pozo";
 
 const SCORING_OPTIONS = [
@@ -79,11 +79,14 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
     : `${tot} parejas · ${t.config.courts} pistas · ${Math.min(tot, act)} juegan` +
       (sit > 0 ? ` · ⏳ ${sit} descansan` : need > 0 ? ` · ⚠️ faltan ${need}` : " · ✓ listo");
 
+  const mundialitoCheck = t.type === "mundialito"
+    ? validateMundialitoConfig(tot, t.config.groupCount || 2, t.config.advancePerGroup ?? 2)
+    : null;
   const ok = isMixer
     ? players.length >= act && players.every(p => p.name.trim())
     : isPozo
       ? pairs.length >= act && pairs.every(p => p.p1.trim() && p.p2.trim())
-      : tot >= 2 && pairs.every(p => p.p1.trim() && p.p2.trim());
+      : tot >= 2 && pairs.every(p => p.p1.trim() && p.p2.trim()) && (mundialitoCheck?.ok ?? true);
   const scoring = t.config.scoringSystem || "timed";
 
   function handleName(val) {
@@ -384,7 +387,8 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
                       {[2,3,4].map(n => (
                         <button key={n}
                           onClick={() => persist({ ...t, config: { ...t.config, groupCount: n } })}
-                          className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer"
+                          disabled={n > mundialitoCheck.maxGroups}
+                          className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                           style={{ background: t.config.groupCount === n ? color : "#1f2937", color: t.config.groupCount === n ? "#fff" : "#94a3b8" }}
                         >{n}</button>
                       ))}
@@ -396,12 +400,16 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
                       {[1,2,3].map(n => (
                         <button key={n}
                           onClick={() => persist({ ...t, config: { ...t.config, advancePerGroup: n } })}
-                          className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer"
+                          disabled={n > mundialitoCheck.maxAdvance}
+                          className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                           style={{ background: t.config.advancePerGroup === n ? color : "#1f2937", color: t.config.advancePerGroup === n ? "#fff" : "#94a3b8" }}
                         >{n}</button>
                       ))}
                     </div>
                   </div>
+                  {mundialitoCheck.error && (
+                    <p className="text-xs text-amber-500 font-semibold">⚠️ {mundialitoCheck.error}</p>
+                  )}
                 </>
               )}
 
