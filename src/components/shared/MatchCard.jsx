@@ -65,7 +65,7 @@ export default function MatchCard({
             ? "⚡ CUADRO PRINCIPAL"
             : match.bracket === "consolation"
               ? "🥈 REVANCHA"
-              : "⚽ FASE DE GRUPOS"}
+              : "🏁 FASE DE GRUPOS"}
           {isSetFormat && ` · 🎾 MEJOR DE ${maxSets}`}
         </span>
         {match.saved && (
