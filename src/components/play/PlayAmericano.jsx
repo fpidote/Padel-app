@@ -17,12 +17,10 @@ function PTag({ p }) {
   const lvl = LEVELS[p.level ?? 0];
   if (!lvl || p.level === 0) return null;
   return (
-    <span style={{
-      display: "inline-block", fontSize: 10, fontWeight: 700,
-      background: lvl.color + "20", color: lvl.color,
-      borderRadius: 4, padding: "1px 4px", marginLeft: 5,
-      verticalAlign: "middle"
-    }}>
+    <span
+      className="inline-block text-[10px] font-bold rounded-[4px] p-[1px_4px] ml-[5px] align-middle"
+      style={{ background: lvl.color + "20", color: lvl.color }}
+    >
       {lvl.short}
     </span>
   );
@@ -245,7 +243,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
   }
 
   return (
-    <div style={{ paddingBottom: 80 }}>
+    <div className="pb-20">
       <THeader
         t={t}
         code={code}
@@ -254,7 +252,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
         subtitle={`Ronda ${t.roundNum} de ${t.precomputedRounds ? t.precomputedRounds.length : (t.config.maxRounds || "∞")}`}
         onEdit={isAdmin ? onEditTournament : undefined}
       />
-      <div style={{ padding: 16 }}>
+      <div className="p-4">
         {isAdmin && t.roundWarnings?.length > 0 && (
           <WarningsBanner warnings={t.roundWarnings} />
         )}
@@ -270,7 +268,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
           setActive={setTab}
         />
       </div>
-      <div style={{ padding: "0 16px" }}>
+      <div className="px-4">
         {tab === "courts" && (
           <>
             {/* ── Filtro por jugador ── */}
@@ -290,17 +288,13 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
 
             {/* ── Toggle niveles ── */}
             {isAdmin && t.config.useLevels && (
-              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+              <div className="flex justify-end mb-2">
                 <button
                   onClick={() => setShowLevelsToggle(v => !v)}
-                  style={{
-                    background: "none", border: "none", cursor: "pointer",
-                    display: "flex", alignItems: "center", gap: 6,
-                    fontSize: 12, fontWeight: 600,
-                    color: showLevelsToggle ? "#38bdf8" : "#475569"
-                  }}
+                  className="bg-transparent border-0 cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+                  style={{ color: showLevelsToggle ? "#38bdf8" : "#475569" }}
                 >
-                  <span style={{ fontSize: 16 }}>{showLevelsToggle ? "👁️" : "🙈"}</span>
+                  <span className="text-base">{showLevelsToggle ? "👁️" : "🙈"}</span>
                   {showLevelsToggle ? "Ocultar niveles" : "Mostrar niveles"}
                 </button>
               </div>
@@ -323,7 +317,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
               <>
                 {/* ── Tabs de rondas ── */}
                 {(t.precomputedRounds || t.rounds?.length > 0) && (
-                  <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, marginBottom: 16 }}>
+                  <div className="flex gap-1.5 overflow-x-auto pb-1 mb-4">
                     {t.precomputedRounds
                       ? t.precomputedRounds.map((_, i) => {
                           const rNum = i + 1;
@@ -334,14 +328,8 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                             <button
                               key={i}
                               onClick={() => setViewingRound(isCurrent ? null : rNum)}
+                              className="shrink-0 p-[6px_12px] rounded-lg text-[13px] font-bold border-0 cursor-pointer"
                               style={{
-                                flexShrink: 0,
-                                padding: "6px 12px",
-                                borderRadius: 8,
-                                fontSize: 13,
-                                fontWeight: 700,
-                                border: "none",
-                                cursor: "pointer",
                                 background: isActive ? "#0284c7" : isFuture ? "#111827" : "#1f2937",
                                 color: isActive ? "#fff" : isFuture ? "#334155" : "#64748b",
                               }}
@@ -355,14 +343,8 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                             <button
                               key={i}
                               onClick={() => setViewingRound(i + 1)}
+                              className="shrink-0 p-[6px_12px] rounded-lg text-[13px] font-bold border-0 cursor-pointer"
                               style={{
-                                flexShrink: 0,
-                                padding: "6px 12px",
-                                borderRadius: 8,
-                                fontSize: 13,
-                                fontWeight: 700,
-                                border: "none",
-                                cursor: "pointer",
                                 background: viewingRound === i + 1 ? "#0284c7" : "#1f2937",
                                 color: viewingRound === i + 1 ? "#fff" : "#64748b",
                               }}
@@ -372,14 +354,8 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                           ))}
                           <button
                             onClick={() => setViewingRound(null)}
+                            className="shrink-0 p-[6px_12px] rounded-lg text-[13px] font-bold border-0 cursor-pointer"
                             style={{
-                              flexShrink: 0,
-                              padding: "6px 12px",
-                              borderRadius: 8,
-                              fontSize: 13,
-                              fontWeight: 700,
-                              border: "none",
-                              cursor: "pointer",
                               background: viewingRound === null ? "#0284c7" : "#1f2937",
                               color: viewingRound === null ? "#fff" : "#94a3b8",
                             }}
@@ -457,28 +433,13 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
           </>
         )}
         {tab === "rules" && (
-          <div style={{ background: "#1e293b", padding: 20, borderRadius: 12 }}>
-            <h3
-              style={{
-                fontSize: 18,
-                fontWeight: 800,
-                color: "#38bdf8",
-                marginBottom: 16,
-              }}
-            >
+          <div className="bg-[#1e293b] p-5 rounded-xl">
+            <h3 className="text-[18px] font-extrabold text-[#38bdf8] mb-4">
               Reglas del Torneo Americano
             </h3>
-            <ul
-              style={{
-                color: "#cbd5e1",
-                fontSize: 14,
-                lineHeight: "1.6",
-                paddingLeft: 20,
-                listStyleType: "disc",
-              }}
-            >
+            <ul className="text-[#cbd5e1] text-sm leading-[1.6] pl-5 list-disc">
               {generateRules(t.type, t.config, { numRounds: t.precomputedRounds?.length }).map((rule, i) => (
-                <li key={i} style={{ marginBottom: 10 }}>
+                <li key={i} className="mb-2.5">
                   {rule}
                 </li>
               ))}
@@ -546,7 +507,7 @@ function FilteredCurrentRound({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSe
           <span key={p.id} className={`text-sm leading-snug flex items-center gap-1 ${isHighlighted ? "font-black text-sky-300" : "font-bold text-gray-50"}`}>
             {p.name}
             {showLevel && currentPlayer.level > 0 && lvl && (
-              <span style={{ fontSize: 10, fontWeight: 700, background: lvl.color + "20", color: lvl.color, borderRadius: 4, padding: "1px 4px" }}>
+              <span className="text-[10px] font-bold rounded-[4px] p-[1px_4px]" style={{ background: lvl.color + "20", color: lvl.color }}>
                 {lvl.short}
               </span>
             )}
@@ -586,7 +547,7 @@ function FilteredCurrentRound({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSe
           return (
             <div key={ci} className="px-4 py-4">
               <div className="text-xs font-bold text-gray-500 tracking-widest mb-3">PISTA {ci + 1}</div>
-              <div className="grid" style={{ gridTemplateColumns: "1fr auto 1fr", gap: "10px" }}>
+              <div className="grid grid-cols-[1fr_auto_1fr] gap-[10px]">
                 <div className="flex flex-col items-end self-center">{renderName(court.pairA)}</div>
                 <div className="flex items-center gap-1.5 self-center">
                   {court.saved ? (
@@ -785,19 +746,18 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onFi
     return (
       <div key={`${type}-${id}-${field}`} className="leading-snug flex items-center gap-1">
         {levelPosition === "before" && showLevel && lvl && (
-          <span style={{ fontSize: 10, fontWeight: 700, background: lvl.color + "20", color: lvl.color, borderRadius: 4, padding: "1px 4px" }}>
+          <span className="text-[10px] font-bold rounded-[4px] p-[1px_4px]" style={{ background: lvl.color + "20", color: lvl.color }}>
             {lvl.short}
           </span>
         )}
         <span
-          className="text-sm font-bold text-gray-50"
+          className={`text-sm font-bold text-gray-50${isAdmin ? " cursor-pointer" : ""}`}
           onClick={() => isAdmin && setRenameModal({ type, id, field, value: getCurrentName(type, id, field) })}
-          style={isAdmin ? { cursor: "pointer" } : undefined}
         >
           {displayName}
         </span>
         {levelPosition === "after" && showLevel && lvl && (
-          <span style={{ fontSize: 10, fontWeight: 700, background: lvl.color + "20", color: lvl.color, borderRadius: 4, padding: "1px 4px" }}>
+          <span className="text-[10px] font-bold rounded-[4px] p-[1px_4px]" style={{ background: lvl.color + "20", color: lvl.color }}>
             {lvl.short}
           </span>
         )}
@@ -844,7 +804,7 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onFi
             </div>
 
             {/* Body — 3 columnas */}
-            <div className="grid px-4 py-4" style={{ gridTemplateColumns: "1fr auto 1fr", gap: "10px" }}>
+            <div className="grid grid-cols-[1fr_auto_1fr] gap-[10px] px-4 py-4">
               {/* Equipo A */}
               <div className="flex flex-col items-end self-center">
                 {!isPairs
@@ -999,10 +959,10 @@ function HistoryRound({ round, roundNum, matchesSearch, isAdmin, useLevels, show
         const isHighlighted = highlightId && String(p.id) === String(highlightId);
         return (
           <span key={p.id} className={isHighlighted ? "font-black text-sky-300" : undefined}>
-            {i > 0 && <span style={{ color: "#94a3b8" }}> & </span>}
+            {i > 0 && <span className="text-[#94a3b8]"> & </span>}
             {p.name}
             {showLevel && (
-              <span style={{ display: "inline-block", fontSize: 10, fontWeight: 700, background: lvl.color + "20", color: lvl.color, borderRadius: 4, padding: "1px 4px", marginLeft: 4 }}>
+              <span className="inline-block text-[10px] font-bold rounded p-px px-1 ml-1" style={{ background: lvl.color + "20", color: lvl.color }}>
                 {lvl.short}
               </span>
             )}
@@ -1025,10 +985,10 @@ function HistoryRound({ round, roundNum, matchesSearch, isAdmin, useLevels, show
       return (
         <div key={i} className="px-4 py-4 border-t border-gray-800 first:border-0">
           <div className="text-xs font-bold text-gray-500 tracking-widest mb-3">PISTA {i + 1}</div>
-          <div className="grid" style={{ gridTemplateColumns: "1fr auto 1fr", gap: "10px" }}>
+          <div className="grid grid-cols-[1fr_auto_1fr] gap-2.5">
             <div className="flex flex-col items-end self-center">
-              <div style={{ fontWeight: 700, color: wonA ? "#4ade80" : "#f1f5f9", fontSize: 14, textAlign: "right" }}>
-                {renderPairName(court.pairA)}{wonA && <span style={{ marginLeft: 6 }}>🏆</span>}
+              <div className={`font-bold text-[14px] text-right ${wonA ? "text-[#4ade80]" : "text-[#f1f5f9]"}`}>
+                {renderPairName(court.pairA)}{wonA && <span className="ml-1.5">🏆</span>}
               </div>
             </div>
             <div className="flex items-center gap-1.5 self-center">
@@ -1041,8 +1001,8 @@ function HistoryRound({ round, roundNum, matchesSearch, isAdmin, useLevels, show
               </div>
             </div>
             <div className="flex flex-col items-start self-center">
-              <div style={{ fontWeight: 700, color: wonB ? "#4ade80" : "#f1f5f9", fontSize: 14 }}>
-                {wonB && <span style={{ marginRight: 6 }}>🏆</span>}{renderPairName(court.pairB)}
+              <div className={`font-bold text-[14px] ${wonB ? "text-[#4ade80]" : "text-[#f1f5f9]"}`}>
+                {wonB && <span className="mr-1.5">🏆</span>}{renderPairName(court.pairB)}
               </div>
             </div>
           </div>
@@ -1050,20 +1010,20 @@ function HistoryRound({ round, roundNum, matchesSearch, isAdmin, useLevels, show
       );
     }
     return (
-      <div key={i} style={{ background: "#1e293b", borderRadius: 12, padding: 16, borderLeft: "4px solid #334155" }}>
-        <div style={{ fontSize: 13, color: "#94a3b8", fontWeight: 700, marginBottom: 12 }}>Pista {i + 1}</div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <div style={{ flex: 1, textAlign: "right" }}>
-            <div style={{ fontWeight: 700, color: wonA ? "#4ade80" : "#f1f5f9", fontSize: 14 }}>
-              {renderPairName(court.pairA)}{wonA && <span style={{ marginLeft: 6 }}>🏆</span>}
+      <div key={i} className="bg-[#1e293b] rounded-xl p-4 border-l-4 border-[#334155]">
+        <div className="text-[13px] text-[#94a3b8] font-bold mb-3">Pista {i + 1}</div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex-1 text-right">
+            <div className={`font-bold text-[14px] ${wonA ? "text-[#4ade80]" : "text-[#f1f5f9]"}`}>
+              {renderPairName(court.pairA)}{wonA && <span className="ml-1.5">🏆</span>}
             </div>
           </div>
-          <div style={{ background: "#0f172a", padding: "8px 14px", borderRadius: 8, fontSize: 24, fontWeight: 900, color: "#f1f5f9" }}>
+          <div className="bg-[#0f172a] py-2 px-3.5 rounded-lg text-2xl font-black text-[#f1f5f9]">
             {court.scoreA}-{court.scoreB}
           </div>
-          <div style={{ flex: 1, textAlign: "left" }}>
-            <div style={{ fontWeight: 700, color: wonB ? "#4ade80" : "#f1f5f9", fontSize: 14 }}>
-              {wonB && <span style={{ marginRight: 6 }}>🏆</span>}{renderPairName(court.pairB)}
+          <div className="flex-1 text-left">
+            <div className={`font-bold text-[14px] ${wonB ? "text-[#4ade80]" : "text-[#f1f5f9]"}`}>
+              {wonB && <span className="mr-1.5">🏆</span>}{renderPairName(court.pairB)}
             </div>
           </div>
         </div>
@@ -1088,11 +1048,11 @@ function HistoryRound({ round, roundNum, matchesSearch, isAdmin, useLevels, show
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <div className="flex flex-col gap-4">
       {round.sittingOut?.length > 0 && (
-        <div style={{ background: "#fbbf2422", border: "1px solid #fbbf2455", color: "#fbbf24", padding: 12, borderRadius: 8, fontSize: 14 }}>
-          <span style={{ fontWeight: 700 }}>⏳ Descansaron: </span>
-          <span style={{ fontWeight: 500 }}>{round.sittingOut.map((p) => p.name || `${p.p1}/${p.p2}`).join(", ")}</span>
+        <div className="bg-[#fbbf2422] border border-[#fbbf2455] text-[#fbbf24] p-3 rounded-lg text-sm">
+          <span className="font-bold">⏳ Descansaron: </span>
+          <span className="font-medium">{round.sittingOut.map((p) => p.name || `${p.p1}/${p.p2}`).join(", ")}</span>
         </div>
       )}
       {courtContent}
@@ -1120,7 +1080,7 @@ function FutureRound({ round, roundNum, matchesSearch, isAdmin, useLevels, showL
           <span key={p.id} className="flex items-center gap-1 leading-snug">
             <span className={`text-sm font-bold ${isHighlighted ? "font-black text-sky-300" : "text-gray-50"}`}>{p.name}</span>
             {showLevel && currentPlayer.level > 0 && lvl && (
-              <span style={{ fontSize: 10, fontWeight: 700, background: lvl.color + "20", color: lvl.color, borderRadius: 4, padding: "1px 4px" }}>
+              <span className="text-[10px] font-bold rounded p-px px-1" style={{ background: lvl.color + "20", color: lvl.color }}>
                 {lvl.short}
               </span>
             )}
@@ -1138,7 +1098,7 @@ function FutureRound({ round, roundNum, matchesSearch, isAdmin, useLevels, showL
 
   const courtItems = visibleCourts.map(({ court, i }) => {
     const courtBody = (
-      <div className="grid" style={{ gridTemplateColumns: "1fr auto 1fr", gap: "10px" }}>
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-2.5">
         <div className="flex flex-col items-end self-center">{renderPair(court.pairA)}</div>
         <div className="flex items-center gap-1.5 self-center">
           <div className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-800 flex items-center justify-center text-xl font-black text-gray-700">–</div>
@@ -1230,41 +1190,33 @@ function WarningsBanner({ warnings }) {
   );
 }
 
-const thStyleS = { padding: "8px 10px", fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "center" };
-const tdCenterS = { padding: "10px 10px", textAlign: "center" };
-
 function StandingsAmericano({ rows, roundNum, useLevels, isAdmin, showLevelsToggle, setShowLevelsToggle, labels }) {
   return (
-    <div style={{ background: "#0f172a", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
-      <div style={{ padding: "14px 16px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ fontWeight: 800, fontSize: 15, color: "#f1f5f9" }}>🏆 Tabla - Ronda {roundNum}</div>
+    <div className="bg-[#0f172a] rounded-xl overflow-hidden mb-4">
+      <div className="pt-3.5 px-4 pb-1 flex items-center justify-between">
+        <div className="font-extrabold text-[15px] text-[#f1f5f9]">🏆 Tabla - Ronda {roundNum}</div>
         {isAdmin && useLevels && (
           <button
             onClick={() => setShowLevelsToggle(v => !v)}
-            style={{
-              background: "none", border: "none", cursor: "pointer",
-              display: "flex", alignItems: "center", gap: 6,
-              fontSize: 12, fontWeight: 600,
-              color: showLevelsToggle ? "#38bdf8" : "#475569"
-            }}
+            className={`bg-transparent border-0 cursor-pointer flex items-center gap-1.5 text-xs font-semibold ${showLevelsToggle ? "text-[#38bdf8]" : "text-[#475569]"}`}
           >
-            <span style={{ fontSize: 16 }}>{showLevelsToggle ? "👁️" : "🙈"}</span>
+            <span className="text-base">{showLevelsToggle ? "👁️" : "🙈"}</span>
             {showLevelsToggle ? "Ocultar niveles" : "Mostrar niveles"}
           </button>
         )}
       </div>
-      <div style={{ fontSize: 11, color: "#475569", padding: "0 16px 10px" }}>
+      <div className="text-[11px] text-[#475569] px-4 pb-2.5">
         1º Puntos · 2º Diferencia ({labels.diff}) · {labels.plus} a favor · {labels.minus} en contra
       </div>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <table className="w-full border-collapse">
         <thead>
-          <tr style={{ background: "#0a1120" }}>
-            <th style={thStyleS}>#</th>
-            <th style={{ ...thStyleS, textAlign: "left" }}>Jugador</th>
-            <th style={thStyleS}>PTS</th>
-            <th style={thStyleS}>{labels.plus}</th>
-            <th style={thStyleS}>{labels.minus}</th>
-            <th style={thStyleS}>{labels.diff}</th>
+          <tr className="bg-[#0a1120]">
+            <th className="py-2 px-2.5 text-[11px] font-bold text-[#475569] uppercase tracking-[0.05em] text-center">#</th>
+            <th className="py-2 px-2.5 text-[11px] font-bold text-[#475569] uppercase tracking-[0.05em] text-left">Jugador</th>
+            <th className="py-2 px-2.5 text-[11px] font-bold text-[#475569] uppercase tracking-[0.05em] text-center">PTS</th>
+            <th className="py-2 px-2.5 text-[11px] font-bold text-[#475569] uppercase tracking-[0.05em] text-center">{labels.plus}</th>
+            <th className="py-2 px-2.5 text-[11px] font-bold text-[#475569] uppercase tracking-[0.05em] text-center">{labels.minus}</th>
+            <th className="py-2 px-2.5 text-[11px] font-bold text-[#475569] uppercase tracking-[0.05em] text-center">{labels.diff}</th>
           </tr>
         </thead>
         <tbody>
@@ -1272,16 +1224,16 @@ function StandingsAmericano({ rows, roundNum, useLevels, isAdmin, showLevelsTogg
             const d = p.gf - p.gc;
             const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
             return (
-              <tr key={p.id} style={{ background: i % 2 === 0 ? "#1e293b" : "#172033", borderBottom: "1px solid #1e293b" }}>
-                <td style={tdCenterS}>{medal || <span style={{ color: "#64748b", fontSize: 13 }}>{i + 1}</span>}</td>
-                <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>
+              <tr key={p.id} className={`${i % 2 === 0 ? "bg-[#1e293b]" : "bg-[#172033]"} border-b border-[#1e293b]`}>
+                <td className="py-2.5 px-2.5 text-center">{medal || <span className="text-[#64748b] text-[13px]">{i + 1}</span>}</td>
+                <td className="py-2.5 px-3 text-[13px] font-semibold text-[#f1f5f9]">
                   {p.name || `${p.p1} / ${p.p2}`}
                   {p.name && useLevels && isAdmin && showLevelsToggle && <PTag p={p} />}
                 </td>
-                <td style={{ ...tdCenterS, color: "#38bdf8", fontWeight: 800, fontSize: 14 }}>{p.pts}</td>
-                <td style={{ ...tdCenterS, color: "#94a3b8", fontSize: 13 }}>{p.gf}</td>
-                <td style={{ ...tdCenterS, color: "#94a3b8", fontSize: 13 }}>{p.gc}</td>
-                <td style={{ ...tdCenterS, fontSize: 13, fontWeight: 700, color: d > 0 ? "#4ade80" : d < 0 ? "#f87171" : "#64748b" }}>
+                <td className="py-2.5 px-2.5 text-center text-[#38bdf8] font-extrabold text-[14px]">{p.pts}</td>
+                <td className="py-2.5 px-2.5 text-center text-[#94a3b8] text-[13px]">{p.gf}</td>
+                <td className="py-2.5 px-2.5 text-center text-[#94a3b8] text-[13px]">{p.gc}</td>
+                <td className={`py-2.5 px-2.5 text-center text-[13px] font-bold ${d > 0 ? "text-[#4ade80]" : d < 0 ? "text-[#f87171]" : "text-[#64748b]"}`}>
                   {d > 0 ? `+${d}` : d}
                 </td>
               </tr>
