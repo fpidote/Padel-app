@@ -2,15 +2,13 @@ import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { shuffle, buildShareMessage } from "../../logic/utils";
 import { buildBracket } from "../../logic/relampago";
-import { buildGroups, validateMundialitoConfig } from "../../logic/mundialito";
+import { validateMundialitoConfig } from "../../logic/mundialito";
 import { buildPozoRound, shufflePlayers } from "../../logic/pozo";
-import { buildLigaFixture } from "../../logic/liga";
-
-const SCORING_OPTIONS = [
-  { id: "timed", icon: "⏱️", name: "Por tiempo",   desc: "Se anota al terminar el tiempo" },
-  { id: "rally", icon: "🎯", name: "Por puntos", desc: "Cada punto ganado cuenta" },
-  { id: "games", icon: "🏆", name: "Por games",     desc: "Primero en llegar a X games" },
-];
+import MatchFormatPicker from "../shared/MatchFormatPicker";
+import LaunchModal, { SummaryRow, SummaryCard } from "../shared/LaunchModal";
+import { GroupsPreview, FixturePreview } from "./DrawPreview";
+import { hasDraw, drawKey, buildStartDraw, startPatch } from "../../logic/launchDraw";
+import { matchFormatSummary } from "../../logic/matchFormat";
 
 function SectionHeader({ children }) {
   return (
@@ -23,7 +21,7 @@ function SectionHeader({ children }) {
   );
 }
 
-export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeInfo, onExitEdit }) {
+export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode, typeInfo, onExitEdit }) {
   const color = typeInfo?.color || "#10b981";
 
   const [localName,     setLocalName]     = useState(t.config.name       || "");
@@ -35,10 +33,10 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
   const [newPlayer,     setNewPlayer]     = useState("");
   const [showAdvanced,  setShowAdvanced]  = useState(false);
   const [copied,        setCopied]        = useState(false);
-  const [rallyCustom,   setRallyCustom]   = useState("");
-  const [gamesCustom,   setGamesCustom]   = useState("");
-  const [minutesCustom, setMinutesCustom] = useState("");
   const [saved,         setSaved]         = useState(false);
+  const [showLaunch,    setShowLaunch]    = useState(false);
+  const [launchTab,     setLaunchTab]     = useState("sorteo");
+  const [drawState,     setDrawState]     = useState(null);
   const [editingIdx,    setEditingIdx]    = useState(null);
   const [editP1,        setEditP1]        = useState("");
   const [editP2,        setEditP2]        = useState("");
@@ -51,9 +49,6 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
   const debDesc         = useRef(null);
   const debLocation     = useRef(null);
   const debDatetime     = useRef(null);
-  const debRally        = useRef(null);
-  const debGames        = useRef(null);
-  const debMinutes      = useRef(null);
   const debTargetRounds = useRef(null);
   const navigate    = useNavigate();
   const p1InputRef  = useRef(null);
@@ -88,7 +83,6 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
     : isPozo
       ? pairs.length >= act && pairs.every(p => p.p1.trim() && p.p2.trim())
       : tot >= 2 && pairs.every(p => p.p1.trim() && p.p2.trim()) && (mundialitoCheck?.ok ?? true);
-  const scoring = t.config.scoringSystem || "timed";
 
   function handleName(val) {
     setLocalName(val);
@@ -109,30 +103,6 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
     setLocalDatetime(val);
     clearTimeout(debDatetime.current);
     debDatetime.current = setTimeout(() => persist({ ...t, config: { ...t.config, datetime: val } }), 600);
-  }
-  function handleRallyCustom(val) {
-    setRallyCustom(val);
-    clearTimeout(debRally.current);
-    const num = parseInt(val);
-    if (!isNaN(num) && num > 0) {
-      debRally.current = setTimeout(() => persist({ ...t, config: { ...t.config, rallyPoints: num } }), 600);
-    }
-  }
-  function handleGamesCustom(val) {
-    setGamesCustom(val);
-    clearTimeout(debGames.current);
-    const num = parseInt(val);
-    if (!isNaN(num) && num > 0) {
-      debGames.current = setTimeout(() => persist({ ...t, config: { ...t.config, targetGames: num } }), 600);
-    }
-  }
-  function handleMinutesCustom(val) {
-    setMinutesCustom(val);
-    clearTimeout(debMinutes.current);
-    const num = parseInt(val);
-    if (!isNaN(num) && num >= 1) {
-      debMinutes.current = setTimeout(() => persist({ ...t, config: { ...t.config, matchMinutes: num } }), 600);
-    }
   }
 
   function addPair() {
@@ -155,6 +125,21 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
     setNewPlayer("");
   }
 
+  // Sorteo previo (Mundialito, Liga): se genera al abrir "Revisar y lanzar" y ese mismo
+  // resultado es el que se guarda al iniciar. Si cambian las parejas o la configuración que
+  // afecta al sorteo, el guardado deja de valer y se genera otro.
+  const currentDrawKey = drawKey(t);
+  const activeDraw = drawState && drawState.key === currentDrawKey ? drawState.draw : null;
+
+  function openLaunch() {
+    if (!activeDraw) setDrawState({ key: currentDrawKey, draw: buildStartDraw(t) });
+    setLaunchTab("sorteo");
+    setShowLaunch(true);
+  }
+  function reshuffleDraw() {
+    setDrawState({ key: currentDrawKey, draw: buildStartDraw(t) });
+  }
+
   async function onStart() {
     const pairsToStart = t.pairInputs.map((p, i) => ({ ...p, id: i, pts: 0, gf: 0, gc: 0 }));
     const finalConfig = { ...t.config, scoringSystem: t.config.scoringSystem || "timed" };
@@ -162,12 +147,8 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
     if (t.type === "relampago") {
       const bracket = buildBracket(pairsToStart);
       await persist({ ...t, config: finalConfig, bracket, pairs: pairsToStart, phase: "bracket", status: "playing" });
-    } else if (t.type === "mundialito") {
-      const groups = buildGroups(pairsToStart, t.config.groupCount || 2);
-      await persist({ ...t, config: finalConfig, groups, pairs: pairsToStart, phase: "groups", status: "playing" });
-    } else if (t.type === "liga") {
-      const { rounds, matches, pairs: standings } = buildLigaFixture(pairsToStart, t.config.idaYVuelta || false);
-      await persist({ ...t, config: finalConfig, rounds, matches, pairs: standings, phase: "fixture", status: "playing" });
+    } else if (hasDraw(t.type)) {
+      await persist({ ...t, config: finalConfig, ...startPatch(t, activeDraw), status: "playing" });
     } else if (t.type === "pozo") {
       if (t.config.pozoMode === "mixer") {
         const playersToStart = (t.playerInputs || []).map((p, i) => ({
@@ -261,7 +242,7 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
   const addInputCls = "flex-1 bg-[#1f2937] border border-gray-700 focus:border-gray-500 rounded-xl text-gray-50 px-4 py-2.5 text-sm outline-none transition-colors min-w-0";
 
   return (
-    <div className="min-h-screen bg-[#111827] text-gray-50" style={{ fontFamily: "system-ui" }}>
+    <>    <div className="min-h-screen bg-[#111827] text-gray-50" style={{ fontFamily: "system-ui" }}>
       <div className="max-w-lg mx-auto px-4 pb-16 pt-6">
 
         {/* ── Volver (solo en modo edición post-inicio) ── */}
@@ -499,146 +480,16 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
               )}
             </div>
 
-            {/* ── Puntuación (no aplica a Pozo ni a Liga, que usa mejor de 3 sets fijo) ── */}
-            {(t.type === "mundialito" || t.type === "relampago") && (
+            {/* ── Formato de partido (no aplica a Pozo ni a Liga, que usa mejor de 3 sets fijo) ── */}
+            {t.type !== "pozo" && t.type !== "liga" && (
               <>
                 <SectionHeader>🎾 Formato de partido</SectionHeader>
-                <div className="flex gap-2">
-                  {[
-                    { id: "games", label: "Por games" },
-                    { id: "sets3", label: "Mejor de 3 sets" },
-                    { id: "sets5", label: "Mejor de 5 sets" },
-                  ].map(opt => (
-                    <button key={opt.id}
-                      onClick={() => persist({ ...t, config: { ...t.config, scoringFormat: opt.id } })}
-                      className="flex-1 py-2.5 rounded-xl font-bold text-xs transition-colors cursor-pointer"
-                      style={{
-                        background: (t.config.scoringFormat || "games") === opt.id ? color : "#1f2937",
-                        color:      (t.config.scoringFormat || "games") === opt.id ? "#fff" : "#94a3b8",
-                      }}
-                    >{opt.label}</button>
-                  ))}
-                </div>
-                {(t.config.scoringFormat || "games") !== "games" && (
-                  <p className="text-xs text-gray-500 mt-2">Se carga el resultado set por set (ej. 6-2, 6-4).</p>
-                )}
-              </>
-            )}
-
-            {/* ── Puntuación (no aplica a Pozo ni a Liga, ni a formatos por sets) ── */}
-            {t.type !== "pozo" && t.type !== "liga" && (t.config.scoringFormat || "games") === "games" && (
-              <>
-                <SectionHeader>🎯 Puntuación</SectionHeader>
-                <div className="flex flex-col gap-2">
-                  {SCORING_OPTIONS.map(opt => (
-                    <button key={opt.id}
-                      onClick={() => persist({ ...t, config: { ...t.config, scoringSystem: opt.id } })}
-                      className="flex items-center gap-3 p-3.5 rounded-xl text-left transition-all cursor-pointer"
-                      style={{
-                        background: scoring === opt.id ? color + "20" : "#1f2937",
-                        border: `1px solid ${scoring === opt.id ? color + "50" : "#374151"}`,
-                      }}
-                    >
-                      <span className="text-xl flex-shrink-0">{opt.icon}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-bold" style={{ color: scoring === opt.id ? color : "#f9fafb" }}>{opt.name}</div>
-                        <div className="text-xs text-gray-500">{opt.desc}</div>
-                      </div>
-                      {scoring === opt.id && <span className="text-xs font-bold" style={{ color }}>✓</span>}
-                    </button>
-                  ))}
-                </div>
-
-                {scoring === "timed" && (
-                  <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 mt-2 space-y-4">
-                    <div>
-                      <p className="text-xs text-gray-500 mb-3">Al terminar el tiempo se anota el resultado. En caso de empate, punto de oro.</p>
-                      <label className="text-xs text-gray-400 font-semibold block mb-2">Minutos por partido</label>
-                      <div className="flex gap-2">
-                        {[8,10,12,15,20].map(n => (
-                          <button key={n}
-                            onClick={() => { setMinutesCustom(""); persist({ ...t, config: { ...t.config, matchMinutes: n } }); }}
-                            className="flex-1 py-2 rounded-lg font-bold text-sm cursor-pointer transition-colors"
-                            style={{ background: (t.config.matchMinutes ?? 10) === n ? color : "#374151", color: (t.config.matchMinutes ?? 10) === n ? "#fff" : "#94a3b8" }}
-                          >{n}</button>
-                        ))}
-                        <input
-                          type="number"
-                          value={minutesCustom}
-                          onChange={e => handleMinutesCustom(e.target.value)}
-                          placeholder="Otro"
-                          min={1}
-                          max={90}
-                          className="w-16 py-2 rounded-lg text-sm text-center font-bold outline-none transition-colors bg-[#374151] text-gray-300 placeholder:text-gray-600 shrink-0"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-400 font-semibold block mb-2">¿Qué se anota?</label>
-                      <div className="flex gap-2">
-                        {[
-                          { id: "games",  label: "Games ganados" },
-                          { id: "points", label: "Puntos acumulados" },
-                        ].map(opt => (
-                          <button key={opt.id}
-                            onClick={() => persist({ ...t, config: { ...t.config, timedMetric: opt.id } })}
-                            className="flex-1 py-2 rounded-lg font-bold text-sm cursor-pointer transition-colors"
-                            style={{
-                              background: (t.config.timedMetric ?? "games") === opt.id ? color : "#374151",
-                              color:      (t.config.timedMetric ?? "games") === opt.id ? "#fff" : "#94a3b8",
-                            }}
-                          >{opt.label}</button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {scoring === "rally" && (
-                  <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 mt-2">
-                    <p className="text-xs text-gray-500 mb-3">Cada punto ganado cuenta. Si el partido termina 16-8, cada jugador acumula esos puntos.</p>
-                    <label className="text-xs text-gray-400 font-semibold block mb-2">Puntos por partido</label>
-                    <div className="flex gap-2">
-                      {[16,24,32].map(n => (
-                        <button key={n}
-                          onClick={() => { setRallyCustom(""); persist({ ...t, config: { ...t.config, rallyPoints: n } }); }}
-                          className="flex-1 py-2 rounded-lg font-bold text-sm cursor-pointer transition-colors"
-                          style={{ background: (t.config.rallyPoints ?? 24) === n ? color : "#374151", color: (t.config.rallyPoints ?? 24) === n ? "#fff" : "#94a3b8" }}
-                        >{n}</button>
-                      ))}
-                      <input
-                        type="number"
-                        value={rallyCustom}
-                        onChange={e => handleRallyCustom(e.target.value)}
-                        placeholder="Otro"
-                        min={1}
-                        className="w-16 py-2 rounded-lg text-sm text-center font-bold outline-none transition-colors bg-[#374151] text-gray-300 placeholder:text-gray-600 shrink-0"
-                      />
-                    </div>
-                  </div>
-                )}
-                {scoring === "games" && (
-                  <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 mt-2">
-                    <p className="text-xs text-gray-500 mb-3">Primero en llegar a X games gana el partido.</p>
-                    <label className="text-xs text-gray-400 font-semibold block mb-2">Games para ganar</label>
-                    <div className="flex gap-2">
-                      {[4,6,8].map(n => (
-                        <button key={n}
-                          onClick={() => { setGamesCustom(""); persist({ ...t, config: { ...t.config, targetGames: n } }); }}
-                          className="flex-1 py-2 rounded-lg font-bold text-sm cursor-pointer transition-colors"
-                          style={{ background: (t.config.targetGames ?? 6) === n ? color : "#374151", color: (t.config.targetGames ?? 6) === n ? "#fff" : "#94a3b8" }}
-                        >{n}</button>
-                      ))}
-                      <input
-                        type="number"
-                        value={gamesCustom}
-                        onChange={e => handleGamesCustom(e.target.value)}
-                        placeholder="Otro"
-                        min={1}
-                        className="w-16 py-2 rounded-lg text-sm text-center font-bold outline-none transition-colors bg-[#374151] text-gray-300 placeholder:text-gray-600 shrink-0"
-                      />
-                    </div>
-                  </div>
-                )}
+                <MatchFormatPicker
+                  config={t.config}
+                  color={color}
+                  allowSets={t.type === "mundialito" || t.type === "relampago"}
+                  onChange={(patch) => persist({ ...t, config: { ...t.config, ...patch } })}
+                />
               </>
             )}
           </>
@@ -879,7 +730,8 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
         {isAdmin && (
           <>
             <button
-              onClick={onStart}
+              data-testid={hasDraw(t.type) ? "btn-open-modal" : undefined}
+              onClick={hasDraw(t.type) ? openLaunch : onStart}
               disabled={!ok}
               className="w-full mt-8 py-4 rounded-2xl font-black text-lg transition-colors"
               style={{
@@ -889,7 +741,7 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
                 opacity:    ok ? 1 : 0.5,
               }}
             >
-              🎾 Iniciar Torneo
+              {hasDraw(t.type) ? "📋 Revisar y lanzar" : "🎾 Iniciar Torneo"}
             </button>
             <p className="text-center text-xs text-gray-600 mt-3">
               Una vez guardado el primer resultado no podrás modificar la configuración del torneo.
@@ -899,5 +751,51 @@ export default function SetupPairs({ t, code, isAdmin, persist, copyCode, typeIn
 
       </div>
     </div>
+    {showLaunch && activeDraw && (
+      <LaunchModal
+        color={color}
+        tabs={[{ id: "sorteo", label: t.type === "liga" ? "🎲 Fixture" : "🎲 Sorteo" }, { id: "resumen", label: "📋 Resumen" }]}
+        activeTab={launchTab}
+        onTab={setLaunchTab}
+        onClose={() => setShowLaunch(false)}
+        onReshuffle={launchTab === "sorteo" ? reshuffleDraw : null}
+        onStart={onStart}
+        saving={saving}
+      >
+        {launchTab === "sorteo" && t.type === "mundialito" && (
+          <GroupsPreview groups={activeDraw.groups} advancePerGroup={t.config.advancePerGroup ?? 2} />
+        )}
+        {launchTab === "sorteo" && t.type === "liga" && (
+          <FixturePreview rounds={activeDraw.rounds} matches={activeDraw.matches} />
+        )}
+        {launchTab === "resumen" && (() => {
+          const fmt = matchFormatSummary({ ...t.config, scoringFormat: t.config.scoringFormat || (t.type === "liga" ? "sets3" : undefined) });
+          return (
+            <div className="px-4 py-4 space-y-3">
+              <SummaryCard title="Información">
+                <SummaryRow label="Nombre" value={t.config.name || "—"} />
+                {t.config.datetime && <SummaryRow label="Fecha" value={new Date(t.config.datetime).toLocaleString("es", { dateStyle: "medium", timeStyle: "short" })} />}
+                {t.config.location && <SummaryRow label="Ubicación" value={t.config.location} />}
+              </SummaryCard>
+              <SummaryCard title="Participantes">
+                <SummaryRow label="Total" value={`${tot} parejas`} />
+                <SummaryRow label="Pistas" value={t.config.courts} />
+                {t.type === "mundialito" && <SummaryRow label="Grupos" value={t.config.groupCount || 2} />}
+                {t.type === "mundialito" && <SummaryRow label="Avanzan por grupo" value={t.config.advancePerGroup ?? 2} />}
+                {t.type === "liga" && <SummaryRow label="Jornadas" value={activeDraw.rounds.length} />}
+                {t.type === "liga" && <SummaryRow label="Ida y vuelta" value={t.config.idaYVuelta ? "Sí" : "No"} />}
+                {t.type === "liga" && <SummaryRow label="Eliminatoria final" value={t.config.playoffEnabled ? `Sí (${t.config.advanceQualifiers ?? 4} parejas)` : "No"} />}
+              </SummaryCard>
+              <SummaryCard title="Formato de partido">
+                <SummaryRow label="Formato" value={fmt.label} />
+                <SummaryRow label="Detalle" value={fmt.detail} />
+                <SummaryRow label="Punto de oro" value={t.config.goldenPoint !== false ? "Activado" : "Desactivado"} />
+              </SummaryCard>
+            </div>
+          );
+        })()}
+      </LaunchModal>
+    )}
+    </>
   );
 }

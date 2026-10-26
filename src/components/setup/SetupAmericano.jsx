@@ -4,14 +4,10 @@ import { buildFirstRoundAmericano, precomputeAllRounds } from "../../logic/ameri
 import { calcularDescansos, isCourtComplete } from "../../logic/manualRounds";
 import ManualRoundBuilder from "./ManualRoundBuilder";
 import { buildShareMessage } from "../../logic/utils";
+import MatchFormatPicker from "../shared/MatchFormatPicker";
+import LaunchModal, { SummaryRow, SummaryCard } from "../shared/LaunchModal";
 
 const COLOR = "#0284c7";
-
-const SCORING_OPTIONS = [
-  { id: "timed",  icon: "⏱️", name: "Por tiempo",   desc: "Se anota al terminar el tiempo" },
-  { id: "rally",  icon: "🎯", name: "Por puntos", desc: "Cada punto ganado cuenta" },
-  { id: "games",  icon: "🏆", name: "Por games",     desc: "Primero en llegar a X games" },
-];
 
 const LEVELS = [
   { id: 0, label: "Sin definir",  short: "-", color: "#64748b" },
@@ -29,15 +25,6 @@ function SectionHeader({ children }) {
   );
 }
 
-function SummaryRow({ label, value, yellow }) {
-  return (
-    <div className="flex items-center justify-between py-1">
-      <span className="text-xs text-gray-500">{label}</span>
-      <span className={`text-xs font-bold ${yellow ? "text-yellow-400" : "text-gray-200"}`}>{value}</span>
-    </div>
-  );
-}
-
 export default function SetupAmericano({ t, code, isAdmin, saving, persist, copyCode, onExitEdit }) {
   const isPairs = t.config.mode === "pairs";
 
@@ -51,10 +38,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
   const [newP2,         setNewP2]         = useState("");
   const [showAdvanced,  setShowAdvanced]  = useState(false);
   const [copied,        setCopied]        = useState(false);
-  const [rallyCustom,   setRallyCustom]   = useState("");
-  const [gamesCustom,   setGamesCustom]   = useState("");
   const [roundsCustom,  setRoundsCustom]  = useState("");
-  const [minutesCustom, setMinutesCustom] = useState("");
   const [editingIdx,    setEditingIdx]    = useState(null);
   const [editName,      setEditName]      = useState("");
   const [editLvl,       setEditLvl]       = useState(0);
@@ -73,10 +57,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
   const debDesc     = useRef(null);
   const debLocation = useRef(null);
   const debDatetime = useRef(null);
-  const debRally    = useRef(null);
-  const debGames    = useRef(null);
   const debRounds   = useRef(null);
-  const debMinutes  = useRef(null);
   const debManual   = useRef(null);
   const navigate    = useNavigate();
   const nameInputRef = useRef(null);
@@ -135,29 +116,11 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
   function handleLocation(val) { setLocalLocation(val); clearTimeout(debLocation.current); debLocation.current = setTimeout(() => persist({ ...t, config: { ...t.config, location: val } }), 600); }
   function handleDatetime(val) { setLocalDatetime(val); clearTimeout(debDatetime.current); debDatetime.current = setTimeout(() => persist({ ...t, config: { ...t.config, datetime: val } }), 600); }
 
-  function handleRallyCustom(val) {
-    setRallyCustom(val);
-    clearTimeout(debRally.current);
-    const num = parseInt(val);
-    if (!isNaN(num) && num > 0) debRally.current = setTimeout(() => persist({ ...t, config: { ...t.config, rallyPoints: num } }), 600);
-  }
-  function handleGamesCustom(val) {
-    setGamesCustom(val);
-    clearTimeout(debGames.current);
-    const num = parseInt(val);
-    if (!isNaN(num) && num > 0) debGames.current = setTimeout(() => persist({ ...t, config: { ...t.config, targetGames: num } }), 600);
-  }
   function handleRoundsCustom(val) {
     setRoundsCustom(val);
     clearTimeout(debRounds.current);
     const num = parseInt(val);
     if (!isNaN(num) && num >= 1) debRounds.current = setTimeout(() => { setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); persist({ ...t, config: { ...t.config, maxRounds: num } }); }, 600);
-  }
-  function handleMinutesCustom(val) {
-    setMinutesCustom(val);
-    clearTimeout(debMinutes.current);
-    const num = parseInt(val);
-    if (!isNaN(num) && num >= 1) debMinutes.current = setTimeout(() => persist({ ...t, config: { ...t.config, matchMinutes: num } }), 600);
   }
 
   function handleMatchmakingChange(val) {
@@ -239,7 +202,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
   }
 
   async function onStart() {
-    [debName, debDesc, debLocation, debDatetime, debRally, debGames, debRounds, debMinutes, debManual]
+    [debName, debDesc, debLocation, debDatetime, debRounds, debManual]
       .forEach(ref => clearTimeout(ref.current));
     try {
       let entities;
@@ -559,71 +522,14 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
               ))}
             </div>
 
-            {/* ── 5. Puntuación ── */}
-            <SectionHeader>🎯 Puntuación</SectionHeader>
-            <div className="flex flex-col gap-2">
-              {SCORING_OPTIONS.map(opt => (
-                <button key={opt.id}
-                  onClick={() => persist({ ...t, config: { ...t.config, scoringSystem: opt.id } })}
-                  className="flex items-center gap-3 p-3.5 rounded-xl text-left transition-all cursor-pointer"
-                  style={{ background: scoring === opt.id ? COLOR + "20" : "#1f2937", border: `1px solid ${scoring === opt.id ? COLOR + "50" : "#374151"}` }}
-                >
-                  <span className="text-xl flex-shrink-0">{opt.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-bold" style={{ color: scoring === opt.id ? COLOR : "#f9fafb" }}>{opt.name}</div>
-                    <div className="text-xs text-gray-500">{opt.desc}</div>
-                  </div>
-                  {scoring === opt.id && <span className="text-xs font-bold" style={{ color: COLOR }}>✓</span>}
-                </button>
-              ))}
-            </div>
-
-            {scoring === "timed" && (
-              <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 mt-2 space-y-4">
-                <div>
-                  <p className="text-xs text-gray-500 mb-3">Al terminar el tiempo se anota el resultado. En caso de empate, punto de oro.</p>
-                  <label className="text-xs text-gray-400 font-semibold block mb-2">Minutos por partido</label>
-                  <div className="flex gap-2">
-                    {[8,10,12,15,20].map(n => (
-                      <button key={n} onClick={() => { setMinutesCustom(""); persist({ ...t, config: { ...t.config, matchMinutes: n } }); }} className="flex-1 py-2 rounded-lg font-bold text-sm cursor-pointer transition-colors" style={{ background: (t.config.matchMinutes ?? 10) === n ? COLOR : "#374151", color: (t.config.matchMinutes ?? 10) === n ? "#fff" : "#94a3b8" }}>{n}</button>
-                    ))}
-                    <input type="number" value={minutesCustom} onChange={e => handleMinutesCustom(e.target.value)} placeholder="Otro" min={1} max={90} className="w-16 py-2 rounded-lg text-sm text-center font-bold outline-none bg-[#374151] text-gray-300 placeholder:text-gray-600 shrink-0" />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 font-semibold block mb-2">¿Qué se anota?</label>
-                  <div className="flex gap-2">
-                    {[{ id: "games", label: "Games ganados" }, { id: "points", label: "Puntos acumulados" }].map(opt => (
-                      <button key={opt.id} onClick={() => persist({ ...t, config: { ...t.config, timedMetric: opt.id } })} className="flex-1 py-2 rounded-lg font-bold text-sm cursor-pointer transition-colors" style={{ background: (t.config.timedMetric ?? "games") === opt.id ? COLOR : "#374151", color: (t.config.timedMetric ?? "games") === opt.id ? "#fff" : "#94a3b8" }}>{opt.label}</button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-            {scoring === "rally" && (
-              <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 mt-2">
-                <p className="text-xs text-gray-500 mb-3">Cada punto ganado cuenta. Si el partido termina 16-8, cada jugador acumula esos puntos.</p>
-                <label className="text-xs text-gray-400 font-semibold block mb-2">Puntos por partido</label>
-                <div className="flex gap-2">
-                  {[16,24,32].map(n => (
-                    <button key={n} onClick={() => { setRallyCustom(""); persist({ ...t, config: { ...t.config, rallyPoints: n } }); }} className="flex-1 py-2 rounded-lg font-bold text-sm cursor-pointer transition-colors" style={{ background: (t.config.rallyPoints ?? 24) === n ? COLOR : "#374151", color: (t.config.rallyPoints ?? 24) === n ? "#fff" : "#94a3b8" }}>{n}</button>
-                  ))}
-                  <input type="number" value={rallyCustom} onChange={e => handleRallyCustom(e.target.value)} placeholder="Otro" min={1} className="w-16 py-2 rounded-lg text-sm text-center font-bold outline-none bg-[#374151] text-gray-300 placeholder:text-gray-600 shrink-0" />
-                </div>
-              </div>
-            )}
-            {scoring === "games" && (
-              <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 mt-2">
-                <p className="text-xs text-gray-500 mb-3">Primero en llegar a X games gana el partido.</p>
-                <label className="text-xs text-gray-400 font-semibold block mb-2">Games para ganar</label>
-                <div className="flex gap-2">
-                  {[4,6,8].map(n => (
-                    <button key={n} onClick={() => { setGamesCustom(""); persist({ ...t, config: { ...t.config, targetGames: n } }); }} className="flex-1 py-2 rounded-lg font-bold text-sm cursor-pointer transition-colors" style={{ background: (t.config.targetGames ?? 6) === n ? COLOR : "#374151", color: (t.config.targetGames ?? 6) === n ? "#fff" : "#94a3b8" }}>{n}</button>
-                  ))}
-                  <input type="number" value={gamesCustom} onChange={e => handleGamesCustom(e.target.value)} placeholder="Otro" min={1} className="w-16 py-2 rounded-lg text-sm text-center font-bold outline-none bg-[#374151] text-gray-300 placeholder:text-gray-600 shrink-0" />
-                </div>
-              </div>
-            )}
+            {/* ── 5. Formato de partido ── */}
+            <SectionHeader>🎾 Formato de partido</SectionHeader>
+            <MatchFormatPicker
+              config={t.config}
+              color={COLOR}
+              includeFormat={false}
+              onChange={(patch) => persist({ ...t, config: { ...t.config, ...patch } })}
+            />
 
             {/* ── 6. Rondas — ocultar en modo manual ── */}
             {!isManual && (
@@ -738,37 +644,16 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
 
     {/* ── Modal: Revisar y lanzar ── */}
     {showLaunchModal && (
-      <div className="fixed inset-0 z-50 bg-black/80 flex flex-col">
-        <div className="flex-1 flex flex-col max-w-lg mx-auto w-full bg-[#111827] overflow-hidden">
-
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-4 border-b border-gray-800 shrink-0">
-            <h2 className="text-sm font-black text-gray-50">Revisar antes de iniciar</h2>
-            <button onClick={() => setShowLaunchModal(false)} style={{ background: "none", border: "none", padding: "0 4px", cursor: "pointer" }} className="text-gray-500 hover:text-gray-200 text-lg leading-none transition-colors">✕</button>
-          </div>
-
-          {/* Tabs — solo si hay emparejamientos */}
-          {canShowMatchmakingTab && (
-            <div className="flex shrink-0" style={{ borderBottom: "1px solid #1f2937" }}>
-              {[{ id: "emparejamientos", label: "🎲 Emparejamientos" }, { id: "resumen", label: "📋 Resumen" }].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setLaunchModalTab(tab.id)}
-                  className="flex-1 py-3 text-xs font-bold transition-colors cursor-pointer"
-                  style={{
-                    background: "none",
-                    borderTop: "none", borderLeft: "none", borderRight: "none",
-                    borderBottom: launchModalTab === tab.id ? `2px solid ${COLOR}` : "2px solid transparent",
-                    color: launchModalTab === tab.id ? COLOR : "#64748b",
-                  }}
-                >{tab.label}</button>
-              ))}
-            </div>
-          )}
-
-          {/* Contenido scrollable */}
-          <div className="flex-1 overflow-y-auto">
-
+      <LaunchModal
+        color={COLOR}
+        tabs={canShowMatchmakingTab ? [{ id: "emparejamientos", label: "🎲 Emparejamientos" }, { id: "resumen", label: "📋 Resumen" }] : null}
+        activeTab={launchModalTab}
+        onTab={setLaunchModalTab}
+        onClose={() => setShowLaunchModal(false)}
+        onReshuffle={canReshuffle && launchModalTab === "emparejamientos" ? handleReshuffle : null}
+        onStart={onStart}
+        saving={saving}
+      >
             {/* Tab Emparejamientos */}
             {canShowMatchmakingTab && launchModalTab === "emparejamientos" && roundsToPreview && (
               <div className="px-4 py-4 space-y-6">
@@ -820,72 +705,34 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, copy
                   </div>
                 )}
 
-                <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
-                  <div className="px-4 py-2.5 border-b border-gray-800"><span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Información</span></div>
-                  <div className="px-4 py-3 space-y-1">
+                <SummaryCard title="Información">
                     <SummaryRow label="Nombre" value={t.config.name || "—"} />
                     {t.config.datetime && <SummaryRow label="Fecha" value={new Date(t.config.datetime).toLocaleString("es", { dateStyle: "medium", timeStyle: "short" })} />}
                     {t.config.location && <SummaryRow label="Ubicación" value={t.config.location} />}
-                  </div>
-                </div>
+                  </SummaryCard>
 
-                <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
-                  <div className="px-4 py-2.5 border-b border-gray-800"><span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Jugadores</span></div>
-                  <div className="px-4 py-3 space-y-1">
+                <SummaryCard title="Jugadores">
                     <SummaryRow label="Modalidad" value={isPairs ? "Parejas Fijas" : "Individual"} />
                     <SummaryRow label="Total" value={`${tot} ${isPairs ? "parejas" : "jugadores"}`} />
                     <SummaryRow label="Pistas" value={t.config.courts} />
                     <SummaryRow label="Juegan por ronda" value={Math.min(tot, act)} />
                     {sit > 0 && <SummaryRow label="Descansan por ronda" value={`${sit} ${sit === 1 ? "jugador" : "jugadores"}`} yellow />}
                     {!isPairs && <SummaryRow label="Niveles" value={useLevels ? "Activados" : "Desactivados"} />}
-                  </div>
-                </div>
+                  </SummaryCard>
 
-                <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
-                  <div className="px-4 py-2.5 border-b border-gray-800"><span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Puntuación</span></div>
-                  <div className="px-4 py-3 space-y-1">
+                <SummaryCard title="Puntuación">
                     <SummaryRow label="Sistema" value={scoringLabel} />
                     <SummaryRow label="Detalle" value={scoringDetail} />
                     <SummaryRow label="Punto de oro" value={t.config.goldenPoint !== false ? "Activado" : "Desactivado"} />
-                  </div>
-                </div>
+                  </SummaryCard>
 
-                <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
-                  <div className="px-4 py-2.5 border-b border-gray-800"><span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Formato</span></div>
-                  <div className="px-4 py-3 space-y-1">
+                <SummaryCard title="Formato">
                     <SummaryRow label="Rondas" value={isManual ? String(localManualRounds.length) : t.config.maxRounds ? String(t.config.maxRounds) : "Ilimitadas"} />
                     <SummaryRow label="Emparejamiento" value={(t.config.matchmaking || "americano") === "americano" ? "Americano" : (t.config.matchmaking || "americano") === "mexicano" ? "Mexicano" : "Manual"} />
-                  </div>
-                </div>
+                  </SummaryCard>
               </div>
             )}
-          </div>
-
-          {/* Footer */}
-          <div className="px-4 pt-3 pb-5 border-t border-gray-800 shrink-0">
-            <p className="text-xs text-gray-600 text-center mb-3">Una vez guardado el primer resultado no podrás modificar la configuración.</p>
-            <div className="flex gap-2">
-              <button onClick={() => setShowLaunchModal(false)} className="flex-1 py-3 rounded-xl font-bold text-sm text-gray-400 cursor-pointer transition-colors" style={{ background: "#1f2937", border: "1px solid #374151" }}>
-                ← Editar
-              </button>
-              {canReshuffle && launchModalTab === "emparejamientos" && (
-                <button onClick={handleReshuffle} className="px-4 py-3 rounded-xl font-bold text-sm text-gray-300 cursor-pointer transition-colors whitespace-nowrap" style={{ background: "#1f2937", border: "1px solid #374151" }}>
-                  🔀 Re-sortear
-                </button>
-              )}
-              <button
-                data-testid="btn-iniciar"
-                onClick={onStart}
-                disabled={saving}
-                className="flex-1 py-3 rounded-xl font-black text-sm text-white transition-opacity"
-                style={{ background: COLOR, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1 }}
-              >
-                {saving ? "Guardando..." : "🎾 Iniciar"}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      </LaunchModal>
     )}
     </>
   );

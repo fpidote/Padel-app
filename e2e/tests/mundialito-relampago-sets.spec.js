@@ -62,9 +62,18 @@ async function signInAsAdmin(page) {
 async function startTournament(page) {
   await page.goto(`/torneo/${CODE}`);
   await signInAsAdmin(page);
-  const start = page.getByRole("button", { name: /Iniciar Torneo/i });
-  await expect(start).toBeVisible({ timeout: 8000 });
-  await start.click();
+  // Mundialito pasa por "Revisar y lanzar"; Relámpago todavía inicia directo con "Iniciar Torneo".
+  const open = page.getByTestId("btn-open-modal");
+  const direct = page.getByRole("button", { name: /Iniciar Torneo/i });
+  await expect(open.or(direct)).toBeVisible({ timeout: 8000 });
+  if (await open.count()) {
+    await expect(open).toBeEnabled();
+    await open.click();
+    await expect(page.getByTestId("btn-iniciar")).toBeVisible({ timeout: 3000 });
+    await page.getByTestId("btn-iniciar").click();
+  } else {
+    await direct.click();
+  }
   await expect.poll(async () => (await getTournamentData(CODE)).status).toBe("playing");
 }
 

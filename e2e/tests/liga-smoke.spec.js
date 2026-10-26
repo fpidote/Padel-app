@@ -147,8 +147,11 @@ test("el organizador arma el torneo desde cero (setup) y el fixture se genera al
   await page.goto(`/torneo/${CODE}`);
   await signInAsAdmin(page);
 
-  await expect(page.getByRole("button", { name: /Iniciar Torneo/i })).toBeVisible({ timeout: 8000 });
-  await page.getByRole("button", { name: /Iniciar Torneo/i }).click();
+  // Liga ahora pasa por "Revisar y lanzar" (muestra el fixture) antes de iniciar.
+  await expect(page.getByTestId("btn-open-modal")).toBeEnabled({ timeout: 8000 });
+  await page.getByTestId("btn-open-modal").click();
+  await expect(page.getByTestId("btn-iniciar")).toBeVisible({ timeout: 3000 });
+  await page.getByTestId("btn-iniciar").click();
 
   await page.waitForTimeout(1000);
   const data = await getTournamentData(CODE);
