@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildBracket, advanceBracket, countPlayed } from "./relampago.js";
+import { buildBracket, advanceBracket, countPlayed, firstRoundSeedPairs } from "./relampago.js";
 
 function makePairs(n) {
   return Array.from({ length: n }, (_, i) => ({
@@ -163,5 +163,26 @@ describe("countPlayed", () => {
   });
   it("pareja sin partidos devuelve 0", () => {
     expect(countPlayed(bracket, 99)).toBe(0);
+  });
+});
+
+describe("firstRoundSeedPairs", () => {
+  it("empareja el mejor sembrado con el peor y reparte los pasa directo entre los mejores", () => {
+    // 6 parejas en un cuadro de 8: los índices 6 y 7 son BYE
+    expect(firstRoundSeedPairs(6)).toEqual([[0, 7], [1, 6], [2, 5], [3, 4]]);
+  });
+  it("sin pasa directo (potencia de 2) no hay índices fuera de rango", () => {
+    expect(firstRoundSeedPairs(4)).toEqual([[0, 3], [1, 2]]);
+  });
+  it("coincide con la primera ronda real de buildBracket para cualquier cantidad", () => {
+    for (let n = 2; n <= 16; n++) {
+      const pairs = Array.from({ length: n }, (_, i) => ({ id: i, p1: `P${i}`, p2: "x" }));
+      const r1 = buildBracket(pairs)
+        .filter((m) => m.bracket === "winners" && m.round === 1)
+        .sort((a, b) => a.matchIndex - b.matchIndex)
+        .map((m) => [m.pairA.id, m.pairB.id]);
+      const expected = firstRoundSeedPairs(n).map(([a, b]) => [a < n ? a : "bye", b < n ? b : "bye"]);
+      expect(r1).toEqual(expected);
+    }
   });
 });

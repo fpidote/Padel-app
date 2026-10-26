@@ -28,6 +28,15 @@ describe("GroupsPreview", () => {
     expect(renderToStaticMarkup(<GroupsPreview groups={groups} advancePerGroup={1} />)).toContain("avanza 1");
   });
 
+  it("explica cuántas pasan directo cuando los clasificados no son potencia de 2", () => {
+    const html = renderToStaticMarkup(<GroupsPreview groups={groups} advancePerGroup={3} knockout={{ qualifiers: 6, size: 8, byes: 2 }} />);
+    expect(html).toContain("las 2 mejor clasificadas pasan directo");
+  });
+  it("no menciona pasa directo si el cuadro es exacto", () => {
+    const html = renderToStaticMarkup(<GroupsPreview groups={groups} advancePerGroup={2} knockout={{ qualifiers: 4, size: 4, byes: 0 }} />);
+    expect(html).not.toContain("pasan directo");
+  });
+
   it("avisa si un grupo queda con menos de 2 parejas", () => {
     const bad = [...groups, { id: 2, name: "Grupo C", pairs: [pair(5)], matches: [] }];
     expect(renderToStaticMarkup(<GroupsPreview groups={bad} advancePerGroup={2} />)).toContain("Grupo C");

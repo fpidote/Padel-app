@@ -1,4 +1,5 @@
 // src/logic/constants.js
+import { knockoutInfo, knockoutByesText } from "./mundialito";
 
 export const B = (bg, ex = {}) => ({
   background: bg,
@@ -127,6 +128,7 @@ export function generateRules(type, config, context = {}) {
       return [
         `${config.groupCount ?? 2} ${(config.groupCount ?? 2) === 1 ? "grupo" : "grupos"} en fase inicial. Los ${config.advancePerGroup ?? 2} mejores de cada grupo avanzan a eliminatorias.`,
         "Clasifica quien gane más partidos. No hay empates.",
+        ...[knockoutByesText(knockoutInfo(config.groupCount, config.advancePerGroup))].filter(Boolean),
         "Desempate: 1º el resultado del partido entre las parejas igualadas, 2º diferencia entre lo que anotan a favor y en contra, 3º diferencia de games.",
         scoringDesc(),
         goldenPointDesc(),

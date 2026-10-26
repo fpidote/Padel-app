@@ -1,14 +1,17 @@
 // src/components/setup/DrawPreview.jsx
-// Contenido de la pestaña de sorteo en "Revisar y lanzar" para Mundialito y Liga.
+// Contenido de la pestaña de sorteo en "Revisar y lanzar" para Mundialito, Liga y Relámpago.
+import { knockoutByesText } from "../../logic/mundialito";
 
 const names = (p) => `${p.p1} / ${p.p2}`;
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-export function GroupsPreview({ groups, advancePerGroup }) {
+export function GroupsPreview({ groups, advancePerGroup, knockout }) {
+  const byesText = knockout ? knockoutByesText(knockout) : null;
   return (
     <div className="px-4 py-4 space-y-3">
       <p className="text-xs text-gray-500">
         Por grupo {advancePerGroup === 1 ? "avanza 1 pareja" : `avanzan ${advancePerGroup} parejas`} a la eliminatoria.
+        {byesText && ` ${byesText}`}
       </p>
       {groups.map((group) => (
         <div key={group.id} className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">

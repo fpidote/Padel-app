@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { shuffle, buildShareMessage } from "../../logic/utils";
-import { validateMundialitoConfig } from "../../logic/mundialito";
+import { validateMundialitoConfig, knockoutInfo } from "../../logic/mundialito";
 import { buildPozoRound, shufflePlayers } from "../../logic/pozo";
 import MatchFormatPicker from "../shared/MatchFormatPicker";
 import LaunchModal, { SummaryRow, SummaryCard } from "../shared/LaunchModal";
@@ -778,7 +778,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
         saving={saving}
       >
         {launchTab === "sorteo" && t.type === "mundialito" && (
-          <GroupsPreview groups={activeDraw.groups} advancePerGroup={t.config.advancePerGroup ?? 2} />
+          <GroupsPreview groups={activeDraw.groups} advancePerGroup={t.config.advancePerGroup ?? 2} knockout={knockoutInfo(t.config.groupCount || 2, t.config.advancePerGroup ?? 2)} />
         )}
         {launchTab === "sorteo" && t.type === "liga" && (
           <FixturePreview rounds={activeDraw.rounds} matches={activeDraw.matches} />
@@ -800,6 +800,10 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode
                 <SummaryRow label="Pistas" value={t.config.courts} />
                 {t.type === "mundialito" && <SummaryRow label="Grupos" value={t.config.groupCount || 2} />}
                 {t.type === "mundialito" && <SummaryRow label="Avanzan por grupo" value={t.config.advancePerGroup ?? 2} />}
+                {t.type === "mundialito" && <SummaryRow label="Clasifican a la eliminatoria" value={`${knockoutInfo(t.config.groupCount || 2, t.config.advancePerGroup ?? 2).qualifiers} parejas`} />}
+                {t.type === "mundialito" && knockoutInfo(t.config.groupCount || 2, t.config.advancePerGroup ?? 2).byes > 0 && (
+                  <SummaryRow label="Pasan directo" value={knockoutInfo(t.config.groupCount || 2, t.config.advancePerGroup ?? 2).byes} />
+                )}
                 {t.type === "relampago" && <SummaryRow label="Cuadro" value={t.config.seedByOrder ? "Por orden de carga" : "Sorteado al azar"} />}
                 {t.type === "liga" && <SummaryRow label="Jornadas" value={activeDraw.rounds.length} />}
                 {t.type === "liga" && <SummaryRow label="Ida y vuelta" value={t.config.idaYVuelta ? "Sí" : "No"} />}

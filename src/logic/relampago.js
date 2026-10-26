@@ -1,4 +1,27 @@
 // ── Relámpago Logic ──────────────────────────────────────────
+// Orden en que se ubican las siembras en la primera ronda: el mejor contra el peor, y los
+// pasa directo (las plazas que sobran hasta la potencia de 2) caen sobre los mejores.
+function seedOrder(size) {
+  const order = [];
+  let lo = 0, hi = size - 1;
+  while (lo <= hi) {
+    order.push(lo++);
+    if (lo <= hi) order.push(hi--);
+  }
+  return order;
+}
+
+// Enfrentamientos de la primera ronda como pares de índices de siembra (0 = mejor).
+// Un índice >= n es un pasa directo. buildBracket usa esta misma disposición.
+export function firstRoundSeedPairs(n) {
+  let size = 1;
+  while (size < n) size *= 2;
+  const order = seedOrder(size);
+  const pairs = [];
+  for (let i = 0; i < size / 2; i++) pairs.push([order[i * 2], order[i * 2 + 1]]);
+  return pairs;
+}
+
 export function buildBracket(pairs) {
   const n = pairs.length;
   let size = 1;
@@ -7,12 +30,7 @@ export function buildBracket(pairs) {
   const BYE = { id: "bye", p1: "BYE", p2: "BYE" };
   const distributed = Array(size).fill(null).map((_, i) => (i < n ? pairs[i] : BYE));
   // Interleave seeds so no two BYEs face each other in R1
-  const interleaved = [];
-  let lo = 0, hi = size - 1;
-  while (lo <= hi) {
-    interleaved.push(distributed[lo++]);
-    if (lo <= hi) interleaved.push(distributed[hi--]);
-  }
+  const interleaved = seedOrder(size).map((i) => distributed[i]);
   const seeds = interleaved;
   const matches = [];
 
