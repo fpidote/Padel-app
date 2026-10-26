@@ -58,10 +58,12 @@ export function computeStandings(pairs, matches) {
   return standings;
 }
 
+// Relámpago acumula 1 pt por victoria y no tiene campo wins
+export const winsOf = (p) => p.wins ?? p.pts ?? 0;
+
 export function compareStandings(a, b) {
-  // Relámpago acumula 1 pt por victoria sin campo wins
-  const winsA = a.wins ?? a.pts ?? 0;
-  const winsB = b.wins ?? b.pts ?? 0;
+  const winsA = winsOf(a);
+  const winsB = winsOf(b);
   if (winsB !== winsA) return winsB - winsA;
   const setDiffA = a.gf - a.gc;
   const setDiffB = b.gf - b.gc;
@@ -75,4 +77,34 @@ export function compareStandings(a, b) {
 
 export function sortStandings(standings) {
   return [...standings].sort(compareStandings);
+}
+
+// Suma (sign=1) o resta (sign=-1) el resultado de un partido a los acumulados de las parejas
+export function applyMatchToPairs(pairs, match, a, b, sets, sign) {
+  let ga = 0;
+  let gb = 0;
+  (sets || []).forEach((set) => {
+    ga += parseInt(set.a || 0);
+    gb += parseInt(set.b || 0);
+  });
+  const next = [...pairs];
+  [
+    [match.pairA, a, b, ga, gb],
+    [match.pairB, b, a, gb, ga],
+  ].forEach(([pair, sf, sc, jf, jc]) => {
+    if (!pair) return;
+    const idx = next.findIndex((p) => p.id === pair.id);
+    if (idx < 0) return;
+    const won = sf > sc ? 1 : 0;
+    next[idx] = {
+      ...next[idx],
+      pts: next[idx].pts + sign * won,
+      played: Math.max(0, (next[idx].played || 0) + sign),
+      gf: next[idx].gf + sign * sf,
+      gc: next[idx].gc + sign * sc,
+      gamesFor: (next[idx].gamesFor || 0) + sign * jf,
+      gamesAgainst: (next[idx].gamesAgainst || 0) + sign * jc,
+    };
+  });
+  return next;
 }

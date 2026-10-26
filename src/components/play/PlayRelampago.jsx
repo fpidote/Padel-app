@@ -3,6 +3,7 @@ import { useState, Fragment } from "react";
 import { generateRules } from "../../logic/constants";
 import { advanceBracket } from "../../logic/relampago";
 import { analyzeSets } from "../../logic/sets";
+import { applyMatchToPairs } from "../../logic/standings";
 import { THeader, Tabs } from "../shared/Components";
 import PairStandings from "../shared/PairStandings";
 
@@ -329,36 +330,6 @@ function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, accentColor,
       })}
     </div>
   );
-}
-
-// Suma (sign=1) o resta (sign=-1) el resultado de un partido a los acumulados de las parejas
-function applyMatchToPairs(pairs, match, a, b, sets, sign) {
-  let ga = 0;
-  let gb = 0;
-  (sets || []).forEach((set) => {
-    ga += parseInt(set.a || 0);
-    gb += parseInt(set.b || 0);
-  });
-  const next = [...pairs];
-  [
-    [match.pairA, a, b, ga, gb],
-    [match.pairB, b, a, gb, ga],
-  ].forEach(([pair, sf, sc, jf, jc]) => {
-    if (!pair) return;
-    const idx = next.findIndex((p) => p.id === pair.id);
-    if (idx < 0) return;
-    const won = sf > sc ? 1 : 0;
-    next[idx] = {
-      ...next[idx],
-      pts: next[idx].pts + sign * won,
-      played: Math.max(0, (next[idx].played || 0) + sign),
-      gf: next[idx].gf + sign * sf,
-      gc: next[idx].gc + sign * sc,
-      gamesFor: (next[idx].gamesFor || 0) + sign * jf,
-      gamesAgainst: (next[idx].gamesAgainst || 0) + sign * jc,
-    };
-  });
-  return next;
 }
 
 export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onEditTournament }) {

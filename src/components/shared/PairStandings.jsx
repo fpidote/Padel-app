@@ -1,5 +1,5 @@
 // src/components/shared/PairStandings.jsx
-import { sortStandings } from "../../logic/standings";
+import { sortStandings, winsOf } from "../../logic/standings";
 
 const TH = "px-2.5 py-2 text-[11px] font-bold text-[#475569] uppercase tracking-wide";
 const diffColor = (d) => (d > 0 ? "#4ade80" : d < 0 ? "#f87171" : "#64748b");
@@ -46,7 +46,7 @@ export default function PairStandings({ pairs, title, extra, scoringFormat = "ga
                   {p.name || `${p.p1} / ${p.p2}`}
                 </td>
                 <td className="px-2.5 py-2.5 text-center text-sm text-[#94a3b8]">{p.played ?? "–"}</td>
-                <td className="px-2.5 py-2.5 text-center text-sm font-black text-[#38bdf8]">{p.wins ?? p.pts}</td>
+                <td className="px-2.5 py-2.5 text-center text-sm font-black text-[#38bdf8]">{winsOf(p)}</td>
                 <td className="px-2.5 py-2.5 text-center text-sm text-[#94a3b8]">{p.gf}</td>
                 <td className="px-2.5 py-2.5 text-center text-sm text-[#94a3b8]">{p.gc}</td>
                 <td className="px-2.5 py-2.5 text-center text-sm font-bold" style={{ color: diffColor(d) }}>
