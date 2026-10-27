@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { shuffle, buildShareMessage } from "../../logic/utils";
-import { validateMundialitoConfig, knockoutInfo, mundialitoThirdPlace } from "../../logic/mundialito";
+import { validateMundialitoConfig, knockoutInfo, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail } from "../../logic/mundialito";
 import { buildPozoRound, shufflePlayers } from "../../logic/pozo";
 import MatchFormatPicker from "../shared/MatchFormatPicker";
 import LaunchModal, { SummaryRow, SummaryCard } from "../shared/LaunchModal";
@@ -35,6 +35,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
   const [copied,        setCopied]        = useState(false);
   const [saved,         setSaved]         = useState(false);
   const [showLaunch,    setShowLaunch]    = useState(false);
+  const [customOpen,    setCustomOpen]    = useState(false);
   const [launchTab,     setLaunchTab]     = useState("sorteo");
   const [drawState,     setDrawState]     = useState(null);
   const [editingIdx,    setEditingIdx]    = useState(null);
@@ -83,6 +84,14 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
   const mundialitoCheck = t.type === "mundialito"
     ? validateMundialitoConfig(tot, t.config.groupCount || 2, t.config.advancePerGroup ?? 2)
     : null;
+  // Formatos sugeridos (hasta 5; si el elegido es otro, también se muestra) y modo manual
+  const formatOptions = t.type === "mundialito" ? mundialitoFormatOptions(tot) : [];
+  const currentFormat = formatOptions.find(
+    (o) => o.groupCount === (t.config.groupCount || 2) && o.advancePerGroup === (t.config.advancePerGroup ?? 2),
+  );
+  const formatCards = formatOptions.slice(0, 5);
+  if (currentFormat && !formatCards.includes(currentFormat)) formatCards.push(currentFormat);
+  const customVisible = customOpen || formatCards.length === 0 || !currentFormat;
   const ok = isMixer
     ? players.length >= act && players.every(p => p.name.trim())
     : isPozo
@@ -365,31 +374,59 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
               {t.type === "mundialito" && (
                 <>
                   <div>
-                    <label className="text-xs text-gray-400 font-semibold block mb-2">Número de grupos</label>
-                    <div className="flex gap-2">
-                      {[2,3,4].map(n => (
-                        <button key={n}
-                          onClick={() => persist({ ...t, config: { ...t.config, groupCount: n } })}
-                          disabled={n > mundialitoCheck.maxGroups}
-                          className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${t.config.groupCount === n ? "text-white" : "bg-[#1f2937] text-[#94a3b8]"}`}
-                          style={t.config.groupCount === n ? { background: color } : undefined}
-                        >{n}</button>
-                      ))}
-                    </div>
+                    <label className="text-xs text-gray-400 font-semibold block mb-2">Formato de grupos</label>
+                    {formatCards.length > 0 && (
+                      <div className="flex flex-col gap-2">
+                        {formatCards.map((o) => {
+                          const active = o === currentFormat;
+                          return (
+                            <button key={`${o.groupCount}-${o.advancePerGroup}`}
+                              onClick={() => { setCustomOpen(false); persist({ ...t, config: { ...t.config, groupCount: o.groupCount, advancePerGroup: o.advancePerGroup } }); }}
+                              className={`w-full text-left rounded-xl border px-3.5 py-3 cursor-pointer transition-colors ${active ? "text-white" : "bg-[#1f2937] border-[#374151] text-[#cbd5e1]"}`}
+                              style={active ? { background: color, borderColor: color } : undefined}
+                            >
+                              <div className="font-bold text-sm">{o.recommended ? "⭐ " : ""}{formatTitle(o)}</div>
+                              <div className={`text-xs mt-1 ${active ? "text-white/80" : "text-gray-400"}`}>{formatDetail(o)}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {formatCards.length > 0 && !customVisible && (
+                      <button onClick={() => setCustomOpen(true)}
+                        className="mt-2 text-xs font-semibold text-gray-400 underline cursor-pointer">
+                        ⚙️ Personalizar grupos y clasificados
+                      </button>
+                    )}
                   </div>
-                  <div>
-                    <label className="text-xs text-gray-400 font-semibold block mb-2">Parejas que avanzan por grupo</label>
-                    <div className="flex gap-2">
-                      {[1,2,3].map(n => (
-                        <button key={n}
-                          onClick={() => persist({ ...t, config: { ...t.config, advancePerGroup: n } })}
-                          disabled={n > mundialitoCheck.maxAdvance}
-                          className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${t.config.advancePerGroup === n ? "text-white" : "bg-[#1f2937] text-[#94a3b8]"}`}
-                          style={t.config.advancePerGroup === n ? { background: color } : undefined}
-                        >{n}</button>
-                      ))}
-                    </div>
-                  </div>
+                  {customVisible && (
+                    <>
+                      <div>
+                        <label className="text-xs text-gray-400 font-semibold block mb-2">Número de grupos</label>
+                        <div className="flex flex-wrap gap-2">
+                          {Array.from({ length: Math.max(1, mundialitoCheck.maxGroups - 1) }, (_, i) => i + 2).map(n => (
+                            <button key={n}
+                              onClick={() => persist({ ...t, config: { ...t.config, groupCount: n } })}
+                              className={`flex-1 min-w-[3rem] py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer ${t.config.groupCount === n ? "text-white" : "bg-[#1f2937] text-[#94a3b8]"}`}
+                              style={t.config.groupCount === n ? { background: color } : undefined}
+                            >{n}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-400 font-semibold block mb-2">Parejas que avanzan por grupo</label>
+                        <div className="flex flex-wrap gap-2">
+                          {Array.from({ length: Math.max(1, mundialitoCheck.maxAdvance) }, (_, i) => i + 1).map(n => (
+                            <button key={n}
+                              onClick={() => persist({ ...t, config: { ...t.config, advancePerGroup: n } })}
+                              className={`flex-1 min-w-[3rem] py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer ${t.config.advancePerGroup === n ? "text-white" : "bg-[#1f2937] text-[#94a3b8]"}`}
+                              style={t.config.advancePerGroup === n ? { background: color } : undefined}
+                            >{n}</button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                   {knockoutInfo(t.config.groupCount || 2, t.config.advancePerGroup ?? 2).qualifiers >= 4 && (
                     <div>
                       <label className="text-xs text-gray-400 font-semibold block mb-2">Partido por el 3.º y 4.º puesto</label>

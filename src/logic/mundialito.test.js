@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildKnockoutFromGroups, validateMundialitoConfig, seedQualifiers, knockoutInfo, knockoutByesText, mundialitoGroupsLocked, canReopenMundialito, reopenMundialitoPatch, mundialitoThirdPlace } from "./mundialito";
+import { buildKnockoutFromGroups, validateMundialitoConfig, seedQualifiers, knockoutInfo, knockoutByesText, mundialitoGroupsLocked, canReopenMundialito, reopenMundialitoPatch, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail } from "./mundialito";
 import { firstRoundSeedPairs } from "./relampago";
 import { generateRules } from "./constants";
 
@@ -331,5 +331,77 @@ describe("Torneo por grupos — partido por el 3.º puesto", () => {
     const base = { groupCount: 2, advancePerGroup: 2 };
     expect(generateRules("mundialito", base).join(" ")).not.toMatch(/3\.º/);
     expect(generateRules("mundialito", { ...base, thirdPlace: true }).join(" ")).toMatch(/3\.º y 4\.º puesto/);
+  });
+});
+
+describe("mundialitoFormatOptions — formatos sugeridos según las parejas", () => {
+  const find = (opts, g, a) => opts.find((o) => o.groupCount === g && o.advancePerGroup === a);
+
+  it("T-FMT-01: 12 parejas ofrece 4 grupos de 3 con pase de 1 (2 partidos por pareja, 4 clasificados)", () => {
+    const o = find(mundialitoFormatOptions(12), 4, 1);
+    expect(o).toMatchObject({ groupSizes: [3, 3, 3, 3], matchesPerPair: [2, 2], groupMatches: 12, qualifiers: 4, byes: 0, recommended: true });
+  });
+
+  it("T-FMT-02: 10 parejas ofrece 2 grupos de 5 pasando 2 (4 partidos por pareja, 20 en grupos)", () => {
+    const o = find(mundialitoFormatOptions(10), 2, 2);
+    expect(o).toMatchObject({ groupSizes: [5, 5], matchesPerPair: [4, 4], groupMatches: 20, qualifiers: 4, byes: 0, recommended: true });
+  });
+
+  it("T-FMT-03: con 11 parejas en 3 grupos los tamaños son 4, 4 y 3 y los partidos por pareja van de 2 a 3", () => {
+    const o = find(mundialitoFormatOptions(11), 3, 2);
+    expect(o).toMatchObject({ groupSizes: [4, 4, 3], matchesPerPair: [2, 3], groupMatches: 15, qualifiers: 6, byes: 2, recommended: false });
+  });
+
+  it("T-FMT-04: nunca sugiere grupos de menos de 3 ni que pase todo el grupo", () => {
+    for (const n of [6, 8, 10, 11, 12, 17, 20, 24]) {
+      for (const o of mundialitoFormatOptions(n)) {
+        expect(Math.min(...o.groupSizes)).toBeGreaterThanOrEqual(3);
+        expect(o.advancePerGroup).toBeLessThan(Math.min(...o.groupSizes));
+        expect(o.qualifiers).toBeLessThanOrEqual(16);
+        expect(o.groupSizes.reduce((a, b) => a + b, 0)).toBe(n);
+      }
+    }
+  });
+
+  it("T-FMT-05: 20 parejas permite más de 4 grupos (5 grupos de 4)", () => {
+    expect(find(mundialitoFormatOptions(20), 5, 1)).toBeTruthy();
+  });
+
+  it("T-FMT-06: los recomendados (grupos parejos y cuadro exacto) van primero", () => {
+    const opts = mundialitoFormatOptions(12);
+    const firstNon = opts.findIndex((o) => !o.recommended);
+    expect(opts.slice(0, firstNon).every((o) => o.recommended)).toBe(true);
+    expect(opts.slice(firstNon).some((o) => o.recommended)).toBe(false);
+    expect(opts[0].recommended).toBe(true);
+  });
+
+  it("T-FMT-06b: entre los recomendados van primero los de menos clasificados y, a igualdad, los de más grupos", () => {
+    const opts = mundialitoFormatOptions(12);
+    expect(opts.slice(0, 2).map((o) => `${o.groupCount}x${o.advancePerGroup}`)).toEqual(["4x1", "2x2"]);
+  });
+
+  it("T-FMT-07: con menos de 6 parejas no hay sugerencias (solo configuración manual)", () => {
+    expect(mundialitoFormatOptions(5)).toEqual([]);
+    expect(mundialitoFormatOptions(0)).toEqual([]);
+  });
+});
+
+describe("textos de los formatos sugeridos", () => {
+  const find = (n, g, a) => mundialitoFormatOptions(n).find((o) => o.groupCount === g && o.advancePerGroup === a);
+
+  it("T-FMT-08: título con grupos parejos y pase de 1", () => {
+    expect(formatTitle(find(12, 4, 1))).toBe("4 grupos de 3 · pasa 1 de cada grupo");
+  });
+
+  it("T-FMT-09: título con grupos desiguales y pase de 2", () => {
+    expect(formatTitle(find(11, 3, 2))).toBe("3 grupos de 4 y 3 · pasan 2 de cada grupo");
+  });
+
+  it("T-FMT-10: detalle con cuadro exacto", () => {
+    expect(formatDetail(find(12, 4, 1))).toBe("Cada pareja juega 2 partidos · 12 partidos en grupos · Clasifican 4: semifinales y final");
+  });
+
+  it("T-FMT-11: detalle con pasa directo y grupos desiguales", () => {
+    expect(formatDetail(find(11, 3, 2))).toBe("Cada pareja juega 2 o 3 partidos · 15 partidos en grupos · Clasifican 6: cuartos de final, 2 pasan directo");
   });
 });

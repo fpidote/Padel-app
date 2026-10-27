@@ -59,6 +59,57 @@ export function validateMundialitoConfig(pairCount, groupCount, advancePerGroup)
   return { ok: error === null, maxGroups, maxAdvance, error };
 }
 
+// Formatos sugeridos para el organizador según cuántas parejas tiene: cada uno dice cuántos grupos y de
+// qué tamaño, cuántos partidos juega cada pareja, cuántos clasifican y si el cuadro necesita pasa directo.
+// Grupos de 3 parejas o más, sin que pase todo el grupo y hasta 16 clasificados. Primero los
+// recomendados (grupos parejos y cuadro exacto: 4, 8 o 16 clasificados).
+export function mundialitoFormatOptions(pairCount) {
+  const options = [];
+  for (let groupCount = 2; groupCount <= Math.floor(pairCount / 3); groupCount++) {
+    const base = Math.floor(pairCount / groupCount);
+    const extra = pairCount % groupCount;
+    // buildGroups reparte por turnos: los primeros grupos quedan con una pareja más
+    const groupSizes = Array.from({ length: groupCount }, (_, i) => (i < extra ? base + 1 : base));
+    const groupMatches = groupSizes.reduce((sum, size) => sum + (size * (size - 1)) / 2, 0);
+    for (let advancePerGroup = 1; advancePerGroup < base; advancePerGroup++) {
+      const { qualifiers, byes } = knockoutInfo(groupCount, advancePerGroup);
+      if (qualifiers > 16) continue;
+      options.push({
+        groupCount,
+        advancePerGroup,
+        groupSizes,
+        matchesPerPair: [base - 1, extra > 0 ? base : base - 1],
+        groupMatches,
+        qualifiers,
+        byes,
+        recommended: extra === 0 && byes === 0 && qualifiers >= 4,
+      });
+    }
+  }
+  // Menos clasificados primero y, a igualdad, más grupos (menos partidos por pareja)
+  const rank = (o) => [o.recommended ? 0 : 1, o.groupSizes[0] === o.groupSizes[o.groupSizes.length - 1] ? 0 : 1, o.byes, o.qualifiers];
+  return options.sort((a, b) => {
+    const ra = rank(a), rb = rank(b);
+    for (let i = 0; i < ra.length; i++) if (ra[i] !== rb[i]) return ra[i] - rb[i];
+    return b.groupCount - a.groupCount || a.advancePerGroup - b.advancePerGroup;
+  });
+}
+
+const KNOCKOUT_STAGE = { 2: "final", 4: "semifinales y final", 8: "cuartos de final", 16: "octavos de final", 32: "dieciseisavos de final" };
+
+export function formatTitle(o) {
+  const sizes = [...new Set(o.groupSizes)].sort((a, b) => b - a).join(" y ");
+  return `${o.groupCount} grupos de ${sizes} · ${o.advancePerGroup === 1 ? "pasa 1" : `pasan ${o.advancePerGroup}`} de cada grupo`;
+}
+
+export function formatDetail(o) {
+  const [min, max] = o.matchesPerPair;
+  const matches = min === max ? `${min} partidos` : `${min} o ${max} partidos`;
+  const { size } = knockoutInfo(o.groupCount, o.advancePerGroup);
+  const direct = o.byes > 0 ? `, ${o.byes} ${o.byes === 1 ? "pasa" : "pasan"} directo` : "";
+  return `Cada pareja juega ${matches} · ${o.groupMatches} partidos en grupos · Clasifican ${o.qualifiers}: ${KNOCKOUT_STAGE[size] ?? "cuadro final"}${direct}`;
+}
+
 // Rendimiento por partido jugado, para poder comparar a clasificados de grupos de distinto tamaño.
 const perMatch = (value, p) => (p.played > 0 ? value / p.played : 0);
 function byPerformance(a, b) {
