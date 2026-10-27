@@ -339,7 +339,7 @@ useEffect(() => {
 - **Admin**: verificado siempre via `auth.currentUser.uid === t.ownerUid`
 - **Nunca** usar `localStorage` para determinar permisos de admin
 - **Nunca** confiar en datos del cliente para operaciones sensibles
-- Las Firestore Rules (`firestore.rules`) validan `ownerUid`, los campos permitidos del documento y que quien crea no sea una sesión anónima; el registro de partidos del Pozo (`torneos/{code}/matches`) solo lo escribe y lo lee el dueño. Cualquier cambio en las reglas se cubre en `firestore.rules.test.js` (`npm run test:rules`, usa `vitest.rules.config.js`) y se despliega a mano con `firebase deploy --only firestore:rules`
+- Las Firestore Rules (`firestore.rules`) validan `ownerUid`, los campos permitidos del documento y que quien crea no sea una sesión anónima; la subcolección `torneos/{code}/matches` (hoy sin uso: el Pozo ya no registra partidos) solo la escribe y la lee el dueño. Cualquier cambio en las reglas se cubre en `firestore.rules.test.js` (`npm run test:rules`, usa `vitest.rules.config.js`) y se despliega a mano con `firebase deploy --only firestore:rules`
 
 ---
 

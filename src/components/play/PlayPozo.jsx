@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { collection, addDoc, Timestamp } from "firebase/firestore";
-import { db } from "../../firebase";
 import { generateRules } from "../../logic/constants";
 import {
   buildPozoRound,
@@ -93,24 +91,6 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
         status:           isLastRound ? "finished" : t.status,
         scoringStarted:   true,
       });
-      // Log matches fire-and-forget — no bloquea el avance de ronda
-      const matchesRef = collection(db, "torneos", code, "matches");
-      t.currentPozoRound.forEach((court) => {
-        const a   = parseInt(court.scoreA);
-        const b   = parseInt(court.scoreB);
-        const pAb = t.pairs.find((p) => p.id === court.pairA?.id);
-        const pBb = t.pairs.find((p) => p.id === court.pairB?.id);
-        const pAa = updatedPairs.find((p) => p.id === court.pairA?.id);
-        const pBa = updatedPairs.find((p) => p.id === court.pairB?.id);
-        if (!pAb || !pBb || !pAa || !pBa) return;
-        addDoc(matchesRef, {
-          roundNum: t.roundNum, courtNum: court.courtNum,
-          confirmedAt: Timestamp.now(), mode: "fixed",
-          teamA: { playerIds: [pAb.p1, pAb.p2], pairId: String(pAb.id), courtLevelBefore: pAb.courtLevel, courtLevelAfter: pAa.courtLevel },
-          teamB: { playerIds: [pBb.p1, pBb.p2], pairId: String(pBb.id), courtLevelBefore: pBb.courtLevel, courtLevelAfter: pBa.courtLevel },
-          result: { scoreA: a, scoreB: b, winningSide: a > b ? "A" : "B" },
-        }).catch((err) => console.error("Error al guardar match:", err));
-      });
     } catch (err) {
       console.error("Error al avanzar ronda:", err);
     }
@@ -161,24 +141,6 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
         roundNum:         t.roundNum + 1,
         status:           isLastRound ? "finished" : t.status,
         scoringStarted:   true,
-      });
-      // Log matches fire-and-forget
-      const matchesRef = collection(db, "torneos", code, "matches");
-      t.currentPozoRound.forEach((court) => {
-        const a   = parseInt(court.scoreA);
-        const b   = parseInt(court.scoreB);
-        const tpA = court.pairA;
-        const tpB = court.pairB;
-        const utA = updatedTemps.find((p) => p.id === tpA.id);
-        const utB = updatedTemps.find((p) => p.id === tpB.id);
-        if (!utA || !utB) return;
-        addDoc(matchesRef, {
-          roundNum: t.roundNum, courtNum: court.courtNum,
-          confirmedAt: Timestamp.now(), mode: "mixer",
-          teamA: { playerIds: tpA._playerIds, pairId: null, courtLevelBefore: tpA.courtLevel, courtLevelAfter: utA.courtLevel },
-          teamB: { playerIds: tpB._playerIds, pairId: null, courtLevelBefore: tpB.courtLevel, courtLevelAfter: utB.courtLevel },
-          result: { scoreA: a, scoreB: b, winningSide: a > b ? "A" : "B" },
-        }).catch((err) => console.error("Error al guardar match:", err));
       });
     } catch (err) {
       console.error("Error al avanzar ronda (mixer):", err);
