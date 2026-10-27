@@ -165,3 +165,30 @@ export function ligaQualifiers(config, pairCount) {
   const wanted = config?.advanceQualifiers ?? 4;
   return Math.max(...options.filter((n) => n <= wanted));
 }
+
+// Los resultados de la liga se cierran al iniciar la eliminatoria: a partir de ahí el cuadro depende
+// de la tabla y modificarla lo dejaría incoherente.
+export function ligaResultsLocked(t) {
+  return t?.phase === "playoff";
+}
+
+// Se puede volver a la fase de liga mientras no se haya jugado ningún partido real de la eliminatoria
+// (los pasa directo que se resuelven solos no cuentan).
+export function canReopenLiga(t) {
+  if (t?.phase !== "playoff") return false;
+  return !(t.knockoutBracket || []).some(
+    (m) => m.saved && m.pairA?.id !== "bye" && m.pairB?.id !== "bye",
+  );
+}
+
+export function reopenLigaPatch() {
+  return { knockoutBracket: null, phase: "fixture" };
+}
+
+// Eliminar un resultado: deja el partido como si no se hubiera jugado (Editar, en cambio, conserva el
+// marcador para corregirlo).
+export function clearLigaMatch(matches, matchId) {
+  return matches.map((m) =>
+    m.id === matchId ? { ...m, saved: false, scoreA: "", scoreB: "", sets: null } : m,
+  );
+}

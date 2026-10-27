@@ -2,8 +2,16 @@
 import { useState } from "react";
 import { generateRules } from "../../logic/constants";
 import { advanceBracket } from "../../logic/relampago";
-import { recomputeLigaStandings, buildLigaKnockout, ligaQualifiers } from "../../logic/liga";
-import { THeader, Tabs } from "../shared/Components";
+import {
+  recomputeLigaStandings,
+  buildLigaKnockout,
+  ligaQualifiers,
+  ligaResultsLocked,
+  canReopenLiga,
+  reopenLigaPatch,
+  clearLigaMatch,
+} from "../../logic/liga";
+import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import MatchCard from "../shared/MatchCard";
 import PairStandings from "../shared/PairStandings";
 import { sortStandings, standingsLabels } from "../../logic/standings";
@@ -11,8 +19,10 @@ import { sortStandings, standingsLabels } from "../../logic/standings";
 export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTournament }) {
   const [tab, setTab] = useState("fixture");
   const [ls, setLs] = useState({});
+  const [confirm, setConfirm] = useState(null); // { kind: "delete" | "start" | "reopen", matchId? }
 
   const playoffEnabled = !!t.config?.playoffEnabled;
+  const locked = ligaResultsLocked(t);
   const bySets = ["sets3", "sets5"].includes(t.config?.scoringFormat || "sets3");
   const matches = t.matches || [];
   const rounds = t.rounds || [];
@@ -40,11 +50,35 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
   }
 
   async function onEditMatch(matchId) {
+    if (locked) return;
     const updatedMatches = matches.map((m) =>
       m.id === matchId ? { ...m, saved: false } : m,
     );
     const standings = recomputeLigaStandings(t.pairs, updatedMatches);
     await persist({ ...t, matches: updatedMatches, pairs: standings });
+  }
+
+  async function onDeleteMatch(matchId) {
+    if (locked) return;
+    const updatedMatches = clearLigaMatch(matches, matchId);
+    const standings = recomputeLigaStandings(t.pairs, updatedMatches);
+    setConfirm(null);
+    try {
+      await persist({ ...t, matches: updatedMatches, pairs: standings });
+    } catch (err) {
+      console.error("Error al eliminar el resultado:", err);
+    }
+  }
+
+  async function onReopenLiga() {
+    if (!canReopenLiga(t)) return;
+    setConfirm(null);
+    try {
+      await persist({ ...t, ...reopenLigaPatch() });
+      setTab("fixture");
+    } catch (err) {
+      console.error("Error al volver a la fase de liga:", err);
+    }
   }
 
   async function onSetRoundDate(roundNum, date) {
@@ -56,8 +90,13 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
 
   async function onStartKnockout() {
     if (!allMatchesDone) return;
+    setConfirm(null);
     const bracket = buildLigaKnockout(t.pairs, ligaQualifiers(t.config, t.pairs.length), matches);
-    await persist({ ...t, knockoutBracket: bracket, phase: "playoff" });
+    try {
+      await persist({ ...t, knockoutBracket: bracket, phase: "playoff" });
+    } catch (err) {
+      console.error("Error al iniciar la fase final:", err);
+    }
   }
 
   async function onSaveKnockoutMatch(matchId, a, b, sets) {
@@ -109,7 +148,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
   ];
 
   return (
-    <div style={{ paddingBottom: 80 }}>
+    <div className="pb-20">
       <THeader
         t={t}
         code={code}
@@ -126,6 +165,11 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
       <div className="px-4">
         {tab === "fixture" && (
           <div className="flex flex-col gap-3 mt-4">
+            {locked && (
+              <div className="bg-[#1f2937] border border-[#374151] rounded-2xl px-4 py-3 text-xs text-gray-400 text-center">
+                🔒 Resultados de la liga cerrados: la fase final ya está en marcha con esta tabla.
+              </div>
+            )}
             {champion && !playoffEnabled && (
               <div className="bg-[#1f2937] border-2 border-yellow-500/50 rounded-2xl p-5 text-center">
                 <div className="text-3xl">🏆</div>
@@ -145,14 +189,16 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                   ls={ls}
                   setLs={setLs}
                   onSave={onSaveMatch}
-                  onEdit={onEditMatch}
+                  onEdit={locked ? undefined : onEditMatch}
+                  onDelete={locked ? undefined : (id) => setConfirm({ kind: "delete", matchId: id })}
+                  locked={locked}
                   onSetDate={onSetRoundDate}
                   scoringFormat={t.config?.scoringFormat || "sets3"}
                 />
               ))}
             {playoffEnabled && allMatchesDone && t.phase === "fixture" && isAdmin && (
               <button
-                onClick={onStartKnockout}
+                onClick={() => setConfirm({ kind: "start" })}
                 className="w-full bg-[#10b981] text-white font-bold rounded-xl py-4 text-base cursor-pointer border-0"
               >
                 Iniciar Fase Final ⚡
@@ -196,6 +242,14 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
 
             {t.phase === "playoff" && (
               <>
+                {isAdmin && canReopenLiga(t) && (
+                  <button
+                    onClick={() => setConfirm({ kind: "reopen" })}
+                    className="w-full bg-[#1f2937] border border-[#374151] text-gray-300 font-bold rounded-xl py-3 text-sm cursor-pointer"
+                  >
+                    ↩ Volver a la fase de liga
+                  </button>
+                )}
                 {champion && (
                   <div className="bg-[#1f2937] border-2 border-yellow-500/50 rounded-2xl p-5 text-center">
                     <div className="text-3xl">🏆</div>
@@ -241,11 +295,40 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
           </div>
         )}
       </div>
+
+      {confirm?.kind === "delete" && (
+        <SimpleModal
+          icon="🗑️"
+          message="¿Eliminar este resultado? El partido quedará sin jugar y la tabla se recalculará."
+          confirmLabel="Eliminar"
+          onClose={() => setConfirm(null)}
+          onConfirm={() => onDeleteMatch(confirm.matchId)}
+        />
+      )}
+      {confirm?.kind === "start" && (
+        <SimpleModal
+          icon="⚡"
+          message="Al iniciar la fase final se cierran los resultados de la liga y ya no se podrán modificar. ¿Iniciar la fase final?"
+          confirmLabel="Iniciar"
+          danger={false}
+          onClose={() => setConfirm(null)}
+          onConfirm={onStartKnockout}
+        />
+      )}
+      {confirm?.kind === "reopen" && (
+        <SimpleModal
+          icon="↩"
+          message="Se descartará el cuadro de la fase final y podrás volver a editar los resultados de la liga. ¿Continuar?"
+          confirmLabel="Volver a la liga"
+          onClose={() => setConfirm(null)}
+          onConfirm={onReopenLiga}
+        />
+      )}
     </div>
   );
 }
 
-function LigaRoundAccordion({ round, matches, isAdmin, ls, setLs, onSave, onEdit, onSetDate, scoringFormat }) {
+function LigaRoundAccordion({ round, matches, isAdmin, ls, setLs, onSave, onEdit, onDelete, locked, onSetDate, scoringFormat }) {
   const hasUnsaved = matches.some((m) => !m.saved);
   const [isOpen, setIsOpen] = useState(hasUnsaved || round.round === 1);
 
@@ -283,6 +366,8 @@ function LigaRoundAccordion({ round, matches, isAdmin, ls, setLs, onSave, onEdit
               setLs={setLs}
               onSave={onSave}
               onEdit={onEdit}
+              onDelete={onDelete}
+              locked={locked}
               accentColor="#db2777"
               scoringFormat={scoringFormat}
             />

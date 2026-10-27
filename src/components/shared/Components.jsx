@@ -125,7 +125,7 @@ export function PairName({ pair, showNames = true }) {
   );
 }
 
-export function SimpleModal({ message, onClose, onConfirm, confirmLabel, icon }) {
+export function SimpleModal({ message, onClose, onConfirm, confirmLabel, icon, danger = true }) {
   return (
     <div className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center p-6">
       <div className="bg-[#1e293b] border border-[#334155] rounded-2xl p-7 max-w-xs w-full text-center shadow-2xl">
@@ -143,7 +143,7 @@ export function SimpleModal({ message, onClose, onConfirm, confirmLabel, icon })
           <button
             onClick={onConfirm || onClose}
             className={`flex-1 rounded-xl py-2.5 font-bold text-sm cursor-pointer ${
-              onConfirm
+              onConfirm && danger
                 ? 'bg-[#ef4444]/10 text-[#ef4444] border border-[#ef4444]/20'
                 : 'bg-[#0284c7]/10 text-[#38bdf8] border border-[#0284c7]/20'
             }`}

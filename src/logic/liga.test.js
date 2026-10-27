@@ -6,6 +6,10 @@ import {
   buildLigaKnockout,
   ligaQualifierOptions,
   ligaQualifiers,
+  ligaResultsLocked,
+  canReopenLiga,
+  reopenLigaPatch,
+  clearLigaMatch,
 } from "./liga.js";
 import { generateRules } from "./constants.js";
 
@@ -404,5 +408,52 @@ describe("reglas de la Liga — desempate", () => {
 describe("reglas de la Liga — sin pistas", () => {
   test("no habla de pistas: la Liga solo arma fechas y cruces", () => {
     expect(generateRules("liga", { scoringFormat: "sets3", courts: 3 }).join(" ")).not.toContain("pista");
+  });
+});
+
+describe("cierre de los resultados de la liga", () => {
+  test("mientras se juegan las jornadas se pueden editar", () => {
+    expect(ligaResultsLocked({ phase: "fixture" })).toBe(false);
+    expect(ligaResultsLocked({})).toBe(false);
+  });
+  test("al iniciar la eliminatoria quedan cerrados", () => {
+    expect(ligaResultsLocked({ phase: "playoff" })).toBe(true);
+  });
+});
+
+describe("volver a la fase de liga", () => {
+  const real = (saved) => ({ saved, pairA: { id: 1 }, pairB: { id: 2 } });
+  const byeMatch = { saved: true, pairA: { id: 3 }, pairB: { id: "bye" } };
+  test("se puede si no se jugó ningún partido de la eliminatoria", () => {
+    expect(canReopenLiga({ phase: "playoff", knockoutBracket: [real(false), byeMatch] })).toBe(true);
+  });
+  test("los pasa directo resueltos solos no cuentan como jugados", () => {
+    expect(canReopenLiga({ phase: "playoff", knockoutBracket: [byeMatch, real(false)] })).toBe(true);
+  });
+  test("no se puede si ya se jugó un partido real", () => {
+    expect(canReopenLiga({ phase: "playoff", knockoutBracket: [real(true)] })).toBe(false);
+  });
+  test("no aplica si todavía no hay eliminatoria", () => {
+    expect(canReopenLiga({ phase: "fixture", knockoutBracket: null })).toBe(false);
+  });
+  test("el parche descarta el cuadro y vuelve a las jornadas", () => {
+    expect(reopenLigaPatch()).toEqual({ knockoutBracket: null, phase: "fixture" });
+  });
+});
+
+describe("clearLigaMatch — eliminar un resultado", () => {
+  const matches = [
+    { id: "a", saved: true, scoreA: "2", scoreB: "0", sets: [{ a: 6, b: 3 }, { a: 6, b: 4 }], pairA: { id: 1 }, pairB: { id: 2 } },
+    { id: "b", saved: true, scoreA: "2", scoreB: "1", sets: null, pairA: { id: 3 }, pairB: { id: 4 } },
+  ];
+  test("vacía el marcador y deja el partido sin guardar", () => {
+    const out = clearLigaMatch(matches, "a");
+    expect(out[0]).toMatchObject({ id: "a", saved: false, scoreA: "", scoreB: "", sets: null });
+    expect(out[0].pairA).toEqual({ id: 1 });
+  });
+  test("no toca los demás partidos ni muta el original", () => {
+    const out = clearLigaMatch(matches, "a");
+    expect(out[1]).toEqual(matches[1]);
+    expect(matches[0].saved).toBe(true);
   });
 });

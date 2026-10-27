@@ -8,6 +8,8 @@ export default function MatchCard({
   setLs,
   onSave,
   onEdit,
+  onDelete,
+  locked = false,
   accentColor = "#7c3aed",
   scoringFormat = "games",
 }) {
@@ -64,6 +66,15 @@ export default function MatchCard({
                 Editar
               </button>
             )}
+            {isAdmin && onDelete && (
+              <button
+                onClick={() => onDelete(match.id)}
+                className="text-xs font-bold text-gray-400 hover:text-gray-200 cursor-pointer underline transition-colors bg-transparent border-0"
+              >
+                Eliminar
+              </button>
+            )}
+            {locked && <span className="text-xs text-gray-500 font-semibold">🔒 Cerrado</span>}
           </div>
         )}
       </div>
