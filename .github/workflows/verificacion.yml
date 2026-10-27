@@ -1,0 +1,48 @@
+# Verificación completa: lint, reglas de Firestore y e2e contra los emuladores de Firebase.
+# Va aparte del despliegue a propósito: no lo bloquea, pero deja a la vista (✗ en el commit) si algo
+# se rompió de punta a punta. Los tests unitarios ya los corre el workflow de despliegue.
+name: Verificación (lint, reglas y e2e)
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  verificacion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Los emuladores de Firestore y Auth necesitan Java
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - run: npm ci
+      - run: npm install -g firebase-tools@15.19.0
+      - run: npx playwright install --with-deps chromium
+
+      - run: npm run lint
+      - run: npm run test:rules
+
+      - run: npm run test:e2e
+        env:
+          # Con el emulador la clave no se valida, pero Firebase exige que exista
+          VITE_FIREBASE_API_KEY: clave-falsa-para-el-emulador
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: informe-playwright
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
