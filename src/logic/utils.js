@@ -1,7 +1,7 @@
 // ── Utilities ────────────────────────────────────────────────
 export function buildShareMessage(t, code) {
   const lines = [];
-  const formatEmoji = { americano: "🔄", relampago: "⚡", mundialito: "🌍", pozo: "👑" };
+  const formatEmoji = { americano: "🔄", relampago: "⚡", mundialito: "👥", pozo: "👑" };
   lines.push(`${formatEmoji[t.type] || "🎾"} *${t.config.name}*`);
   lines.push("");
 

@@ -462,7 +462,7 @@ export default function PlayMundialito({
                     <div
                       className="mb-1 text-[12px] font-bold uppercase text-[#f59e0b]"
                     >
-                      Campeón del Mundialito
+                      Campeón del torneo
                     </div>
                     <div
                       className="text-[18px] font-extrabold text-[#f1f5f9]"
@@ -526,7 +526,7 @@ export default function PlayMundialito({
         {tab === "rules" && (
           <div className="rounded-xl bg-[#1e293b] p-5">
             <h3 className="mb-4 text-[18px] font-extrabold text-[#38bdf8]">
-              Reglas del Mundialito
+              Reglas del Torneo por grupos
             </h3>
             <ul
               className="list-disc pl-5 text-[14px] leading-[1.6] text-[#cbd5e1]"

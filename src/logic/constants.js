@@ -25,12 +25,12 @@ export const TOURNAMENT_TYPES = [
   },
   {
     id: "mundialito",
-    name: "Mundialito",
-    icon: "🌍",
-    desc: "Fase de grupos seguida de eliminatorias directas.",
-    tagline: "Grupos y eliminatorias, en tu pista",
-    landingDesc: "Fase de grupos y eliminatorias directas. Todos juegan, los mejores se clasifican.",
-    tags: ["Grupos + KO", "8+ jugadores"],
+    name: "Torneo por grupos",
+    icon: "👥",
+    desc: "Fase de grupos y cuadro final. Los mejores de cada grupo pasan a las eliminatorias.",
+    tagline: "Grupos y cuadro final",
+    landingDesc: "Todos juegan en su grupo y los mejores pasan al cuadro final.",
+    tags: ["Grupos + cuadro final", "8+ jugadores"],
     color: "#059669",
   },
   {
