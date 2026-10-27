@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildBracket, advanceBracket, unadvanceBracket, countPlayed, firstRoundSeedPairs, canEditBracketMatch, hasPlayedRealMatch } from "./relampago.js";
+import { buildBracket, advanceBracket, unadvanceBracket, countPlayed, firstRoundSeedPairs, canEditBracketMatch, hasPlayedRealMatch, bracketRoundName } from "./relampago.js";
 
 function makePairs(n) {
   return Array.from({ length: n }, (_, i) => ({
@@ -453,5 +453,28 @@ describe("partido por el 3.º y 4.º puesto (thirdPlace)", () => {
     b = unadvanceBracket(b, "w_third");
     b = unadvanceBracket(b, s0.id);
     expect(third(b).pairA).toBeNull();
+  });
+});
+
+describe("bracketRoundName — nombre de cada ronda según su distancia a la final", () => {
+  it("T-RND-01: la última es la Final y las anteriores Semifinales, Cuartos y Octavos", () => {
+    expect([1, 2, 3, 4].map((r) => bracketRoundName(r, 4))).toEqual(["Octavos de final", "Cuartos de final", "Semifinales", "Final"]);
+  });
+
+  it("T-RND-02: con 4 parejas (2 rondas) son Semifinales y Final", () => {
+    expect([1, 2].map((r) => bracketRoundName(r, 2))).toEqual(["Semifinales", "Final"]);
+  });
+
+  it("T-RND-03: más allá de octavos se usa 'Ronda N'", () => {
+    expect([1, 2].map((r) => bracketRoundName(r, 6))).toEqual(["Ronda 1", "Ronda 2"]);
+  });
+
+  it("T-RND-04: con 2 parejas solo hay Final", () => {
+    expect(bracketRoundName(1, 1)).toBe("Final");
+  });
+
+  it("T-RND-05: coincide con un cuadro real de 8 parejas", () => {
+    const rounds = [...new Set(buildBracket(makePairs(8), { consolation: false }).map((m) => m.round))];
+    expect(rounds.map((r) => bracketRoundName(r, Math.max(...rounds)))).toEqual(["Cuartos de final", "Semifinales", "Final"]);
   });
 });

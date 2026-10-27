@@ -1,7 +1,7 @@
 // src/components/play/PlayRelampago.jsx
 import { useState, Fragment } from "react";
 import { generateRules } from "../../logic/constants";
-import { advanceBracket, unadvanceBracket, canEditBracketMatch, countPlayed } from "../../logic/relampago";
+import { advanceBracket, unadvanceBracket, canEditBracketMatch, countPlayed, bracketRoundName } from "../../logic/relampago";
 import { analyzeSets } from "../../logic/sets";
 import { applyMatchToPairs } from "../../logic/standings";
 import { THeader, Tabs } from "../shared/Components";
@@ -240,8 +240,7 @@ function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, canEditMatch
     <div className="flex flex-row overflow-x-auto items-start p-[16px_8px] min-h-[300px]">
       {rounds.map((round, ri) => {
         const roundMatches = matchesByRound[round];
-        const isLastRound = round === maxRound;
-        const label = isLastRound ? "Final" : `Ronda ${round}`;
+        const label = bracketRoundName(round, maxRound);
         const nextRound = ri < rounds.length - 1 ? rounds[ri + 1] : null;
         const nextRoundMatches = nextRound ? matchesByRound[nextRound] : null;
 

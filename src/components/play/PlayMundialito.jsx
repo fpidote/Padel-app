@@ -1,7 +1,7 @@
 // src/components/play/PlayMundialito.jsx
 import { useState } from "react";
 import { generateRules } from "../../logic/constants";
-import { advanceBracket, unadvanceBracket, canEditBracketMatch } from "../../logic/relampago";
+import { advanceBracket, unadvanceBracket, canEditBracketMatch, bracketRoundName } from "../../logic/relampago";
 import {
   buildKnockoutFromGroups,
   mundialitoGroupsLocked,
@@ -485,9 +485,7 @@ export default function PlayMundialito({
                     <div
                       className="mb-2 text-[13px] font-bold uppercase text-[#94a3b8]"
                     >
-                      {round === Math.max(...koRounds)
-                        ? "Final"
-                        : `Ronda ${round}`}
+                      {bracketRoundName(round, Math.max(...koRounds))}
                     </div>
                     {t.knockoutBracket
                       .filter((m) => m.round === round && m.bracket !== "third")

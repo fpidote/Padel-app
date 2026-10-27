@@ -49,6 +49,10 @@ test("las semifinales jugadas llenan el partido por el 3.º puesto y no se confu
   const tarjeta = page.getByText("🥉 3.º Y 4.º PUESTO", { exact: true }).locator("xpath=ancestor::div[.//text()[contains(.,'vs')]][1]");
   await expect(tarjeta).toContainText(`${s0.pairB.p1} / ${s0.pairB.p2}`);
   await expect(tarjeta).toContainText(`${s1.pairB.p1} / ${s1.pairB.p2}`);
+  // Las rondas se nombran por su cercanía a la final
+  await expect(page.getByText("Semifinales", { exact: true })).toBeVisible();
+  await expect(page.getByText("Final", { exact: true })).toBeVisible();
+  await expect(page.getByText("Ronda 1")).toHaveCount(0);
   await expect(page.getByText("Campeón de la Liga")).toHaveCount(0);
   await page.screenshot({ path: "test-results/tercer-puesto-390.png", fullPage: true });
 });

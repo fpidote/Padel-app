@@ -1,7 +1,7 @@
 // src/components/play/PlayLiga.jsx
 import { useState } from "react";
 import { generateRules } from "../../logic/constants";
-import { advanceBracket, unadvanceBracket, canEditBracketMatch } from "../../logic/relampago";
+import { advanceBracket, unadvanceBracket, canEditBracketMatch, bracketRoundName } from "../../logic/relampago";
 import {
   recomputeLigaStandings,
   buildLigaKnockout,
@@ -254,7 +254,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                 {koRounds.map((round) => (
                   <div key={round}>
                     <div className="text-gray-400 font-bold mb-2 uppercase text-xs tracking-wide">
-                      {round === Math.max(...koRounds) ? "Final" : `Ronda ${round}`}
+                      {bracketRoundName(round, Math.max(...koRounds))}
                     </div>
                     {t.knockoutBracket
                       .filter((m) => m.round === round && m.bracket !== "third")

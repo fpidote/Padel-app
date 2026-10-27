@@ -22,6 +22,13 @@ export function firstRoundSeedPairs(n) {
   return pairs;
 }
 
+const ROUND_NAMES = ["Final", "Semifinales", "Cuartos de final", "Octavos de final"];
+
+// Nombre de una ronda según lo lejos que está de la final (round 1 = primera ronda).
+export function bracketRoundName(round, finalRound) {
+  return ROUND_NAMES[finalRound - round] ?? `Ronda ${round}`;
+}
+
 const BYE_PAIR = { id: "bye", p1: "BYE", p2: "BYE" };
 
 // Con { consolation: false } es eliminación directa pura (Mundialito y Liga); por defecto incluye
