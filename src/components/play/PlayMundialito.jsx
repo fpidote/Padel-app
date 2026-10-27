@@ -10,6 +10,7 @@ import {
 } from "../../logic/mundialito";
 import { computeStandings, sortStandings, standingsLabels } from "../../logic/standings";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
+import { showToast } from "../../logic/toast";
 import MatchCard from "../shared/MatchCard";
 import PairStandings from "../shared/PairStandings";
 
@@ -162,7 +163,7 @@ export default function PlayMundialito({
       });
     } catch (err) {
       console.error("Error al iniciar la fase eliminatoria:", err);
-      alert("No se pudo iniciar la fase eliminatoria. Intenta de nuevo.");
+      showToast("No se pudo iniciar la fase eliminatoria. Inténtalo de nuevo.");
     }
   }
 

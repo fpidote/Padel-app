@@ -4,6 +4,7 @@ import { onSnapshot, doc, setDoc } from "firebase/firestore";
 import { onAuthStateChanged, signInWithPopup } from "firebase/auth";
 import { db, auth, googleProvider } from "../firebase";
 import { buildShareMessage } from "../logic/utils";
+import { showToast } from "../logic/toast";
 
 export function useTournament(code) {
   const [authUser, setAuthUser] = useState(null);
@@ -40,7 +41,7 @@ export function useTournament(code) {
     } catch (err) {
       if (err.code !== "auth/popup-closed-by-user") {
         console.error("Error al reautenticar:", err);
-        alert("No se pudo iniciar sesión. Intentá de nuevo.");
+        showToast("No se pudo iniciar sesión. Inténtalo de nuevo.");
       }
     }
   }
@@ -99,7 +100,7 @@ export function useTournament(code) {
       verRef.current = prevVer;
       setT(prevT);
       console.error("Error al guardar:", err);
-      alert("No se pudieron guardar los cambios.");
+      showToast("No se pudieron guardar los cambios. Revisa la conexión e inténtalo de nuevo.");
     } finally {
       setSaving(false);
     }

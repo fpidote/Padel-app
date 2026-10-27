@@ -354,7 +354,7 @@ useEffect(() => {
 | Crear listeners en componentes Play/Setup | Solo en `useTournament.js` |
 | `console.log` en producción | `console.error` solo en catch |
 | Strings de routing hardcodeados en componentes | `useNavigate` de React Router |
-| `alert()` para errores de UX | Componente de error/toast (pendiente implementar) |
+| `alert()` para errores de UX | `showToast(mensaje)` de `src/logic/toast.js` (se muestra con el `Toaster` montado en `App.jsx`) |
 | Guardar `ownerUid` dentro del JSON de `data` | Campo de primer nivel en Firestore |
 
 ---
