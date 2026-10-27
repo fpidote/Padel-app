@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { shuffle, buildShareMessage } from "../../logic/utils";
-import { validateMundialitoConfig, knockoutInfo, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail, describeFormat, positionName } from "../../logic/mundialito";
+import { validateMundialitoConfig, knockoutInfo, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail, describeFormat, positionName, availableStages, optionsForStage, stageLabel, MIN_PAIRS } from "../../logic/mundialito";
 import { buildPozoRound, shufflePlayers } from "../../logic/pozo";
 import MatchFormatPicker from "../shared/MatchFormatPicker";
 import LaunchModal, { SummaryRow, SummaryCard } from "../shared/LaunchModal";
@@ -36,6 +36,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
   const [saved,         setSaved]         = useState(false);
   const [showLaunch,    setShowLaunch]    = useState(false);
   const [customOpen,    setCustomOpen]    = useState(false);
+  const [stage,         setStage]         = useState(null);
   const [launchTab,     setLaunchTab]     = useState("sorteo");
   const [drawState,     setDrawState]     = useState(null);
   const [editingIdx,    setEditingIdx]    = useState(null);
@@ -89,10 +90,15 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
   const currentFormat = formatOptions.find(
     (o) => o.groupCount === (t.config.groupCount || 2) && o.advancePerGroup === (t.config.advancePerGroup ?? 2) && o.extraQualifiers === (t.config.extraQualifiers || 0),
   );
-  const formatCards = formatOptions.slice(0, 6);
-  // Con Personalizar abierto el resumen de abajo ya describe lo elegido; no se repite como tarjeta
-  if (currentFormat && !formatCards.includes(currentFormat) && !customOpen) formatCards.push(currentFormat);
-  const customVisible = tot >= 4 && (customOpen || formatCards.length === 0 || !currentFormat);
+  const stages = availableStages(formatOptions);
+  const shownStage = stages.includes(stage) ? stage : null;
+  const stageOptions = optionsForStage(formatOptions, shownStage);
+  // Sin objetivo elegido se muestran las 6 mejores sugerencias; con objetivo, todas las que llegan ahí
+  const formatCards = shownStage ? stageOptions : stageOptions.slice(0, 6);
+  // Con Personalizar abierto el resumen de abajo ya describe lo elegido, y con un objetivo elegido solo se
+  // muestran los formatos que llegan ahí: en ambos casos no se añade la tarjeta del formato actual
+  if (currentFormat && !formatCards.includes(currentFormat) && !customOpen && !shownStage) formatCards.push(currentFormat);
+  const customVisible = tot >= MIN_PAIRS && (customOpen || formatCards.length === 0 || !currentFormat);
   const customSummary = describeFormat(tot, t.config.groupCount || 2, t.config.advancePerGroup ?? 2, t.config.extraQualifiers || 0);
   const ok = isMixer
     ? players.length >= act && players.every(p => p.name.trim())
@@ -380,9 +386,25 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
                     <p className="text-xs text-gray-500 mb-3">
                       Las parejas se reparten en grupos y juegan todas contra todas; los mejores de cada grupo pasan a un cuadro final.
                     </p>
-                    {tot < 4 && (
+                    {tot < MIN_PAIRS && (
                       <div className="rounded-xl border border-dashed border-[#374151] bg-[#1f2937]/60 px-3.5 py-3 text-xs text-gray-400 leading-relaxed">
-                        Agrega tus parejas (mínimo 4) y aquí verás los formatos posibles. Por ejemplo, con 12 parejas: 4 grupos de 3 donde pasa 1 de cada grupo, o 2 grupos de 6 donde pasan 2.
+                        {tot < 4
+                          ? "Agrega tus parejas (mínimo 6) y aquí verás los formatos posibles. Por ejemplo, con 12 parejas: 4 grupos de 3 donde pasa 1 de cada grupo, o 2 grupos de 6 donde pasan 2."
+                          : `Con ${tot} parejas no se puede armar un torneo por grupos: hacen falta al menos 6 (2 grupos de 3). Agrega más parejas o usa Liga (todos contra todos, con final opcional) o Relámpago.`}
+                      </div>
+                    )}
+                    {stages.length > 1 && (
+                      <div className="mb-3">
+                        <div className="text-xs text-gray-400 font-semibold mb-2">¿Hasta dónde quieres llegar?</div>
+                        <div className="flex flex-wrap gap-2">
+                          {[null, ...stages].map((size) => (
+                            <button key={size ?? "todas"}
+                              onClick={() => setStage(size)}
+                              className={`px-3.5 py-2 rounded-xl font-bold text-xs transition-colors cursor-pointer ${shownStage === size ? "text-white" : "bg-[#1f2937] text-[#94a3b8]"}`}
+                              style={shownStage === size ? { background: color } : undefined}
+                            >{size === null ? "Todas" : stageLabel(size)}</button>
+                          ))}
+                        </div>
                       </div>
                     )}
                     {formatCards.length > 0 && (
@@ -435,7 +457,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
                           ))}
                         </div>
                       </div>
-                      {mundialitoCheck.maxExtra >= 1 && (t.config.advancePerGroup ?? 2) < mundialitoCheck.maxAdvance && (
+                      {mundialitoCheck.maxExtra >= 1 && (
                         <div>
                           <label className="text-xs text-gray-400 font-semibold block mb-1">
                             Mejores {positionName(t.config.advancePerGroup ?? 2, 2)} que también pasan <span className="font-normal text-gray-500">(opcional)</span>
@@ -462,7 +484,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
                       )}
                     </>
                   )}
-                  {tot >= 4 && knockoutInfo(t.config.groupCount || 2, t.config.advancePerGroup ?? 2, t.config.extraQualifiers || 0).qualifiers >= 4 && (
+                  {tot >= MIN_PAIRS && knockoutInfo(t.config.groupCount || 2, t.config.advancePerGroup ?? 2, t.config.extraQualifiers || 0).qualifiers >= 4 && (
                     <div>
                       <label className="text-xs text-gray-400 font-semibold block mb-2">Partido por el 3.º y 4.º puesto</label>
                       <div className="flex gap-2">
@@ -480,7 +502,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
                       <p className="text-xs text-gray-500 mt-2">Lo juegan los dos perdedores de las semifinales.</p>
                     </div>
                   )}
-                  {tot >= 4 && mundialitoCheck.error && (
+                  {tot >= MIN_PAIRS && mundialitoCheck.error && (
                     <p className="text-xs text-amber-500 font-semibold">⚠️ {mundialitoCheck.error}</p>
                   )}
                 </>

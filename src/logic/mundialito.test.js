@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildKnockoutFromGroups, validateMundialitoConfig, seedQualifiers, knockoutInfo, knockoutByesText, mundialitoGroupsLocked, canReopenMundialito, reopenMundialitoPatch, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail, describeFormat } from "./mundialito";
+import { buildKnockoutFromGroups, validateMundialitoConfig, seedQualifiers, knockoutInfo, knockoutByesText, mundialitoGroupsLocked, canReopenMundialito, reopenMundialitoPatch, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail, describeFormat, availableStages, optionsForStage, stageLabel } from "./mundialito";
 import { firstRoundSeedPairs } from "./relampago";
 import { generateRules } from "./constants";
 
@@ -41,57 +41,47 @@ describe("buildKnockoutFromGroups — enfrentamiento directo", () => {
 });
 
 describe("validateMundialitoConfig", () => {
-  it("rechaza más grupos que parejas disponibles para formar cruces", () => {
-    const result = validateMundialitoConfig(4, 3, 2);
-
-    expect(result.ok).toBe(false);
-    expect(result.maxGroups).toBe(2);
+  it("T-VAL-01: exige al menos 6 parejas y orienta a Liga o Relámpago", () => {
+    for (const n of [0, 3, 4, 5]) {
+      const r = validateMundialitoConfig(n, 2, 1);
+      expect(r.ok).toBe(false);
+      expect(r.error).toBe("Necesitas al menos 6 parejas (2 grupos de 3). Con menos, usa Liga o Relámpago.");
+    }
   });
 
-  it("acepta 4 parejas en 2 grupos con avance de 2", () => {
-    const result = validateMundialitoConfig(4, 2, 2);
-
-    expect(result).toMatchObject({ ok: true, maxGroups: 2, maxAdvance: 2, error: null });
+  it("T-VAL-02: acepta 6 parejas en 2 grupos de 3, pasando 1 o 2", () => {
+    expect(validateMundialitoConfig(6, 2, 1)).toMatchObject({ ok: true, maxGroups: 2, maxAdvance: 2, error: null });
+    expect(validateMundialitoConfig(6, 2, 2).ok).toBe(true);
   });
 
-  it("rechaza un avance mayor que el tamaño del grupo más chico", () => {
-    const result = validateMundialitoConfig(4, 2, 3);
-
-    expect(result.ok).toBe(false);
-    expect(result.maxAdvance).toBe(2);
+  it("T-VAL-03: grupos de 3 como mínimo: el máximo de grupos es parejas ÷ 3", () => {
+    expect(validateMundialitoConfig(8, 3, 1)).toMatchObject({ ok: false, maxGroups: 2 });
+    expect(validateMundialitoConfig(9, 3, 1).ok).toBe(true);
+    expect(validateMundialitoConfig(20, 6, 1)).toMatchObject({ ok: true, maxGroups: 6 });
   });
 
-  it("rechaza menos de 4 parejas con el mensaje exacto", () => {
-    const result = validateMundialitoConfig(3, 2, 1);
-
-    expect(result.ok).toBe(false);
-    expect(result.error).toBe("Necesitas al menos 4 parejas");
+  it("T-VAL-04: hace falta al menos 2 grupos (con uno es una liga)", () => {
+    expect(validateMundialitoConfig(8, 1, 2)).toMatchObject({ ok: false, error: "Necesitas al menos 2 grupos" });
   });
 
-  it("acepta 8 parejas en 4 grupos con avance de 2", () => {
-    const result = validateMundialitoConfig(8, 4, 2);
-
-    expect(result).toMatchObject({ ok: true, maxGroups: 4, maxAdvance: 2, error: null });
+  it("T-VAL-05: nunca puede pasar todo el grupo: máximo = tamaño del grupo más chico − 1", () => {
+    expect(validateMundialitoConfig(10, 2, 4).ok).toBe(true);
+    expect(validateMundialitoConfig(10, 2, 5).ok).toBe(false);
+    expect(validateMundialitoConfig(11, 3, 3)).toMatchObject({ ok: false, maxAdvance: 2 });
+    expect(validateMundialitoConfig(6, 2, 3).ok).toBe(false);
   });
 
-  it("rechaza 8 parejas en 4 grupos con avance de 3", () => {
-    const result = validateMundialitoConfig(8, 4, 3);
-
-    expect(result.ok).toBe(false);
-    expect(result.maxAdvance).toBe(2);
+  it("T-VAL-06: dos grupos de 5 pueden pasar 1 (final) o 2 (semifinales)", () => {
+    expect(validateMundialitoConfig(10, 2, 1).ok).toBe(true);
+    expect(validateMundialitoConfig(10, 2, 2).ok).toBe(true);
   });
 
-  it("calcula el avance máximo según el grupo más chico", () => {
-    const result = validateMundialitoConfig(9, 4, 2);
-
-    expect(result.maxAdvance).toBe(2);
-  });
-
-  it("no lanza error con 0 parejas y lo considera inválido", () => {
+  it("T-VAL-07: no lanza error con valores absurdos y los considera inválidos", () => {
     expect(() => validateMundialitoConfig(0, 1, 0)).not.toThrow();
     expect(validateMundialitoConfig(0, 1, 0).ok).toBe(false);
   });
 });
+
 
 // ── Cruces de la eliminatoria ────────────────────────────────
 const LETTERS = "ABCDEFGH";
@@ -494,5 +484,40 @@ describe("clasificados extra: mejores terceros (extraQualifiers)", () => {
     expect(rules).toMatch(/2 mejores terceros/);
     expect(rules).toMatch(/victorias por partido jugado/);
     expect(generateRules("mundialito", { groupCount: 3, advancePerGroup: 2 }).join(" ")).not.toMatch(/mejores terceros/);
+  });
+});
+
+describe("elegir por objetivo: hasta qué ronda quiere llegar el organizador", () => {
+  it("T-STG-01: con 10 parejas se puede llegar a final, semifinales y cuartos", () => {
+    expect(availableStages(mundialitoFormatOptions(10))).toEqual([2, 4, 8]);
+  });
+
+  it("T-STG-02: con 6 parejas solo final o semifinales", () => {
+    expect(availableStages(mundialitoFormatOptions(6))).toEqual([2, 4]);
+  });
+
+  it("T-STG-03: filtrar por semifinales con 10 parejas deja 2 grupos de 5 pasando 2 y no pasando 1", () => {
+    const opts = optionsForStage(mundialitoFormatOptions(10), 4);
+    expect(opts.some((o) => o.groupCount === 2 && o.advancePerGroup === 2)).toBe(true);
+    expect(opts.some((o) => o.groupCount === 2 && o.advancePerGroup === 1)).toBe(false);
+    expect(opts.every((o) => o.bracketSize === 4)).toBe(true);
+  });
+
+  it("T-STG-04: la final con 10 parejas es 2 grupos de 5 pasando 1 (2 clasificados)", () => {
+    const opts = optionsForStage(mundialitoFormatOptions(10), 2);
+    expect(opts).toHaveLength(1);
+    expect(opts[0]).toMatchObject({ groupCount: 2, advancePerGroup: 1, qualifiers: 2 });
+  });
+
+  it("T-STG-05: cuartos con 12 parejas incluye 4 grupos de 3 pasando 2 y 3 grupos de 4 con mejores terceros", () => {
+    const opts = optionsForStage(mundialitoFormatOptions(12), 8);
+    expect(opts.some((o) => o.groupCount === 4 && o.advancePerGroup === 2 && !o.extraQualifiers)).toBe(true);
+    expect(opts.some((o) => o.groupCount === 3 && o.advancePerGroup === 2 && o.extraQualifiers === 2)).toBe(true);
+  });
+
+  it("T-STG-06: sin objetivo (null) devuelve todo y hay nombre para cada etapa", () => {
+    const all = mundialitoFormatOptions(12);
+    expect(optionsForStage(all, null)).toEqual(all);
+    expect([2, 4, 8, 16].map(stageLabel)).toEqual(["Final", "Semifinales", "Cuartos", "Octavos"]);
   });
 });

@@ -60,7 +60,7 @@ test("con 10 parejas ofrece 2 grupos de 5 y Personalizar abre los selectores man
 test("sin parejas explica cómo funciona y qué formatos aparecerán, sin selectores sueltos", async ({ page }) => {
   await entrar(page, 0);
   await expect(page.getByText(/juegan todas contra todas/)).toBeVisible();
-  await expect(page.getByText(/Agrega tus parejas \(mínimo 4\)/)).toBeVisible();
+  await expect(page.getByText(/Agrega tus parejas \(mínimo 6\)/)).toBeVisible();
   await expect(page.getByText("Número de grupos")).toHaveCount(0);
   await page.screenshot({ path: "test-results/formatos-0-390.png", fullPage: true });
 });
@@ -130,4 +130,32 @@ test("elegir 'mejores terceros' guarda el extra y el cuadro final los incluye (3
   const worst = [...thirds].sort((a, b) => rate(a) - rate(b))[0];
   expect(extras).not.toContain(worst.id);
   await page.screenshot({ path: "test-results/mejores-terceros-390.png", fullPage: true });
+});
+
+test("con 5 parejas no se puede armar un torneo por grupos y se orienta a Liga o Relámpago", async ({ page }) => {
+  await entrar(page, 5);
+  await expect(page.getByText(/Con 5 parejas no se puede armar un torneo por grupos/)).toBeVisible();
+  await expect(page.getByText(/usa Liga/)).toBeVisible();
+  await expect(page.getByRole("button", { name: /Personalizar/ })).toHaveCount(0);
+  await expect(page.getByTestId("btn-open-modal")).toBeDisabled();
+});
+
+test("elegir por objetivo filtra los formatos: con 10 parejas, semifinales = 2 grupos de 5 pasando 2", async ({ page }) => {
+  await entrar(page, 10);
+  await expect(page.getByText("¿Hasta dónde quieres llegar?")).toBeVisible();
+
+  await page.getByRole("button", { name: "Final", exact: true }).click();
+  await expect(page.getByRole("button", { name: /Clasifican 2: final/ })).toHaveCount(1);
+  await expect(page.getByRole("button", { name: /Clasifican 4:/ })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Semifinales", exact: true }).click();
+  await expect(page.getByRole("button", { name: /2 grupos de 5 · pasan 2 de cada grupo/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /2 grupos de 5 · pasa 1 de cada grupo/ })).toHaveCount(0);
+  await page.screenshot({ path: "test-results/objetivo-10-390.png", fullPage: true });
+
+  await page.getByRole("button", { name: /2 grupos de 5 · pasan 2 de cada grupo/ }).click();
+  await expect.poll(async () => {
+    const d = await getTournamentData(CODE);
+    return `${d.config.groupCount}-${d.config.advancePerGroup}`;
+  }).toBe("2-2");
 });

@@ -162,7 +162,7 @@ test("Mundialito por sets: carga grupos completos y pasa a eliminatoria", async 
 });
 
 test("Mundialito por sets: un 1-1 sin tercer set no se puede guardar", async ({ page }) => {
-  await seedTournament(CODE, setupTournament("mundialito", "sets3", 4, { groupCount: 1, advancePerGroup: 2 }));
+  await seedTournament(CODE, setupTournament("mundialito", "sets3", 6, { groupCount: 2, advancePerGroup: 2 }));
   await startTournament(page);
   await expect(page.getByText("MEJOR DE 3").first()).toBeVisible({ timeout: 8000 });
 
@@ -179,17 +179,18 @@ test("Mundialito por sets: un 1-1 sin tercer set no se puede guardar", async ({ 
 });
 
 test("Mundialito por games (sin cambios): flujo original sigue funcionando", async ({ page }) => {
-  await seedTournament(CODE, setupTournament("mundialito", null, 4, { groupCount: 1, advancePerGroup: 2 }));
+  await seedTournament(CODE, setupTournament("mundialito", null, 6, { groupCount: 2, advancePerGroup: 2 }));
   await startTournament(page);
 
-  const total = (await getTournamentData(CODE)).groups[0].matches.length;
+  const saved = async () => (await getTournamentData(CODE)).groups.reduce((n, g) => n + g.matches.filter((m) => m.saved).length, 0);
+  const total = (await getTournamentData(CODE)).groups.reduce((n, g) => n + g.matches.length, 0);
   expect(total).toBe(6);
   for (let i = 0; i < total; i++) {
     const inputs = page.locator('input[type="number"]');
     await inputs.nth(0).fill("6");
     await inputs.nth(1).fill("2");
     await page.getByRole("button", { name: "Guardar resultado" }).first().click();
-    await expect.poll(async () => (await getTournamentData(CODE)).groups[0].matches.filter((m) => m.saved).length).toBe(i + 1);
+    await expect.poll(saved).toBe(i + 1);
   }
   await page.getByRole("button", { name: /Iniciar Fase Eliminatoria/i }).click();
   await page.locator(".fixed.inset-0").getByRole("button", { name: "Iniciar", exact: true }).click();
@@ -248,7 +249,7 @@ test("Relámpago por sets: guarda sets, actualiza posiciones y revierte al edita
 });
 
 test("Mundialito por sets: rechaza sets inválidos con mensaje y deja guardar al corregir", async ({ page }) => {
-  await seedTournament(CODE, setupTournament("mundialito", "sets3", 4, { groupCount: 1, advancePerGroup: 2 }));
+  await seedTournament(CODE, setupTournament("mundialito", "sets3", 6, { groupCount: 2, advancePerGroup: 2 }));
   await startTournament(page);
   await expect(page.getByText("MEJOR DE 3").first()).toBeVisible({ timeout: 8000 });
 

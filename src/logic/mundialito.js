@@ -45,22 +45,28 @@ export function buildGroups(pairs, groupCount) {
 
 // Cada grupo necesita al menos 2 parejas para tener partidos, y no pueden
 // avanzar más parejas que las del grupo más chico.
+export const MIN_PAIRS = 6;
+export const MIN_GROUP_SIZE = 3;
+
+// Un torneo por grupos necesita al menos 2 grupos de 3 parejas; con menos es una liga o un relámpago.
+// Dentro de eso decide el organizador, salvo que pase todo un grupo (no habría eliminados).
 export function validateMundialitoConfig(pairCount, groupCount, advancePerGroup, extraQualifiers = 0) {
-  const maxGroups = Math.floor(pairCount / 2);
-  const maxAdvance = groupCount >= 1 ? Math.floor(pairCount / groupCount) : 0;
+  const maxGroups = Math.floor(pairCount / MIN_GROUP_SIZE);
+  // Los grupos quedan parejos salvo por una pareja: el más chico tiene floor(parejas ÷ grupos)
+  const maxAdvance = groupCount >= 1 ? Math.max(0, Math.floor(pairCount / groupCount) - 1) : 0;
   // Los extra son los mejores del siguiente puesto: menos que los grupos (si no pasaría todo ese puesto)
   const maxExtra = Math.max(0, groupCount - 1);
   let error = null;
-  if (pairCount < 4) {
-    error = "Necesitas al menos 4 parejas";
-  } else if (groupCount < 1 || groupCount > maxGroups) {
-    error = `Con ${pairCount} parejas el máximo es ${maxGroups} ${maxGroups === 1 ? "grupo" : "grupos"}`;
-  } else if (advancePerGroup > maxAdvance) {
-    error = `Con ${groupCount} grupos pueden avanzar como máximo ${maxAdvance} por grupo`;
+  if (pairCount < MIN_PAIRS) {
+    error = `Necesitas al menos ${MIN_PAIRS} parejas (2 grupos de 3). Con menos, usa Liga o Relámpago.`;
+  } else if (groupCount < 2) {
+    error = "Necesitas al menos 2 grupos";
+  } else if (groupCount > maxGroups) {
+    error = `Con ${pairCount} parejas el máximo es ${maxGroups} ${maxGroups === 1 ? "grupo" : "grupos"} (mínimo ${MIN_GROUP_SIZE} parejas por grupo)`;
+  } else if (advancePerGroup < 1 || advancePerGroup > maxAdvance) {
+    error = `Con ${groupCount} grupos pueden avanzar como máximo ${maxAdvance} por grupo (no puede pasar todo el grupo)`;
   } else if (extraQualifiers > maxExtra) {
     error = `Con ${groupCount} grupos pueden pasar como máximo ${maxExtra} ${positionName(advancePerGroup, maxExtra)} extra`;
-  } else if (extraQualifiers > 0 && advancePerGroup >= maxAdvance) {
-    error = "Los grupos no tienen suficientes parejas para sumar mejores del siguiente puesto";
   }
   return { ok: error === null, maxGroups, maxAdvance, maxExtra, error };
 }
@@ -74,7 +80,7 @@ function formatOption(pairCount, groupCount, advancePerGroup, extraQualifiers = 
   const extra = pairCount % groupCount;
   // buildGroups reparte por turnos: los primeros grupos quedan con una pareja más
   const groupSizes = Array.from({ length: groupCount }, (_, i) => (i < extra ? base + 1 : base));
-  const { qualifiers, byes } = knockoutInfo(groupCount, advancePerGroup, extraQualifiers);
+  const { qualifiers, byes, size } = knockoutInfo(groupCount, advancePerGroup, extraQualifiers);
   return {
     groupCount,
     advancePerGroup,
@@ -83,6 +89,7 @@ function formatOption(pairCount, groupCount, advancePerGroup, extraQualifiers = 
     matchesPerPair: [base - 1, extra > 0 ? base : base - 1],
     groupMatches: groupSizes.reduce((sum, size) => sum + (size * (size - 1)) / 2, 0),
     qualifiers,
+    bracketSize: size,
     byes,
     recommended: extra === 0 && byes === 0 && qualifiers >= 4,
   };
@@ -115,6 +122,13 @@ export function mundialitoFormatOptions(pairCount) {
     return b.groupCount - a.groupCount || a.advancePerGroup - b.advancePerGroup || a.extraQualifiers - b.extraQualifiers;
   });
 }
+
+const STAGE_LABELS = { 2: "Final", 4: "Semifinales", 8: "Cuartos", 16: "Octavos" };
+
+// Etapa a la que llega un formato = tamaño del cuadro final (2 = final, 4 = semifinales...).
+export const stageLabel = (size) => STAGE_LABELS[size] ?? `Cuadro de ${size}`;
+export const availableStages = (options) => [...new Set(options.map((o) => o.bracketSize))].sort((a, b) => a - b);
+export const optionsForStage = (options, size) => (size ? options.filter((o) => o.bracketSize === size) : options);
 
 const KNOCKOUT_STAGE = { 2: "final", 4: "semifinales y final", 8: "cuartos de final", 16: "octavos de final", 32: "dieciseisavos de final" };
 
