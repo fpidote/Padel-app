@@ -1,11 +1,10 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { shuffle, buildShareMessage } from "../../logic/utils";
+import { buildShareMessage } from "../../logic/utils";
 import { validateMundialitoConfig, knockoutInfo, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail, describeFormat, positionName, availableStages, optionsForStage, stageLabel, MIN_PAIRS } from "../../logic/mundialito";
-import { buildPozoRound, shufflePlayers } from "../../logic/pozo";
 import MatchFormatPicker from "../shared/MatchFormatPicker";
 import LaunchModal, { SummaryRow, SummaryCard } from "../shared/LaunchModal";
-import { GroupsPreview, FixturePreview, BracketPreview } from "./DrawPreview";
+import { GroupsPreview, FixturePreview, BracketPreview, PozoPreview } from "./DrawPreview";
 import { hasDraw, drawIsRandom, drawKey, buildStartDraw, startPatch } from "../../logic/launchDraw";
 import { matchFormatSummary } from "../../logic/matchFormat";
 import { ligaQualifierOptions, ligaQualifiers, ligaThirdPlace } from "../../logic/liga";
@@ -163,70 +162,10 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
   }
 
   async function onStart() {
-    const pairsToStart = t.pairInputs.map((p, i) => ({ ...p, id: i, pts: 0, gf: 0, gc: 0 }));
     const finalConfig = { ...t.config, scoringSystem: t.config.scoringSystem || "timed" };
 
     if (hasDraw(t.type)) {
       await persist({ ...t, config: finalConfig, ...startPatch(t, activeDraw), status: "playing" });
-    } else if (t.type === "pozo") {
-      if (t.config.pozoMode === "mixer") {
-        const playersToStart = (t.playerInputs || []).map((p, i) => ({
-          ...p,
-          courtLevel: i,
-          pts: 0, gf: 0, gc: 0,
-        }));
-        const proposed  = shufflePlayers(playersToStart, t.config.courts);
-        const playerMap = Object.fromEntries(playersToStart.map((p) => [p.id, p]));
-        const currentPozoRound = proposed.courts.map((court) => {
-          const [pA1, pA2] = court.teamA.playerIds.map((id) => playerMap[id]);
-          const [pB1, pB2] = court.teamB.playerIds.map((id) => playerMap[id]);
-          return {
-            courtNum: court.courtNum,
-            pairA: {
-              id: `tmp_${pA1.id}_${pA2.id}`, _playerIds: [pA1.id, pA2.id],
-              p1: pA1.name, p2: pA2.name, pts: 0, gf: 0, gc: 0,
-              courtLevel: Math.round((pA1.courtLevel + pA2.courtLevel) / 2),
-            },
-            pairB: {
-              id: `tmp_${pB1.id}_${pB2.id}`, _playerIds: [pB1.id, pB2.id],
-              p1: pB1.name, p2: pB2.name, pts: 0, gf: 0, gc: 0,
-              courtLevel: Math.round((pB1.courtLevel + pB2.courtLevel) / 2),
-            },
-            scoreA: "", scoreB: "", saved: false,
-          };
-        });
-        await persist({
-          ...t,
-          config:           finalConfig,
-          players:          playersToStart,
-          currentPozoRound,
-          sittingOut:       proposed.unassigned || [],
-          proposedRound:    null,
-          pozoRounds:       [],
-          roundNum:         1,
-          phase:            "playing",
-          status:           "playing",
-          timerRunning:     false,
-          timerElapsed:     0,
-          timerStartedAt:   null,
-        });
-      } else {
-        const sorted      = shuffle(pairsToStart);
-        const courtAssign = buildPozoRound(sorted.map((p, i) => ({ ...p, courtLevel: i })), t.config.courts);
-        await persist({
-          ...t,
-          config:           finalConfig,
-          pairs:            sorted.map((p, i) => ({ ...p, courtLevel: i })),
-          currentPozoRound: courtAssign,
-          pozoRounds:       [],
-          roundNum:         1,
-          phase:            "playing",
-          status:           "playing",
-          timerRunning:     false,
-          timerElapsed:     0,
-          timerStartedAt:   null,
-        });
-      }
     }
     onExitEdit?.();
   }
@@ -873,7 +812,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
     {showLaunch && activeDraw && (
       <LaunchModal
         color={color}
-        tabs={[{ id: "sorteo", label: t.type === "liga" ? "🎲 Fixture" : t.type === "relampago" ? "🎲 Cuadro" : "🎲 Sorteo" }, { id: "resumen", label: "📋 Resumen" }]}
+        tabs={[{ id: "sorteo", label: t.type === "liga" ? "🎲 Fixture" : t.type === "relampago" ? "🎲 Cuadro" : t.type === "pozo" ? "🎲 Canchas" : "🎲 Sorteo" }, { id: "resumen", label: "📋 Resumen" }]}
         activeTab={launchTab}
         onTab={setLaunchTab}
         onClose={() => setShowLaunch(false)}
@@ -890,6 +829,14 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
         {launchTab === "sorteo" && t.type === "relampago" && (
           <BracketPreview bracket={activeDraw.bracket} seeded={!!t.config.seedByOrder} />
         )}
+        {launchTab === "sorteo" && t.type === "pozo" && (() => {
+          const inRound = new Set(activeDraw.currentPozoRound.flatMap((c) => [c.pairA.id, c.pairB.id]));
+          const playingIds = new Set(activeDraw.currentPozoRound.flatMap((c) => [...(c.pairA._playerIds || []), ...(c.pairB._playerIds || [])]));
+          const resting = activeDraw.mode === "mixer"
+            ? activeDraw.players.filter((p) => !playingIds.has(p.id)).map((p) => ({ id: p.id, label: p.name }))
+            : activeDraw.pairs.filter((p) => !inRound.has(p.id)).map((p) => ({ id: p.id, label: `${p.p1} / ${p.p2}` }));
+          return <PozoPreview round={activeDraw.currentPozoRound} resting={resting} />;
+        })()}
         {launchTab === "resumen" && (() => {
           const fmt = matchFormatSummary({ ...t.config, scoringFormat: t.config.scoringFormat || (t.type === "liga" ? "sets3" : undefined) });
           return (
@@ -900,7 +847,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
                 {t.config.location && <SummaryRow label="Ubicación" value={t.config.location} />}
               </SummaryCard>
               <SummaryCard title="Participantes">
-                <SummaryRow label="Total" value={`${tot} parejas`} />
+                <SummaryRow label="Total" value={`${tot} ${isMixer ? "jugadores" : "parejas"}`} />
                 {t.type !== "liga" && <SummaryRow label="Pistas" value={t.config.courts} />}
                 {t.type === "mundialito" && <SummaryRow label="Grupos" value={t.config.groupCount || 2} />}
                 {t.type === "mundialito" && <SummaryRow label="Avanzan por grupo" value={t.config.advancePerGroup ?? 2} />}
@@ -916,11 +863,18 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
                 {t.type === "liga" && ligaThirdPlace(t.config, tot) && <SummaryRow label="Partido por el 3.º puesto" value="Sí" />}
                 {t.type === "liga" && <SummaryRow label="Eliminatoria final" value={t.config.playoffEnabled ? `Sí (${ligaQualifiers(t.config, tot)} parejas)` : "No"} />}
               </SummaryCard>
-              <SummaryCard title="Formato de partido">
-                <SummaryRow label="Formato" value={fmt.label} />
-                <SummaryRow label="Detalle" value={fmt.detail} />
-                <SummaryRow label="Punto de oro" value={t.config.goldenPoint !== false ? "Activado" : "Desactivado"} />
-              </SummaryCard>
+              {t.type === "pozo" ? (
+                <SummaryCard title="El Pozo">
+                  <SummaryRow label="Modo" value={isMixer ? "Mixer (parejas que cambian)" : "Parejas fijas"} />
+                  <SummaryRow label="Rondas" value={t.config.targetRounds ? t.config.targetRounds : "Sin límite"} />
+                </SummaryCard>
+              ) : (
+                <SummaryCard title="Formato de partido">
+                  <SummaryRow label="Formato" value={fmt.label} />
+                  <SummaryRow label="Detalle" value={fmt.detail} />
+                  <SummaryRow label="Punto de oro" value={t.config.goldenPoint !== false ? "Activado" : "Desactivado"} />
+                </SummaryCard>
+              )}
             </div>
           );
         })()}

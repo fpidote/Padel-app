@@ -97,3 +97,31 @@ export function BracketPreview({ bracket, seeded = false }) {
     </div>
   );
 }
+
+// Primera ronda del Pozo: una tarjeta por cancha y, si sobra gente, quién descansa.
+export function PozoPreview({ round, resting = [] }) {
+  return (
+    <div className="px-4 py-4 space-y-3">
+      <p className="text-xs text-gray-500">
+        Primera ronda. Quien gana sube de cancha y quien pierde baja; la cancha 1 es la del rey.
+      </p>
+      <div className="space-y-2">
+        {round.map((court) => (
+          <div key={court.courtNum} className="bg-[#1f2937] rounded-xl px-3 py-2.5 border border-gray-700">
+            <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Cancha {court.courtNum}</div>
+            <div className="text-sm text-gray-100 flex flex-wrap items-center gap-x-1">
+              <span className="font-medium">{names(court.pairA)}</span>
+              <span className="text-gray-500 text-xs font-bold mx-1">vs</span>
+              <span className="font-medium">{names(court.pairB)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      {resting.length > 0 && (
+        <div className="text-xs text-yellow-400">
+          ⏳ Descansan: {resting.map((r) => r.label).join(", ")}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -17,8 +17,11 @@ describe("hasDraw", () => {
     expect(hasDraw("liga")).toBe(true);
     expect(hasDraw("relampago")).toBe(true);
   });
-  it("los demás formatos no (todavía)", () => {
-    ["pozo", "americano"].forEach((t) => expect(hasDraw(t)).toBe(false));
+  it("El Pozo también muestra qué pareja o jugador abre en cada cancha", () => {
+    expect(hasDraw("pozo")).toBe(true);
+  });
+  it("el Americano no (su primera ronda se ve en el propio torneo)", () => {
+    expect(hasDraw("americano")).toBe(false);
   });
 });
 
@@ -145,7 +148,6 @@ describe("buildStartDraw — Relámpago", () => {
 
 describe("buildStartDraw — otros formatos", () => {
   it("devuelve null donde no hay sorteo previsualizable", () => {
-    expect(buildStartDraw(tournament("pozo", 4))).toBeNull();
     expect(buildStartDraw(tournament("americano", 4))).toBeNull();
   });
 });
@@ -186,5 +188,58 @@ describe("startPatch", () => {
   it("sin sorteo previo lo genera (el inicio nunca queda sin grupos)", () => {
     const t = tournament("mundialito", 6);
     expect(startPatch(t, null).groups).toHaveLength(2);
+  });
+});
+
+describe("El Pozo — sorteo previo", () => {
+  const playerInputs = (n) => Array.from({ length: n }, (_, i) => ({ id: i, name: `Jugador${i}` }));
+  const pozoFixed = (n, courts = 2) => ({ type: "pozo", pairInputs: pairInputs(n), config: { courts, pozoMode: "fixed" } });
+  const pozoMixer = (n, courts = 2) => ({ type: "pozo", playerInputs: playerInputs(n), pairInputs: [], config: { courts, pozoMode: "mixer" } });
+
+  it("T-PZ-01: parejas fijas — arma una cancha por cada dos parejas y deja descansando al resto", () => {
+    const draw = buildStartDraw(pozoFixed(5, 2));
+    expect(draw.currentPozoRound).toHaveLength(2);
+    const playing = draw.currentPozoRound.flatMap((c) => [c.pairA.id, c.pairB.id]);
+    expect(new Set(playing).size).toBe(4);
+    expect(draw.pairs).toHaveLength(5);
+    expect(draw.pairs.every((p) => typeof p.courtLevel === "number")).toBe(true);
+  });
+
+  it("T-PZ-02: mixer — cuatro jugadores por cancha y el resto en sittingOut", () => {
+    const draw = buildStartDraw(pozoMixer(10, 2));
+    expect(draw.currentPozoRound).toHaveLength(2);
+    expect(draw.currentPozoRound[0].pairA._playerIds).toHaveLength(2);
+    expect(draw.sittingOut).toHaveLength(2);
+    expect(draw.players).toHaveLength(10);
+  });
+
+  it("T-PZ-03: startPatch usa el sorteo recibido y deja el torneo en la ronda 1", () => {
+    const t = pozoFixed(4, 2);
+    const draw = buildStartDraw(t);
+    expect(startPatch(t, draw)).toMatchObject({
+      currentPozoRound: draw.currentPozoRound,
+      pairs: draw.pairs,
+      pozoRounds: [],
+      roundNum: 1,
+      phase: "playing",
+      timerRunning: false,
+      timerElapsed: 0,
+      timerStartedAt: null,
+    });
+    const tm = pozoMixer(8, 2);
+    const dm = buildStartDraw(tm);
+    expect(startPatch(tm, dm)).toMatchObject({ players: dm.players, sittingOut: dm.sittingOut, proposedRound: null, roundNum: 1 });
+  });
+
+  it("T-PZ-04: con parejas fijas se puede re-sortear; en mixer no (la primera ronda sale por orden de carga)", () => {
+    expect(drawIsRandom(pozoFixed(6))).toBe(true);
+    expect(drawIsRandom(pozoMixer(8))).toBe(false);
+  });
+
+  it("T-PZ-05: la clave del sorteo cambia con el modo, las pistas y los jugadores", () => {
+    const base = drawKey(pozoFixed(6, 2));
+    expect(drawKey(pozoFixed(6, 3))).not.toBe(base);
+    expect(drawKey(pozoMixer(8, 2))).not.toBe(drawKey(pozoMixer(9, 2)));
+    expect(drawKey(pozoMixer(8, 2))).not.toBe(base);
   });
 });

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { GroupsPreview, FixturePreview, BracketPreview } from "./DrawPreview";
+import { GroupsPreview, FixturePreview, BracketPreview, PozoPreview } from "./DrawPreview";
 import { buildBracket } from "../../logic/relampago";
 import { knockoutInfo } from "../../logic/mundialito";
 
@@ -91,5 +91,26 @@ describe("BracketPreview", () => {
     expect(seeded).toContain("orden de carga");
     const random = renderToStaticMarkup(<BracketPreview bracket={buildBracket(pairs(4))} />);
     expect(random).not.toContain("orden de carga");
+  });
+});
+
+describe("PozoPreview", () => {
+  const court = (n, a, b) => ({ courtNum: n, pairA: { id: a, p1: `P${a}a`, p2: `P${a}b` }, pairB: { id: b, p1: `P${b}a`, p2: `P${b}b` } });
+
+  it("T-PZ-06: lista cada cancha con sus dos parejas y quién descansa", () => {
+    const html = renderToStaticMarkup(
+      <PozoPreview round={[court(1, 0, 1), court(2, 2, 3)]} resting={[{ id: 4, label: "P4a / P4b" }]} />,
+    );
+    expect(html).toContain("Cancha 1");
+    expect(html).toContain("Cancha 2");
+    expect(html).toContain("P0a / P0b");
+    expect(html).toContain("P3a / P3b");
+    expect(html).toContain("Descansan");
+    expect(html).toContain("P4a / P4b");
+  });
+
+  it("T-PZ-07: sin nadie descansando no muestra ese bloque", () => {
+    const html = renderToStaticMarkup(<PozoPreview round={[court(1, 0, 1)]} resting={[]} />);
+    expect(html).not.toContain("Descansan");
   });
 });
