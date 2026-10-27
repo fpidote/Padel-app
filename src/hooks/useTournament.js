@@ -86,6 +86,11 @@ export function useTournament(code) {
   // Hallazgo 3: guard anti-concurrencia para evitar race condition de doble-click
   async function persist(newT) {
     if (saving) return;
+    // Sin red, setDoc no responde y dejaría el guardado colgado: se avisa y no se intenta a ciegas
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      showToast("No se guardaron los cambios: sin conexión. Vuelve a intentarlo cuando se recupere.");
+      return;
+    }
     const prevT = t;
     const prevVer = verRef.current;
     const updated = { ...newT, ver: (newT.ver || 0) + 1 };

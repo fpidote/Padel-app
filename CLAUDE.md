@@ -363,7 +363,7 @@ useEffect(() => {
 
 - `useTournament.js` mezcla sync, auth y persist — candidato a dividir en el futuro
 - Los pocos `style` que quedan en Play y Setup son colores dinámicos (formato, nivel del jugador, estado activo); no hay deuda de estilos inline estáticos
-- Sin manejo formal de errores de Firestore (timeout, offline) — mostrar estado de error al usuario
+- Errores de Firestore: hay banner sin conexión / conexión perdida (`useOnline`, `TournamentPage`) y `persist` no intenta guardar sin red; falta un timeout para guardados que se cuelgan con red inestable
 - Los tests cubren la lógica pura (`src/logic`) y algunos componentes con `renderToStaticMarkup`; los componentes Play/Setup no tienen tests, así que los cambios visuales se verifican con capturas antes y después
 
 ---

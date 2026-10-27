@@ -2,6 +2,7 @@
 import { useState, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTournament } from "./hooks/useTournament";
+import { useOnline } from "./hooks/useOnline";
 import { TOURNAMENT_TYPES } from "./logic/constants";
 import { SimpleModal } from "./components/shared/Components";
 
@@ -17,6 +18,7 @@ export default function TournamentPage() {
   const { code } = useParams();
   const navigate = useNavigate();
   const { t, notFound, isAdmin, error, saving, persist, copyCode, sessionExpired, reauthenticate } = useTournament(code);
+  const online = useOnline();
   const [editMode, setEditMode] = useState(false);
 
   if (notFound)
@@ -72,6 +74,13 @@ export default function TournamentPage() {
 
   return (
     <>
+      {(!online || error) && (
+        <div role="alert" className="sticky top-0 z-50 bg-amber-500/95 text-[#1c1917] text-xs font-bold text-center px-4 py-2">
+          {!online
+            ? "📡 Sin conexión. Verás los últimos datos, pero no se guardarán cambios hasta que vuelva."
+            : "⚠️ Se perdió la conexión con el torneo en vivo. Recarga la página si no se actualiza."}
+        </div>
+      )}
       {sessionExpired && (
         <SimpleModal
           icon="🔒"
