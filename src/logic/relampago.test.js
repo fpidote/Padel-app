@@ -397,3 +397,61 @@ describe("hasPlayedRealMatch", () => {
     expect(hasPlayedRealMatch([])).toBe(false);
   });
 });
+
+describe("partido por el 3.º y 4.º puesto (thirdPlace)", () => {
+  const opts = { consolation: false, thirdPlace: true };
+  const third = (b) => b.find((m) => m.bracket === "third");
+  const play = (b, id, x, y) => advanceBracket(b, id, x, y);
+
+  it("T-3P-01: con 4 parejas agrega un partido por el 3.º puesto en la ronda de la final", () => {
+    const b = buildBracket(makePairs(4), opts);
+    expect(third(b)).toMatchObject({ id: "w_third", round: 2, nextMatchId: null, pairA: null, pairB: null });
+    expect(b.filter((m) => m.bracket === "winners")).toHaveLength(3);
+  });
+
+  it("T-3P-02: los perdedores de las dos semifinales se enfrentan en ese partido", () => {
+    let b = buildBracket(makePairs(4), opts);
+    const [s0, s1] = b.filter((m) => m.round === 1 && m.bracket === "winners");
+    b = play(b, s0.id, 6, 2);
+    b = play(b, s1.id, 3, 6);
+    expect(third(b).pairA.id).toBe(s0.pairB.id);
+    expect(third(b).pairB.id).toBe(s1.pairA.id);
+  });
+
+  it("T-3P-03: con 8 parejas el 3.º puesto se alimenta de las semifinales (ronda 2), no de los cuartos", () => {
+    let b = buildBracket(makePairs(8), opts);
+    expect(b.filter((m) => m.round === 1).every((m) => !m.loserMatchId)).toBe(true);
+    expect(b.filter((m) => m.round === 2).map((m) => m.loserMatchId)).toEqual(["w_third", "w_third"]);
+    expect(third(b).round).toBe(3);
+  });
+
+  it("T-3P-04: con pasa directo (5 parejas) el perdedor de la semifinal llega igual, aunque venga de jugar la ronda 1", () => {
+    let b = buildBracket(makePairs(5), opts);
+    for (const m of b.filter((x) => x.round === 1 && !x.saved && x.pairA && x.pairB)) b = play(b, m.id, 6, 1);
+    const semis = b.filter((m) => m.round === 2);
+    for (const s of semis) b = play(b, s.id, 6, 3);
+    expect(third(b).pairA?.id).toBeTruthy();
+    expect(third(b).pairB?.id).toBeTruthy();
+    expect(third(b).pairA.id).not.toBe("bye");
+    expect(third(b).pairB.id).not.toBe("bye");
+  });
+
+  it("T-3P-05: sin la opción, o con menos de 4 parejas, no hay partido por el 3.º puesto", () => {
+    expect(third(buildBracket(makePairs(4), { consolation: false }))).toBeUndefined();
+    expect(third(buildBracket(makePairs(2), opts))).toBeUndefined();
+    expect(third(buildBracket(makePairs(3), opts))).toBeUndefined();
+  });
+
+  it("T-3P-06: no se puede corregir una semifinal si ya se jugó el 3.º puesto, y al deshacerla el hueco queda libre", () => {
+    let b = buildBracket(makePairs(4), opts);
+    const [s0, s1] = b.filter((m) => m.round === 1 && m.bracket === "winners");
+    b = play(b, s0.id, 6, 2);
+    b = play(b, s1.id, 6, 2);
+    expect(canEditBracketMatch(b, s0.id)).toBe(true);
+    b = play(b, "w_third", 6, 4);
+    expect(canEditBracketMatch(b, s0.id)).toBe(false);
+    b = unadvanceBracket(b, "w_third");
+    b = unadvanceBracket(b, s0.id);
+    expect(third(b).pairA).toBeNull();
+  });
+});

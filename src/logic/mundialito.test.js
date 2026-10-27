@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildKnockoutFromGroups, validateMundialitoConfig, seedQualifiers, knockoutInfo, knockoutByesText, mundialitoGroupsLocked, canReopenMundialito, reopenMundialitoPatch } from "./mundialito";
+import { buildKnockoutFromGroups, validateMundialitoConfig, seedQualifiers, knockoutInfo, knockoutByesText, mundialitoGroupsLocked, canReopenMundialito, reopenMundialitoPatch, mundialitoThirdPlace } from "./mundialito";
 import { firstRoundSeedPairs } from "./relampago";
 import { generateRules } from "./constants";
 
@@ -307,5 +307,29 @@ describe("cierre de los resultados de grupos del Mundialito", () => {
   });
   it("el parche descarta el cuadro y vuelve a los grupos", () => {
     expect(reopenMundialitoPatch()).toEqual({ knockoutBracket: null, phase: "groups" });
+  });
+});
+
+describe("Torneo por grupos — partido por el 3.º puesto", () => {
+  const groups = [
+    { standings: [pair(1, 6, 4, 0), pair(2, 3, 2, 2), pair(3, 0, 0, 4)] },
+    { standings: [pair(4, 6, 4, 1), pair(5, 3, 2, 2), pair(6, 0, 1, 4)] },
+  ];
+
+  it("T-3P-M1: buildKnockoutFromGroups con thirdPlace agrega el partido por el 3.º puesto", () => {
+    expect(buildKnockoutFromGroups(groups, 2, { thirdPlace: true }).some((m) => m.bracket === "third")).toBe(true);
+    expect(buildKnockoutFromGroups(groups, 2).some((m) => m.bracket === "third")).toBe(false);
+  });
+
+  it("T-3P-M2: mundialitoThirdPlace exige la opción y 4 o más clasificados", () => {
+    expect(mundialitoThirdPlace({ groupCount: 2, advancePerGroup: 2, thirdPlace: true })).toBe(true);
+    expect(mundialitoThirdPlace({ groupCount: 2, advancePerGroup: 2 })).toBe(false);
+    expect(mundialitoThirdPlace({ groupCount: 2, advancePerGroup: 1, thirdPlace: true })).toBe(false);
+  });
+
+  it("T-3P-M3: las reglas lo mencionan solo si está activado", () => {
+    const base = { groupCount: 2, advancePerGroup: 2 };
+    expect(generateRules("mundialito", base).join(" ")).not.toMatch(/3\.º/);
+    expect(generateRules("mundialito", { ...base, thirdPlace: true }).join(" ")).toMatch(/3\.º y 4\.º puesto/);
   });
 });

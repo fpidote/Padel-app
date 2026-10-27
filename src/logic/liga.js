@@ -145,9 +145,9 @@ export function recomputeLigaStandings(pairs, matches) {
 
 // Arma el bracket de playoff con el top `advanceQualifiers` de la tabla, con el mismo orden que la
 // tabla de posiciones (victorias → enfrentamiento directo → diferencia → games).
-export function buildLigaKnockout(pairs, advanceQualifiers, matches = []) {
+export function buildLigaKnockout(pairs, advanceQualifiers, matches = [], { thirdPlace = false } = {}) {
   const sorted = sortStandings(pairs, matches);
-  return buildBracket(sorted.slice(0, advanceQualifiers), { consolation: false });
+  return buildBracket(sorted.slice(0, advanceQualifiers), { consolation: false, thirdPlace });
 }
 
 // Cuántas parejas pueden pasar a la eliminatoria según cuántas juegan la liga: con menos de 5 solo
@@ -164,6 +164,12 @@ export function ligaQualifiers(config, pairCount) {
   const options = ligaQualifierOptions(pairCount);
   const wanted = config?.advanceQualifiers ?? 4;
   return Math.max(...options.filter((n) => n <= wanted));
+}
+
+// ¿Se juega el partido por el 3.º y 4.º puesto? Solo con eliminatoria, la opción activada y semifinales
+// (4 clasificados o más).
+export function ligaThirdPlace(config, pairCount) {
+  return !!config?.playoffEnabled && !!config?.thirdPlace && ligaQualifiers(config, pairCount) >= 4;
 }
 
 // Los resultados de la liga se cierran al iniciar la eliminatoria: a partir de ahí el cuadro depende

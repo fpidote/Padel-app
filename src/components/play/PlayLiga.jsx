@@ -6,6 +6,7 @@ import {
   recomputeLigaStandings,
   buildLigaKnockout,
   ligaQualifiers,
+  ligaThirdPlace,
   ligaResultsLocked,
   canReopenLiga,
   reopenLigaPatch,
@@ -91,7 +92,9 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
   async function onStartKnockout() {
     if (!allMatchesDone) return;
     setConfirm(null);
-    const bracket = buildLigaKnockout(t.pairs, ligaQualifiers(t.config, t.pairs.length), matches);
+    const bracket = buildLigaKnockout(t.pairs, ligaQualifiers(t.config, t.pairs.length), matches, {
+      thirdPlace: ligaThirdPlace(t.config, t.pairs.length),
+    });
     try {
       await persist({ ...t, knockoutBracket: bracket, phase: "playoff" });
     } catch (err) {
@@ -121,11 +124,12 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
     await persist({ ...t, knockoutBracket: unadvanceBracket(t.knockoutBracket, matchId) });
   }
 
+  const thirdMatch = t.knockoutBracket?.find((m) => m.bracket === "third");
   const koRounds = t.knockoutBracket
     ? [...new Set(t.knockoutBracket.map((m) => m.round))].sort((a, b) => a - b)
     : [];
   const champion = playoffEnabled
-    ? t.knockoutBracket?.find((m) => !m.nextMatchId && m.saved)?.winner
+    ? t.knockoutBracket?.find((m) => !m.nextMatchId && m.saved && m.bracket !== "third")?.winner
     : allMatchesDone
       ? sortStandings(t.pairs, matches)[0]
       : null;
@@ -253,7 +257,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                       {round === Math.max(...koRounds) ? "Final" : `Ronda ${round}`}
                     </div>
                     {t.knockoutBracket
-                      .filter((m) => m.round === round)
+                      .filter((m) => m.round === round && m.bracket !== "third")
                       .map((match) => (
                         <MatchCard
                           key={match.id}
@@ -276,6 +280,28 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                       ))}
                   </div>
                 ))}
+                {thirdMatch && (
+                  <div>
+                    <div className="text-gray-400 font-bold mb-2 uppercase text-xs tracking-wide">🥉 3.º y 4.º puesto</div>
+                    <MatchCard
+                      match={thirdMatch}
+                      isAdmin={isAdmin}
+                      ls={ls}
+                      setLs={setLs}
+                      onSave={onSaveKnockoutMatch}
+                      onEdit={
+                        canEditBracketMatch(t.knockoutBracket, thirdMatch.id)
+                          ? onEditKnockoutMatch
+                          : undefined
+                      }
+                      locked={
+                        thirdMatch.saved && !canEditBracketMatch(t.knockoutBracket, thirdMatch.id)
+                      }
+                      accentColor="#db2777"
+                      scoringFormat={t.config?.scoringFormat || "sets3"}
+                    />
+                  </div>
+                )}
               </>
             )}
           </div>

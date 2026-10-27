@@ -170,6 +170,12 @@ export function reopenMundialitoPatch() {
   return { knockoutBracket: null, phase: "groups" };
 }
 
-export function buildKnockoutFromGroups(groups, advancePerGroup) {
-  return buildBracket(seedQualifiers(groups, advancePerGroup), { consolation: false });
+export function buildKnockoutFromGroups(groups, advancePerGroup, { thirdPlace = false } = {}) {
+  return buildBracket(seedQualifiers(groups, advancePerGroup), { consolation: false, thirdPlace });
+}
+
+// ¿Se juega el partido por el 3.º y 4.º puesto? Solo con la opción activada y semifinales
+// (4 clasificados o más).
+export function mundialitoThirdPlace(config) {
+  return !!config?.thirdPlace && knockoutInfo(config.groupCount, config.advancePerGroup).qualifiers >= 4;
 }

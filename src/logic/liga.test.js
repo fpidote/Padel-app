@@ -10,6 +10,7 @@ import {
   canReopenLiga,
   reopenLigaPatch,
   clearLigaMatch,
+  ligaThirdPlace,
 } from "./liga.js";
 import { generateRules } from "./constants.js";
 
@@ -455,5 +456,31 @@ describe("clearLigaMatch — eliminar un resultado", () => {
     const out = clearLigaMatch(matches, "a");
     expect(out[1]).toEqual(matches[1]);
     expect(matches[0].saved).toBe(true);
+  });
+});
+
+describe("Liga — partido por el 3.º puesto", () => {
+  const six = ["a", "b", "c", "d", "e", "f"].map((id, i) => pair(id, 10 - i));
+
+  test("T-3P-L1: buildLigaKnockout con thirdPlace agrega el partido por el 3.º puesto", () => {
+    const b = buildLigaKnockout(six, 4, [], { thirdPlace: true });
+    expect(b.some((m) => m.bracket === "third")).toBe(true);
+    expect(buildLigaKnockout(six, 4, []).some((m) => m.bracket === "third")).toBe(false);
+  });
+
+  test("T-3P-L2: ligaThirdPlace solo aplica con eliminatoria, la opción activada y 4 o más clasificados", () => {
+    const on = { playoffEnabled: true, thirdPlace: true, advanceQualifiers: 4 };
+    expect(ligaThirdPlace(on, 6)).toBe(true);
+    expect(ligaThirdPlace({ ...on, playoffEnabled: false }, 6)).toBe(false);
+    expect(ligaThirdPlace({ ...on, thirdPlace: false }, 6)).toBe(false);
+    expect(ligaThirdPlace(on, 4)).toBe(false); // con 4 parejas pasan solo 2
+  });
+
+  test("T-3P-L3: las reglas lo mencionan solo si está activado", () => {
+    const base = { playoffEnabled: true, advanceQualifiers: 4, scoringFormat: "sets3" };
+    const off = generateRules("liga", base, { pairCount: 6 }).join(" ");
+    const on = generateRules("liga", { ...base, thirdPlace: true }, { pairCount: 6 }).join(" ");
+    expect(off).not.toMatch(/3\.º/);
+    expect(on).toMatch(/3\.º y 4\.º puesto/);
   });
 });

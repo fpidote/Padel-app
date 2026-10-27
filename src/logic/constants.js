@@ -1,6 +1,6 @@
 // src/logic/constants.js
-import { knockoutInfo, knockoutByesText } from "./mundialito";
-import { ligaQualifiers } from "./liga";
+import { knockoutInfo, knockoutByesText, mundialitoThirdPlace } from "./mundialito";
+import { ligaQualifiers, ligaThirdPlace } from "./liga";
 
 export const TOURNAMENT_TYPES = [
   {
@@ -54,6 +54,8 @@ export const TOURNAMENT_TYPES = [
     color: "#db2777",
   },
 ];
+
+const THIRD_PLACE_RULE = "Los perdedores de las semifinales juegan el partido por el 3.º y 4.º puesto.";
 
 export function generateRules(type, config, context = {}) {
   function scoringDesc() {
@@ -122,6 +124,7 @@ export function generateRules(type, config, context = {}) {
         `${config.groupCount ?? 2} ${(config.groupCount ?? 2) === 1 ? "grupo" : "grupos"} en fase inicial. Los ${config.advancePerGroup ?? 2} mejores de cada grupo avanzan a eliminatorias.`,
         "Clasifica quien gane más partidos. No hay empates.",
         ...[knockoutByesText(knockoutInfo(config.groupCount, config.advancePerGroup))].filter(Boolean),
+        ...(mundialitoThirdPlace(config) ? [THIRD_PLACE_RULE] : []),
         "Desempate: 1º el resultado del partido entre las parejas igualadas, 2º diferencia entre lo que anotan a favor y en contra, 3º diferencia de games.",
         scoringDesc(),
         goldenPointDesc(),
@@ -155,6 +158,7 @@ export function generateRules(type, config, context = {}) {
       ];
       if (config.playoffEnabled) {
         rules.push(`Al terminar la tabla, los ${context.pairCount ? ligaQualifiers(config, context.pairCount) : (config.advanceQualifiers ?? 4)} mejores clasificados juegan una fase eliminatoria.`);
+        if (ligaThirdPlace(config, context.pairCount ?? 99)) rules.push(THIRD_PLACE_RULE);
       } else {
         rules.push("Sin fase final: el campeón es quien queda primero en la tabla.");
       }

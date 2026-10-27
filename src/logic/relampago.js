@@ -26,10 +26,19 @@ const BYE_PAIR = { id: "bye", p1: "BYE", p2: "BYE" };
 
 // Con { consolation: false } es eliminación directa pura (Mundialito y Liga); por defecto incluye
 // el cuadro de revancha del Relámpago.
-export function buildBracket(pairs, { consolation = true } = {}) {
+// Con { thirdPlace: true } (solo sin consolación y con 4 parejas o más) suma un partido entre los dos
+// perdedores de semifinales, `w_third`, en la ronda de la final.
+export function buildBracket(pairs, { consolation = true, thirdPlace = false } = {}) {
   const n = pairs.length;
   let size = 1;
   while (size < n) size *= 2;
+  const hasThird = thirdPlace && !consolation && n >= 4;
+  const finalRound = Math.log2(size);
+  // A qué hueco del partido por el 3.º puesto va el perdedor de una semifinal
+  const thirdRouting = (round, matchIndex) =>
+    hasThird && round === finalRound - 1
+      ? { loserMatchId: "w_third", loserMatchSlot: matchIndex % 2 === 0 ? "A" : "B" }
+      : null;
 
   const BYE = BYE_PAIR;
   const distributed = Array(size).fill(null).map((_, i) => (i < n ? pairs[i] : BYE));
@@ -81,6 +90,7 @@ export function buildBracket(pairs, { consolation = true } = {}) {
   // 1. Winners R1
   for (let i = 0; i < size / 2; i++) {
     const routing = hasConsolation ? loserRouting[`1_${i}`] : null;
+    const third = thirdRouting(1, i);
     matches.push({
       id: `w_r1_m${i}`,
       bracket: "winners",
@@ -95,8 +105,8 @@ export function buildBracket(pairs, { consolation = true } = {}) {
       loser: null,
       nextMatchId: size > 2 ? `w_r2_m${Math.floor(i / 2)}` : null,
       nextMatchSlot: i % 2 === 0 ? "A" : "B",
-      loserMatchId: routing ? routing.consolMatchId : null,
-      loserMatchSlot: routing ? routing.consolSlot : null,
+      loserMatchId: routing ? routing.consolMatchId : (third?.loserMatchId ?? null),
+      loserMatchSlot: routing ? routing.consolSlot : (third?.loserMatchSlot ?? null),
     });
   }
 
@@ -113,8 +123,9 @@ export function buildBracket(pairs, { consolation = true } = {}) {
 
       // Los W_R2 con alguna pareja que descansó mandan a su perdedor a la consolación
       const routing = roundNum === 2 && hasConsolation ? loserRouting[`2_${i}`] : null;
-      const loserMatchId = routing ? routing.consolMatchId : null;
-      const loserMatchSlot = routing ? routing.consolSlot : null;
+      const third = thirdRouting(roundNum, i);
+      const loserMatchId = routing ? routing.consolMatchId : (third?.loserMatchId ?? null);
+      const loserMatchSlot = routing ? routing.consolSlot : (third?.loserMatchSlot ?? null);
 
       matches.push({
         id: `w_r${roundNum}_m${i}`,
@@ -138,6 +149,26 @@ export function buildBracket(pairs, { consolation = true } = {}) {
     }
     prevRoundSize = newSize;
     roundNum++;
+  }
+
+  // 2b. Partido por el 3.º y 4.º puesto
+  if (hasThird) {
+    matches.push({
+      id: "w_third",
+      bracket: "third",
+      round: finalRound,
+      matchIndex: 0,
+      pairA: null,
+      pairB: null,
+      scoreA: "",
+      scoreB: "",
+      saved: false,
+      winner: null,
+      loser: null,
+      nextMatchId: null,
+      nextMatchSlot: "A",
+      loserMatchId: null,
+    });
   }
 
   // 3. Consolation Bracket (con 2 parejas no hay: el único partido es la final)
@@ -201,8 +232,10 @@ export function advanceBracket(matches, savedId, scoreA, scoreB) {
     // W_R1 matches have NO pairAByeInR1/pairBByeInR1 (undefined → hasByeTracking=false → always route).
     // Do NOT set these to false on W_R1 — that would silently block consolation routing.
     const hasByeTracking = match.pairAByeInR1 != null || match.pairBByeInR1 != null;
-    const shouldRoute = !hasByeTracking || loserHadBye;
     const cons = updated.find((m) => m.id === match.loserMatchId);
+    // El seguimiento de byes solo importa para la consolación; el partido por el 3.º puesto recibe
+    // siempre al perdedor de la semifinal.
+    const shouldRoute = cons?.bracket !== "consolation" || !hasByeTracking || loserHadBye;
     if (cons) {
       // Si perdió quien ya había jugado, a la consolación no llega nadie: el lugar se cubre con un
       // BYE para que el cuadro no quede esperando.

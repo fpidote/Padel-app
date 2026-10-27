@@ -7,6 +7,7 @@ import {
   mundialitoGroupsLocked,
   canReopenMundialito,
   reopenMundialitoPatch,
+  mundialitoThirdPlace,
 } from "../../logic/mundialito";
 import { computeStandings, sortStandings, standingsLabels } from "../../logic/standings";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
@@ -154,6 +155,7 @@ export default function PlayMundialito({
       const bracket = buildKnockoutFromGroups(
         groupsWithRounds,
         t.config.advancePerGroup || 2,
+        { thirdPlace: mundialitoThirdPlace(t.config) },
       );
       await persist({
         ...t,
@@ -191,12 +193,13 @@ export default function PlayMundialito({
     await persist({ ...t, knockoutBracket: unadvanceBracket(t.knockoutBracket, matchId) });
   }
 
+  const thirdMatch = t.knockoutBracket?.find((m) => m.bracket === "third");
   const koRounds = t.knockoutBracket
     ? [...new Set(t.knockoutBracket.map((m) => m.round))].sort((a, b) => a - b)
     : [];
 
   const champion = t.knockoutBracket?.find(
-    (m) => !m.nextMatchId && m.saved,
+    (m) => !m.nextMatchId && m.saved && m.bracket !== "third",
   )?.winner;
 
   const allPairs = groupsWithRounds.flatMap((g) => g.standings);
@@ -482,7 +485,7 @@ export default function PlayMundialito({
                         : `Ronda ${round}`}
                     </div>
                     {t.knockoutBracket
-                      .filter((m) => m.round === round)
+                      .filter((m) => m.round === round && m.bracket !== "third")
                       .map((match) => (
                         <MatchCard
                           key={match.id}
@@ -505,6 +508,28 @@ export default function PlayMundialito({
                       ))}
                   </div>
                 ))}
+                {thirdMatch && (
+                  <div>
+                    <div className="mb-2 text-[13px] font-bold uppercase text-[#94a3b8]">🥉 3.º y 4.º puesto</div>
+                    <MatchCard
+                      match={thirdMatch}
+                      isAdmin={isAdmin}
+                      ls={ls}
+                      setLs={setLs}
+                      onSave={onSaveKnockoutMatch}
+                      onEdit={
+                        canEditBracketMatch(t.knockoutBracket, thirdMatch.id)
+                          ? onEditKnockoutMatch
+                          : undefined
+                      }
+                      locked={
+                        thirdMatch.saved && !canEditBracketMatch(t.knockoutBracket, thirdMatch.id)
+                      }
+                      accentColor="#059669"
+                      scoringFormat={t.config?.scoringFormat || "games"}
+                    />
+                  </div>
+                )}
               </>
             )}
           </>
