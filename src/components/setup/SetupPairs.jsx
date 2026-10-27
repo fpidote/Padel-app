@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { buildShareMessage } from "../../logic/utils";
-import { validateMundialitoConfig, knockoutInfo, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail, describeFormat, positionName, availableStages, optionsForStage, stageLabel, MIN_PAIRS } from "../../logic/mundialito";
+import { validateMundialitoConfig, knockoutInfo, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail, describeFormat, positionName, availableStages, optionsForStage, stageChoiceLabel, MIN_PAIRS } from "../../logic/mundialito";
 import MatchFormatPicker from "../shared/MatchFormatPicker";
 import LaunchModal, { SummaryRow, SummaryCard } from "../shared/LaunchModal";
 import { GroupsPreview, FixturePreview, BracketPreview, PozoPreview } from "./DrawPreview";
@@ -334,14 +334,14 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
                     )}
                     {stages.length > 1 && (
                       <div className="mb-3">
-                        <div className="text-xs text-gray-400 font-semibold mb-2">¿Hasta dónde quieres llegar?</div>
+                        <div className="text-xs text-gray-400 font-semibold mb-2">¿Cuántas parejas pasan a la fase final?</div>
                         <div className="flex flex-wrap gap-2">
                           {[null, ...stages].map((size) => (
                             <button key={size ?? "todas"}
                               onClick={() => setStage(size)}
                               className={`px-3.5 py-2 rounded-xl font-bold text-xs transition-colors cursor-pointer ${shownStage === size ? "text-white" : "bg-[#1f2937] text-[#94a3b8]"}`}
                               style={shownStage === size ? { background: color } : undefined}
-                            >{size === null ? "Todas" : stageLabel(size)}</button>
+                            >{size === null ? "Todas las opciones" : stageChoiceLabel(size)}</button>
                           ))}
                         </div>
                       </div>

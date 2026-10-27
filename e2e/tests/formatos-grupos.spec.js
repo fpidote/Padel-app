@@ -142,13 +142,13 @@ test("con 5 parejas no se puede armar un torneo por grupos y se orienta a Liga o
 
 test("elegir por objetivo filtra los formatos: con 10 parejas, semifinales = 2 grupos de 5 pasando 2", async ({ page }) => {
   await entrar(page, 10);
-  await expect(page.getByText("¿Hasta dónde quieres llegar?")).toBeVisible();
+  await expect(page.getByText("¿Cuántas parejas pasan a la fase final?")).toBeVisible();
 
-  await page.getByRole("button", { name: "Final", exact: true }).click();
+  await page.getByRole("button", { name: "2 (final)", exact: true }).click();
   await expect(page.getByRole("button", { name: /Clasifican 2: final/ })).toHaveCount(1);
   await expect(page.getByRole("button", { name: /Clasifican 4:/ })).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Semifinales", exact: true }).click();
+  await page.getByRole("button", { name: "4 (semifinales)", exact: true }).click();
   await expect(page.getByRole("button", { name: /2 grupos de 5 · pasan 2 de cada grupo/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /2 grupos de 5 · pasa 1 de cada grupo/ })).toHaveCount(0);
   await page.screenshot({ path: "test-results/objetivo-10-390.png", fullPage: true });

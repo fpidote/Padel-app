@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildKnockoutFromGroups, validateMundialitoConfig, seedQualifiers, knockoutInfo, knockoutByesText, mundialitoGroupsLocked, canReopenMundialito, reopenMundialitoPatch, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail, describeFormat, availableStages, optionsForStage, stageLabel } from "./mundialito";
+import { buildKnockoutFromGroups, validateMundialitoConfig, seedQualifiers, knockoutInfo, knockoutByesText, mundialitoGroupsLocked, canReopenMundialito, reopenMundialitoPatch, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail, describeFormat, availableStages, optionsForStage, stageLabel, stageChoiceLabel } from "./mundialito";
 import { firstRoundSeedPairs } from "./relampago";
 import { generateRules } from "./constants";
 
@@ -519,5 +519,11 @@ describe("elegir por objetivo: hasta qué ronda quiere llegar el organizador", (
     const all = mundialitoFormatOptions(12);
     expect(optionsForStage(all, null)).toEqual(all);
     expect([2, 4, 8, 16].map(stageLabel)).toEqual(["Final", "Semifinales", "Cuartos", "Octavos"]);
+  });
+});
+
+describe("stageChoiceLabel — cuántas parejas pasan a la fase final", () => {
+  it("T-STG-07: el botón dice cuántas pasan y entre paréntesis con qué ronda empieza el cuadro", () => {
+    expect([2, 4, 8, 16].map(stageChoiceLabel)).toEqual(["2 (final)", "4 (semifinales)", "8 (cuartos)", "16 (octavos)"]);
   });
 });

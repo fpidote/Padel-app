@@ -127,6 +127,8 @@ const STAGE_LABELS = { 2: "Final", 4: "Semifinales", 8: "Cuartos", 16: "Octavos"
 
 // Etapa a la que llega un formato = tamaño del cuadro final (2 = final, 4 = semifinales...).
 export const stageLabel = (size) => STAGE_LABELS[size] ?? `Cuadro de ${size}`;
+// Texto del botón de filtro: "4 (semifinales)" = pasan 4 parejas y el cuadro empieza en semifinales.
+export const stageChoiceLabel = (size) => `${size} (${stageLabel(size).toLowerCase().replace(" de final", "")})`;
 export const availableStages = (options) => [...new Set(options.map((o) => o.bracketSize))].sort((a, b) => a - b);
 export const optionsForStage = (options, size) => (size ? options.filter((o) => o.bracketSize === size) : options);
 
