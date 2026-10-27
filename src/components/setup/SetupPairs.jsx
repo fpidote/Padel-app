@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { shuffle, buildShareMessage } from "../../logic/utils";
-import { validateMundialitoConfig, knockoutInfo, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail } from "../../logic/mundialito";
+import { validateMundialitoConfig, knockoutInfo, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail, describeFormat } from "../../logic/mundialito";
 import { buildPozoRound, shufflePlayers } from "../../logic/pozo";
 import MatchFormatPicker from "../shared/MatchFormatPicker";
 import LaunchModal, { SummaryRow, SummaryCard } from "../shared/LaunchModal";
@@ -90,8 +90,10 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
     (o) => o.groupCount === (t.config.groupCount || 2) && o.advancePerGroup === (t.config.advancePerGroup ?? 2),
   );
   const formatCards = formatOptions.slice(0, 5);
-  if (currentFormat && !formatCards.includes(currentFormat)) formatCards.push(currentFormat);
-  const customVisible = customOpen || formatCards.length === 0 || !currentFormat;
+  // Con Personalizar abierto el resumen de abajo ya describe lo elegido; no se repite como tarjeta
+  if (currentFormat && !formatCards.includes(currentFormat) && !customOpen) formatCards.push(currentFormat);
+  const customVisible = tot >= 4 && (customOpen || formatCards.length === 0 || !currentFormat);
+  const customSummary = describeFormat(tot, t.config.groupCount || 2, t.config.advancePerGroup ?? 2);
   const ok = isMixer
     ? players.length >= act && players.every(p => p.name.trim())
     : isPozo
@@ -374,7 +376,15 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
               {t.type === "mundialito" && (
                 <>
                   <div>
-                    <label className="text-xs text-gray-400 font-semibold block mb-2">Formato de grupos</label>
+                    <label className="text-xs text-gray-400 font-semibold block mb-1">Formato de grupos</label>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Las parejas se reparten en grupos y juegan todas contra todas; los mejores de cada grupo pasan a un cuadro final.
+                    </p>
+                    {tot < 4 && (
+                      <div className="rounded-xl border border-dashed border-[#374151] bg-[#1f2937]/60 px-3.5 py-3 text-xs text-gray-400 leading-relaxed">
+                        Agrega tus parejas (mínimo 4) y aquí verás los formatos posibles. Por ejemplo, con 12 parejas: 4 grupos de 3 donde pasa 1 de cada grupo, o 2 grupos de 6 donde pasan 2.
+                      </div>
+                    )}
                     {formatCards.length > 0 && (
                       <div className="flex flex-col gap-2">
                         {formatCards.map((o) => {
@@ -425,9 +435,15 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
                           ))}
                         </div>
                       </div>
+                      {customSummary && (
+                        <div className="rounded-xl bg-[#1f2937] border border-[#374151] px-3.5 py-3">
+                          <div className="font-bold text-sm text-gray-100">{formatTitle(customSummary)}</div>
+                          <div className="text-xs mt-1 text-gray-400">{formatDetail(customSummary)}</div>
+                        </div>
+                      )}
                     </>
                   )}
-                  {knockoutInfo(t.config.groupCount || 2, t.config.advancePerGroup ?? 2).qualifiers >= 4 && (
+                  {tot >= 4 && knockoutInfo(t.config.groupCount || 2, t.config.advancePerGroup ?? 2).qualifiers >= 4 && (
                     <div>
                       <label className="text-xs text-gray-400 font-semibold block mb-2">Partido por el 3.º y 4.º puesto</label>
                       <div className="flex gap-2">
@@ -445,7 +461,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
                       <p className="text-xs text-gray-500 mt-2">Lo juegan los dos perdedores de las semifinales.</p>
                     </div>
                   )}
-                  {mundialitoCheck.error && (
+                  {tot >= 4 && mundialitoCheck.error && (
                     <p className="text-xs text-amber-500 font-semibold">⚠️ {mundialitoCheck.error}</p>
                   )}
                 </>

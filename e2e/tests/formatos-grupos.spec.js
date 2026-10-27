@@ -56,3 +56,21 @@ test("con 10 parejas ofrece 2 grupos de 5 y Personalizar abre los selectores man
   await bloque.getByRole("button", { name: "3", exact: true }).click();
   await expect.poll(async () => (await getTournamentData(CODE)).config.groupCount).toBe(3);
 });
+
+test("sin parejas explica cómo funciona y qué formatos aparecerán, sin selectores sueltos", async ({ page }) => {
+  await entrar(page, 0);
+  await expect(page.getByText(/juegan todas contra todas/)).toBeVisible();
+  await expect(page.getByText(/Agrega tus parejas \(mínimo 4\)/)).toBeVisible();
+  await expect(page.getByText("Número de grupos")).toHaveCount(0);
+  await page.screenshot({ path: "test-results/formatos-0-390.png", fullPage: true });
+});
+
+test("Personalizar muestra un resumen en vivo de lo elegido", async ({ page }) => {
+  await entrar(page, 12);
+  await page.getByRole("button", { name: /Personalizar/ }).click();
+  const bloque = page.locator("div", { has: page.getByText("Número de grupos", { exact: true }) }).last();
+  await bloque.getByRole("button", { name: "3", exact: true }).click();
+  await expect(page.getByText("3 grupos de 4 · pasan 2 de cada grupo", { exact: true }).last()).toBeVisible();
+  await expect(page.getByText(/Clasifican 6: cuartos de final, 2 pasan directo/).last()).toBeVisible();
+  await page.screenshot({ path: "test-results/formatos-custom-390.png", fullPage: true });
+});

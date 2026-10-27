@@ -63,27 +63,36 @@ export function validateMundialitoConfig(pairCount, groupCount, advancePerGroup)
 // qué tamaño, cuántos partidos juega cada pareja, cuántos clasifican y si el cuadro necesita pasa directo.
 // Grupos de 3 parejas o más, sin que pase todo el grupo y hasta 16 clasificados. Primero los
 // recomendados (grupos parejos y cuadro exacto: 4, 8 o 16 clasificados).
+function formatOption(pairCount, groupCount, advancePerGroup) {
+  const base = Math.floor(pairCount / groupCount);
+  const extra = pairCount % groupCount;
+  // buildGroups reparte por turnos: los primeros grupos quedan con una pareja más
+  const groupSizes = Array.from({ length: groupCount }, (_, i) => (i < extra ? base + 1 : base));
+  const { qualifiers, byes } = knockoutInfo(groupCount, advancePerGroup);
+  return {
+    groupCount,
+    advancePerGroup,
+    groupSizes,
+    matchesPerPair: [base - 1, extra > 0 ? base : base - 1],
+    groupMatches: groupSizes.reduce((sum, size) => sum + (size * (size - 1)) / 2, 0),
+    qualifiers,
+    byes,
+    recommended: extra === 0 && byes === 0 && qualifiers >= 4,
+  };
+}
+
+// Resumen de cualquier configuración (la sugerida o la manual); null si no es válida para esas parejas.
+export function describeFormat(pairCount, groupCount, advancePerGroup) {
+  if (!validateMundialitoConfig(pairCount, groupCount, advancePerGroup).ok) return null;
+  return formatOption(pairCount, groupCount, advancePerGroup);
+}
+
 export function mundialitoFormatOptions(pairCount) {
   const options = [];
   for (let groupCount = 2; groupCount <= Math.floor(pairCount / 3); groupCount++) {
-    const base = Math.floor(pairCount / groupCount);
-    const extra = pairCount % groupCount;
-    // buildGroups reparte por turnos: los primeros grupos quedan con una pareja más
-    const groupSizes = Array.from({ length: groupCount }, (_, i) => (i < extra ? base + 1 : base));
-    const groupMatches = groupSizes.reduce((sum, size) => sum + (size * (size - 1)) / 2, 0);
-    for (let advancePerGroup = 1; advancePerGroup < base; advancePerGroup++) {
-      const { qualifiers, byes } = knockoutInfo(groupCount, advancePerGroup);
-      if (qualifiers > 16) continue;
-      options.push({
-        groupCount,
-        advancePerGroup,
-        groupSizes,
-        matchesPerPair: [base - 1, extra > 0 ? base : base - 1],
-        groupMatches,
-        qualifiers,
-        byes,
-        recommended: extra === 0 && byes === 0 && qualifiers >= 4,
-      });
+    for (let advancePerGroup = 1; advancePerGroup < Math.floor(pairCount / groupCount); advancePerGroup++) {
+      if (knockoutInfo(groupCount, advancePerGroup).qualifiers > 16) continue;
+      options.push(formatOption(pairCount, groupCount, advancePerGroup));
     }
   }
   // Menos clasificados primero y, a igualdad, más grupos (menos partidos por pareja)

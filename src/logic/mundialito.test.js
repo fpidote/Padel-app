@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildKnockoutFromGroups, validateMundialitoConfig, seedQualifiers, knockoutInfo, knockoutByesText, mundialitoGroupsLocked, canReopenMundialito, reopenMundialitoPatch, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail } from "./mundialito";
+import { buildKnockoutFromGroups, validateMundialitoConfig, seedQualifiers, knockoutInfo, knockoutByesText, mundialitoGroupsLocked, canReopenMundialito, reopenMundialitoPatch, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail, describeFormat } from "./mundialito";
 import { firstRoundSeedPairs } from "./relampago";
 import { generateRules } from "./constants";
 
@@ -403,5 +403,17 @@ describe("textos de los formatos sugeridos", () => {
 
   it("T-FMT-11: detalle con pasa directo y grupos desiguales", () => {
     expect(formatDetail(find(11, 3, 2))).toBe("Cada pareja juega 2 o 3 partidos · 15 partidos en grupos · Clasifican 6: cuartos de final, 2 pasan directo");
+  });
+});
+
+describe("describeFormat — resumen de cualquier configuración", () => {
+  it("T-FMT-12: describe una configuración manual con los mismos datos que una sugerencia", () => {
+    expect(describeFormat(12, 4, 1)).toMatchObject({ groupSizes: [3, 3, 3, 3], matchesPerPair: [2, 2], groupMatches: 12, qualifiers: 4, byes: 0 });
+  });
+
+  it("T-FMT-13: devuelve null si la configuración no es válida para esas parejas", () => {
+    expect(describeFormat(3, 2, 1)).toBeNull();
+    expect(describeFormat(8, 4, 3)).toBeNull();
+    expect(describeFormat(0, 2, 2)).toBeNull();
   });
 });
