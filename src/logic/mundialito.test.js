@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildKnockoutFromGroups, validateMundialitoConfig, seedQualifiers, knockoutInfo, knockoutByesText } from "./mundialito";
+import { buildKnockoutFromGroups, validateMundialitoConfig, seedQualifiers, knockoutInfo, knockoutByesText, mundialitoGroupsLocked, canReopenMundialito, reopenMundialitoPatch } from "./mundialito";
 import { firstRoundSeedPairs } from "./relampago";
 import { generateRules } from "./constants";
 
@@ -282,5 +282,30 @@ describe("eliminatoria del Mundialito sin cuadro de revancha", () => {
     const groups = mkGroups([4, 4, 4], { B: 1, C: 2 });
     const bracket = buildKnockoutFromGroups(groups, 3);
     expect(bracket.every((m) => m.bracket === "winners")).toBe(true);
+  });
+});
+
+describe("cierre de los resultados de grupos del Mundialito", () => {
+  const real = (saved) => ({ saved, pairA: { id: 1 }, pairB: { id: 2 } });
+  const bye = { saved: true, pairA: { id: 3 }, pairB: { id: "bye" } };
+
+  it("mientras se juega la fase de grupos se puede editar", () => {
+    expect(mundialitoGroupsLocked({ phase: "groups" })).toBe(false);
+    expect(mundialitoGroupsLocked({})).toBe(false);
+  });
+  it("al iniciar la eliminatoria quedan cerrados", () => {
+    expect(mundialitoGroupsLocked({ phase: "knockout" })).toBe(true);
+  });
+  it("se puede volver a grupos si no se jugó ningún partido real de la eliminatoria", () => {
+    expect(canReopenMundialito({ phase: "knockout", knockoutBracket: [bye, real(false)] })).toBe(true);
+  });
+  it("no se puede volver si ya se jugó un partido real", () => {
+    expect(canReopenMundialito({ phase: "knockout", knockoutBracket: [real(true)] })).toBe(false);
+  });
+  it("no aplica fuera de la eliminatoria", () => {
+    expect(canReopenMundialito({ phase: "groups", knockoutBracket: null })).toBe(false);
+  });
+  it("el parche descarta el cuadro y vuelve a los grupos", () => {
+    expect(reopenMundialitoPatch()).toEqual({ knockoutBracket: null, phase: "groups" });
   });
 });

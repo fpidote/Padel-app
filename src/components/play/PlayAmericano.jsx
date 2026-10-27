@@ -664,6 +664,7 @@ function AllRoundsPlayerView({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSea
 
 function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onFinish, onEdit, matchesSearch, persist, isFinished, isLastRound, showLevelsToggle }) {
   const [renameModal, setRenameModal] = useState(null);
+  const [confirmAdvance, setConfirmAdvance] = useState(false);
   const showLevel = t.config.useLevels && isAdmin && showLevelsToggle;
   const isPairs = t.config.mode === "pairs";
 
@@ -892,7 +893,7 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onFi
 
       {allSaved && isAdmin && (
         <button
-          onClick={isFinished ? undefined : isLastRound ? onFinish : onNext}
+          onClick={isFinished ? undefined : () => setConfirmAdvance(true)}
           disabled={isFinished}
           className="w-full py-4 rounded-2xl font-black text-base text-white mt-2"
           style={{ background: isFinished ? "#374151" : "#059669", cursor: isFinished ? "not-allowed" : "pointer" }}
@@ -904,6 +905,24 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onFi
         <div className="text-center text-gray-600 py-5 text-sm">
           👀 Modo vista · Esperando resultados
         </div>
+      )}
+      {confirmAdvance && (
+        <SimpleModal
+          icon={isLastRound ? "🏁" : "➔"}
+          message={
+            isLastRound
+              ? "Al finalizar el torneo los resultados de esta ronda se cierran y ya no se podrán modificar. ¿Finalizar el torneo?"
+              : "Al pasar a la siguiente ronda los resultados de esta ronda se cierran y ya no se podrán modificar. ¿Continuar?"
+          }
+          confirmLabel={isLastRound ? "Finalizar" : "Siguiente ronda"}
+          danger={false}
+          onClose={() => setConfirmAdvance(false)}
+          onConfirm={() => {
+            setConfirmAdvance(false);
+            if (isLastRound) onFinish();
+            else onNext();
+          }}
+        />
       )}
       {renameModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4" onClick={() => setRenameModal(null)}>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildBracket, advanceBracket, unadvanceBracket, countPlayed, firstRoundSeedPairs } from "./relampago.js";
+import { buildBracket, advanceBracket, unadvanceBracket, countPlayed, firstRoundSeedPairs, canEditBracketMatch, hasPlayedRealMatch } from "./relampago.js";
 
 function makePairs(n) {
   return Array.from({ length: n }, (_, i) => ({
@@ -338,5 +338,62 @@ describe("buildBracket — sin consolación (eliminatorias de Mundialito y Liga)
       expect(finals, `n=${n}`).toHaveLength(1);
       expect(finals[0].winner, `n=${n}`).toBeTruthy();
     }
+  });
+});
+
+describe("canEditBracketMatch — no corregir lo que ya condiciona partidos jugados", () => {
+  const play = (b, id, a = 6, c = 3) => advanceBracket(b, id, a, c);
+
+  it("un partido recién jugado se puede corregir mientras el siguiente no se haya jugado", () => {
+    let b = buildBracket(makePairs(4));
+    b = play(b, "w_r1_m0");
+    expect(canEditBracketMatch(b, "w_r1_m0")).toBe(true);
+  });
+
+  it("deja de poder corregirse cuando se jugó el partido al que avanzó el ganador", () => {
+    let b = buildBracket(makePairs(4));
+    b = play(b, "w_r1_m0");
+    b = play(b, "w_r1_m1");
+    expect(canEditBracketMatch(b, "w_r1_m0")).toBe(true);
+    b = play(b, "w_r2_m0");
+    expect(canEditBracketMatch(b, "w_r1_m0")).toBe(false);
+    expect(canEditBracketMatch(b, "w_r1_m1")).toBe(false);
+    // La final sí se puede corregir: nada depende de ella
+    expect(canEditBracketMatch(b, "w_r2_m0")).toBe(true);
+  });
+
+  it("tampoco se corrige si se jugó el partido de revancha al que fue el perdedor", () => {
+    let b = buildBracket(makePairs(4));
+    b = play(b, "w_r1_m0");
+    b = play(b, "w_r1_m1");
+    b = play(b, "c_r1_m0");
+    expect(canEditBracketMatch(b, "w_r1_m0")).toBe(false);
+  });
+
+  it("un partido que no existe no se puede corregir", () => {
+    expect(canEditBracketMatch(buildBracket(makePairs(4)), "nope")).toBe(false);
+  });
+
+  it("los pasa directo resueltos solos no bloquean la corrección", () => {
+    // 3 parejas: el mejor sembrado descansa y espera al ganador del otro partido
+    let b = buildBracket(makePairs(3));
+    const real = b.find((m) => m.bracket === "winners" && m.round === 1 && m.pairA?.id !== "bye" && m.pairB?.id !== "bye");
+    b = play(b, real.id);
+    expect(canEditBracketMatch(b, real.id)).toBe(true);
+  });
+});
+
+describe("hasPlayedRealMatch", () => {
+  it("es falso en un cuadro recién armado aunque haya pasa directo resueltos solos", () => {
+    expect(hasPlayedRealMatch(buildBracket(makePairs(6)))).toBe(false);
+  });
+  it("es verdadero en cuanto se juega un partido real", () => {
+    let b = buildBracket(makePairs(4));
+    b = advanceBracket(b, "w_r1_m0", 6, 3);
+    expect(hasPlayedRealMatch(b)).toBe(true);
+  });
+  it("tolera un cuadro vacío o nulo", () => {
+    expect(hasPlayedRealMatch(null)).toBe(false);
+    expect(hasPlayedRealMatch([])).toBe(false);
   });
 });

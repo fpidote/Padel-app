@@ -1,6 +1,6 @@
 // ── Mundialito Logic ─────────────────────────────────────────
 import { shuffle } from "./utils";
-import { buildBracket, firstRoundSeedPairs } from "./relampago";
+import { buildBracket, firstRoundSeedPairs, hasPlayedRealMatch } from "./relampago";
 import { sortStandings, winsOf } from "./standings";
 export function buildGroups(pairs, groupCount) {
   const shuffled = shuffle(pairs);
@@ -153,6 +153,21 @@ export function knockoutByesText({ qualifiers, byes, groups = 2 }) {
   const verb = byes === 1 ? "pasa" : "pasan";
   const base = `Con ${qualifiers} parejas clasificadas, ${verb} directo a la segunda ronda ${text}.`;
   return partial ? `${base} Entre los de un mismo puesto, se ordenan por victorias y diferencia.` : base;
+}
+
+// Los resultados de grupos se cierran al iniciar la eliminatoria: el cuadro sale de esas tablas y
+// modificarlas lo dejaría incoherente.
+export function mundialitoGroupsLocked(t) {
+  return t?.phase === "knockout";
+}
+
+// Se puede volver a la fase de grupos mientras no se haya jugado ningún partido real de la eliminatoria.
+export function canReopenMundialito(t) {
+  return t?.phase === "knockout" && !hasPlayedRealMatch(t.knockoutBracket);
+}
+
+export function reopenMundialitoPatch() {
+  return { knockoutBracket: null, phase: "groups" };
 }
 
 export function buildKnockoutFromGroups(groups, advancePerGroup) {

@@ -1,7 +1,7 @@
 // src/components/play/PlayRelampago.jsx
 import { useState, Fragment } from "react";
 import { generateRules } from "../../logic/constants";
-import { advanceBracket, unadvanceBracket, countPlayed } from "../../logic/relampago";
+import { advanceBracket, unadvanceBracket, canEditBracketMatch, countPlayed } from "../../logic/relampago";
 import { analyzeSets } from "../../logic/sets";
 import { applyMatchToPairs } from "../../logic/standings";
 import { THeader, Tabs } from "../shared/Components";
@@ -11,7 +11,7 @@ const SLOT_HEIGHT = 110;
 // Con sets la tarjeta abierta es más alta: más espacio por partido para que no tape a la vecina
 const SLOT_HEIGHT_SETS = 220;
 
-function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentColor, scoringFormat = "games", onToggle }) {
+function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, canEdit = true, accentColor, scoringFormat = "games", onToggle }) {
   const [expanded, setExpandedState] = useState(false);
   function setExpanded(next) {
     setExpandedState(next);
@@ -198,19 +198,23 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, accentCol
         </button>
       )}
 
-      {match.saved && isAdmin && !isBye && (
+      {match.saved && isAdmin && !isBye && (canEdit ? (
         <div
           onClick={(e) => { e.stopPropagation(); onEdit(match.id); }}
           className="mt-1.5 text-center text-[10px] text-slate-700 cursor-pointer"
         >
           ✏️ editar
         </div>
-      )}
+      ) : (
+        <div className="mt-1.5 text-center text-[10px] text-slate-600">
+          🔒 cerrado
+        </div>
+      ))}
     </div>
   );
 }
 
-function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, accentColor, scoringFormat }) {
+function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, canEditMatch = () => true, accentColor, scoringFormat }) {
   // La tarjeta abierta se eleva: con sets es más alta que su slot y se solaparía con la siguiente
   const [openId, setOpenId] = useState(null);
   const rounds = [...new Set(matches.map((m) => m.round))].sort((a, b) => a - b);
@@ -303,6 +307,7 @@ function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, accentColor,
                         setLs={setLs}
                         onSave={onSave}
                         onEdit={onEdit}
+                        canEdit={canEditMatch(match.id)}
                         accentColor={accentColor}
                         scoringFormat={scoringFormat}
                         onToggle={(open) => setOpenId(open ? match.id : null)}
@@ -348,6 +353,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
     const match = t.bracket.find((m) => m.id === matchId);
     if (!match) return;
     if (match.pairA?.id === "bye" || match.pairB?.id === "bye") return;
+    if (!canEditBracketMatch(t.bracket, matchId)) return;
 
     const a = parseInt(match.scoreA);
     const b = parseInt(match.scoreB);
@@ -412,6 +418,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
               setLs={setLs}
               onSave={onSaveMatch}
               onEdit={onEditMatch}
+              canEditMatch={(id) => canEditBracketMatch(t.bracket, id)}
               accentColor="#7c3aed"
               scoringFormat={t.config?.scoringFormat || "games"}
             />
@@ -443,6 +450,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
               setLs={setLs}
               onSave={onSaveMatch}
               onEdit={onEditMatch}
+              canEditMatch={(id) => canEditBracketMatch(t.bracket, id)}
               accentColor="#0284c7"
               scoringFormat={t.config?.scoringFormat || "games"}
             />

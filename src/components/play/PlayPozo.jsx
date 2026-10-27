@@ -29,6 +29,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
   const [tab, setTab] = useState("courts");
   const [ls, setLs] = useState({});
   const [showFinishModal, setShowFinishModal] = useState(false);
+  const [showNextModal, setShowNextModal] = useState(false);
   const [search, setSearch] = useState(null);
 
   // Initialize currentPozoRound on mount for fixed mode when empty
@@ -422,7 +423,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
 
                 {allSaved && isAdmin && (
                   <button
-                    onClick={t.config?.pozoMode === "mixer" ? onNextRoundMixer : onNextRound}
+                    onClick={() => setShowNextModal(true)}
                     className="w-full bg-[#10b981] text-white font-bold rounded-lg py-4 text-base cursor-pointer border-0"
                   >
                     Rotar Pistas - Siguiente Ronda ➔
@@ -510,6 +511,19 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
         )}
       </div>
 
+      {showNextModal && (
+        <SimpleModal
+          icon="➔"
+          message="Al pasar a la siguiente ronda los resultados de esta ronda se cierran y ya no se podrán modificar. ¿Continuar?"
+          confirmLabel="Siguiente ronda"
+          danger={false}
+          onClose={() => setShowNextModal(false)}
+          onConfirm={async () => {
+            setShowNextModal(false);
+            await (t.config?.pozoMode === "mixer" ? onNextRoundMixer() : onNextRound());
+          }}
+        />
+      )}
       {showFinishModal && (
         <SimpleModal
           message="¿Finalizar el torneo ahora? Esta acción no se puede deshacer."

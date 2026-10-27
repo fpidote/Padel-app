@@ -1,6 +1,6 @@
 // ── Liga Logic ───────────────────────────────────────────────
 import { shuffle } from "./utils";
-import { buildBracket } from "./relampago";
+import { buildBracket, hasPlayedRealMatch } from "./relampago";
 import { sortStandings } from "./standings";
 
 // Método del calendario (circle method): arma todas las rondas de un
@@ -175,10 +175,7 @@ export function ligaResultsLocked(t) {
 // Se puede volver a la fase de liga mientras no se haya jugado ningún partido real de la eliminatoria
 // (los pasa directo que se resuelven solos no cuentan).
 export function canReopenLiga(t) {
-  if (t?.phase !== "playoff") return false;
-  return !(t.knockoutBracket || []).some(
-    (m) => m.saved && m.pairA?.id !== "bye" && m.pairB?.id !== "bye",
-  );
+  return t?.phase === "playoff" && !hasPlayedRealMatch(t.knockoutBracket);
 }
 
 export function reopenLigaPatch() {

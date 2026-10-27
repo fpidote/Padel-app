@@ -1,7 +1,7 @@
 // src/components/play/PlayLiga.jsx
 import { useState } from "react";
 import { generateRules } from "../../logic/constants";
-import { advanceBracket } from "../../logic/relampago";
+import { advanceBracket, unadvanceBracket, canEditBracketMatch } from "../../logic/relampago";
 import {
   recomputeLigaStandings,
   buildLigaKnockout,
@@ -117,18 +117,8 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
   }
 
   async function onEditKnockoutMatch(matchId) {
-    const updated = t.knockoutBracket.map((m) => ({ ...m }));
-    const match = updated.find((m) => m.id === matchId);
-    if (!match) return;
-    if (match.nextMatchId && match.winner) {
-      const nextM = updated.find((m) => m.id === match.nextMatchId);
-      if (nextM) {
-        if (nextM.pairA?.id === match.winner.id) nextM.pairA = null;
-        if (nextM.pairB?.id === match.winner.id) nextM.pairB = null;
-      }
-    }
-    match.saved = false;
-    await persist({ ...t, knockoutBracket: updated });
+    if (!canEditBracketMatch(t.knockoutBracket, matchId)) return;
+    await persist({ ...t, knockoutBracket: unadvanceBracket(t.knockoutBracket, matchId) });
   }
 
   const koRounds = t.knockoutBracket
@@ -272,7 +262,14 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                           ls={ls}
                           setLs={setLs}
                           onSave={onSaveKnockoutMatch}
-                          onEdit={onEditKnockoutMatch}
+                          onEdit={
+                            canEditBracketMatch(t.knockoutBracket, match.id)
+                              ? onEditKnockoutMatch
+                              : undefined
+                          }
+                          locked={
+                            match.saved && !canEditBracketMatch(t.knockoutBracket, match.id)
+                          }
                           accentColor="#db2777"
                           scoringFormat={t.config?.scoringFormat || "sets3"}
                         />

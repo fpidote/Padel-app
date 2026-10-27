@@ -90,6 +90,10 @@ test("en la última ronda el botón dice Finalizar Torneo y al pulsarlo termina 
   await expect(finish).toBeVisible({ timeout: 8000 });
   await expect(page.getByRole("button", { name: /Siguiente Ronda/i })).toHaveCount(0);
   await finish.click();
+  // Al finalizar se avisa de que los resultados de la ronda se cierran
+  const modal = page.locator(".fixed.inset-0");
+  await expect(modal.getByText(/ya no se podrán modificar/)).toBeVisible();
+  await modal.getByRole("button", { name: "Finalizar", exact: true }).click();
 
   // Al finalizar queda "Torneo Finalizado" (deshabilitado) y el historial tiene solo las 2 rondas jugadas
   await expect(page.getByRole("button", { name: /Torneo Finalizado/i })).toBeVisible({ timeout: 8000 });

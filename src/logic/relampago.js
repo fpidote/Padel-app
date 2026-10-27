@@ -217,6 +217,34 @@ export function advanceBracket(matches, savedId, scoreA, scoreB) {
   return updated;
 }
 
+const isRealPlayed = (m) => !!m?.saved && m.pairA?.id !== "bye" && m.pairB?.id !== "bye";
+
+// ¿Se jugó ya algún partido real del cuadro? (los pasa directo resueltos solos no cuentan)
+export function hasPlayedRealMatch(bracket) {
+  return (bracket || []).some(isRealPlayed);
+}
+
+// Un resultado se puede corregir mientras ningún partido que dependa de él se haya jugado: ni el
+// siguiente del cuadro ni el de revancha, y tampoco los que cuelgan de un pasa directo resuelto solo.
+export function canEditBracketMatch(matches, matchId) {
+  const byId = new Map((matches || []).map((m) => [m.id, m]));
+  const start = byId.get(matchId);
+  if (!start) return false;
+  const seen = new Set();
+  function dependsOnPlayed(m) {
+    return [m.nextMatchId, m.loserMatchId].filter(Boolean).some((id) => {
+      if (seen.has(id)) return false;
+      seen.add(id);
+      const d = byId.get(id);
+      if (!d) return false;
+      if (isRealPlayed(d)) return true;
+      // resuelto solo por un pasa directo: lo que viene detrás también depende de este resultado
+      return d.saved ? dependsOnPlayed(d) : false;
+    });
+  }
+  return !dependsOnPlayed(start);
+}
+
 // Deshace un resultado guardado: saca a sus participantes de los partidos siguientes y de la
 // consolación, y deshace también los pasa directo que se resolvieron solos a raíz de él.
 export function unadvanceBracket(matches, matchId) {

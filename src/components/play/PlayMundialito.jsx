@@ -1,10 +1,15 @@
 // src/components/play/PlayMundialito.jsx
 import { useState } from "react";
 import { generateRules } from "../../logic/constants";
-import { advanceBracket } from "../../logic/relampago";
-import { buildKnockoutFromGroups } from "../../logic/mundialito";
+import { advanceBracket, unadvanceBracket, canEditBracketMatch } from "../../logic/relampago";
+import {
+  buildKnockoutFromGroups,
+  mundialitoGroupsLocked,
+  canReopenMundialito,
+  reopenMundialitoPatch,
+} from "../../logic/mundialito";
 import { computeStandings, sortStandings, standingsLabels } from "../../logic/standings";
-import { THeader, Tabs } from "../shared/Components";
+import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import MatchCard from "../shared/MatchCard";
 import PairStandings from "../shared/PairStandings";
 
@@ -18,6 +23,8 @@ export default function PlayMundialito({
 }) {
   const [tab, setTab] = useState("groups");
   const [ls, setLs] = useState({});
+  const [confirm, setConfirm] = useState(null); // { kind: "delete" | "start" | "reopen", groupId?, matchId? }
+  const locked = mundialitoGroupsLocked(t);
 
   const isSetFormat =
     t.config?.scoringFormat === "sets3" || t.config?.scoringFormat === "sets5";
@@ -94,6 +101,7 @@ export default function PlayMundialito({
   }
 
   async function onEditGroupMatch(groupId, matchId) {
+    if (locked) return;
     const updatedGroups = groupsWithRounds.map((g) => {
       if (g.id !== groupId) return g;
       const updatedMatches = g.matches.map((m) =>
@@ -105,12 +113,42 @@ export default function PlayMundialito({
     await persist({ ...t, groups: updatedGroups });
   }
 
+  async function onDeleteGroupMatch(groupId, matchId) {
+    if (locked) return;
+    const updatedGroups = groupsWithRounds.map((g) => {
+      if (g.id !== groupId) return g;
+      const updatedMatches = g.matches.map((m) =>
+        m.id === matchId ? { ...m, saved: false, scoreA: "", scoreB: "", sets: null } : m,
+      );
+      const standings = computeStandings(g.pairs, updatedMatches);
+      return { ...g, matches: updatedMatches, standings };
+    });
+    setConfirm(null);
+    try {
+      await persist({ ...t, groups: updatedGroups });
+    } catch (err) {
+      console.error("Error al eliminar el resultado:", err);
+    }
+  }
+
+  async function onReopenGroups() {
+    if (!canReopenMundialito(t)) return;
+    setConfirm(null);
+    try {
+      await persist({ ...t, ...reopenMundialitoPatch() });
+      setTab("groups");
+    } catch (err) {
+      console.error("Error al volver a la fase de grupos:", err);
+    }
+  }
+
   const allGroupsDone =
     groupsWithRounds.length > 0 &&
     groupsWithRounds.every((g) => g.matches.every((m) => m.saved));
 
   async function onStartKnockout() {
     if (!allGroupsDone) return;
+    setConfirm(null);
     try {
       const bracket = buildKnockoutFromGroups(
         groupsWithRounds,
@@ -148,20 +186,8 @@ export default function PlayMundialito({
   }
 
   async function onEditKnockoutMatch(matchId) {
-    const updated = t.knockoutBracket.map((m) => ({ ...m }));
-    const match = updated.find((m) => m.id === matchId);
-    if (!match) return;
-
-    if (match.nextMatchId && match.winner) {
-      const nextM = updated.find((m) => m.id === match.nextMatchId);
-      if (nextM) {
-        if (nextM.pairA?.id === match.winner.id) nextM.pairA = null;
-        if (nextM.pairB?.id === match.winner.id) nextM.pairB = null;
-      }
-    }
-    match.saved = false;
-
-    await persist({ ...t, knockoutBracket: updated });
+    if (!canEditBracketMatch(t.knockoutBracket, matchId)) return;
+    await persist({ ...t, knockoutBracket: unadvanceBracket(t.knockoutBracket, matchId) });
   }
 
   const koRounds = t.knockoutBracket
@@ -203,6 +229,11 @@ export default function PlayMundialito({
             <p className="text-[11px] text-[#475569]">
               {labels.legend}
             </p>
+            {locked && (
+              <div className="rounded-xl border border-[#334155] bg-[#1e293b] px-4 py-3 text-center text-[12px] text-[#94a3b8]">
+                🔒 Resultados de grupos cerrados: la eliminatoria ya está en marcha con estas tablas.
+              </div>
+            )}
             {groupsWithRounds.map((group) => (
               <div
                 key={group.id}
@@ -316,9 +347,18 @@ export default function PlayMundialito({
                         onSave={(matchId, a, b, sets) =>
                           onSaveGroupMatch(group.id, matchId, a, b, sets)
                         }
-                        onEdit={(matchId) =>
-                          onEditGroupMatch(group.id, matchId)
+                        onEdit={
+                          locked
+                            ? undefined
+                            : (matchId) => onEditGroupMatch(group.id, matchId)
                         }
+                        onDelete={
+                          locked
+                            ? undefined
+                            : (matchId) =>
+                                setConfirm({ kind: "delete", groupId: group.id, matchId })
+                        }
+                        locked={locked}
                         scoringFormat={t.config?.scoringFormat || "games"}
                       />
                     ))}
@@ -328,7 +368,7 @@ export default function PlayMundialito({
 
             {allGroupsDone && t.phase === "groups" && isAdmin && (
               <button
-                onClick={onStartKnockout}
+                onClick={() => setConfirm({ kind: "start" })}
                 className="w-full bg-[#10b981] text-white font-bold rounded-lg py-4 text-base cursor-pointer border-0"
               >
                 Iniciar Fase Eliminatoria ⚡
@@ -406,6 +446,14 @@ export default function PlayMundialito({
 
             {t.phase === "knockout" && (
               <>
+                {isAdmin && canReopenMundialito(t) && (
+                  <button
+                    onClick={() => setConfirm({ kind: "reopen" })}
+                    className="w-full cursor-pointer rounded-xl border border-[#334155] bg-[#1e293b] py-3 text-[14px] font-bold text-[#cbd5e1]"
+                  >
+                    ↩ Volver a la fase de grupos
+                  </button>
+                )}
                 {champion && (
                   <div
                     className="rounded-xl border-2 border-[#f59e0b] bg-[#1e293b] p-4 text-center"
@@ -442,7 +490,14 @@ export default function PlayMundialito({
                           ls={ls}
                           setLs={setLs}
                           onSave={onSaveKnockoutMatch}
-                          onEdit={onEditKnockoutMatch}
+                          onEdit={
+                            canEditBracketMatch(t.knockoutBracket, match.id)
+                              ? onEditKnockoutMatch
+                              : undefined
+                          }
+                          locked={
+                            match.saved && !canEditBracketMatch(t.knockoutBracket, match.id)
+                          }
                           accentColor="#059669"
                           scoringFormat={t.config?.scoringFormat || "games"}
                         />
@@ -485,6 +540,35 @@ export default function PlayMundialito({
           </div>
         )}
       </div>
+
+      {confirm?.kind === "delete" && (
+        <SimpleModal
+          icon="🗑️"
+          message="¿Eliminar este resultado? El partido quedará sin jugar y la tabla del grupo se recalculará."
+          confirmLabel="Eliminar"
+          onClose={() => setConfirm(null)}
+          onConfirm={() => onDeleteGroupMatch(confirm.groupId, confirm.matchId)}
+        />
+      )}
+      {confirm?.kind === "start" && (
+        <SimpleModal
+          icon="⚡"
+          message="Al iniciar la fase eliminatoria se cierran los resultados de grupos y ya no se podrán modificar. ¿Iniciar la eliminatoria?"
+          confirmLabel="Iniciar"
+          danger={false}
+          onClose={() => setConfirm(null)}
+          onConfirm={onStartKnockout}
+        />
+      )}
+      {confirm?.kind === "reopen" && (
+        <SimpleModal
+          icon="↩"
+          message="Se descartará el cuadro de la eliminatoria y podrás volver a editar los resultados de grupos. ¿Continuar?"
+          confirmLabel="Volver a grupos"
+          onClose={() => setConfirm(null)}
+          onConfirm={onReopenGroups}
+        />
+      )}
     </div>
   );
 }
@@ -498,6 +582,8 @@ function RoundAccordion({
   setLs,
   onSave,
   onEdit,
+  onDelete,
+  locked,
   scoringFormat,
 }) {
   // El acordeón se abre por defecto si hay partidos sin guardar o si es la Ronda 1
@@ -529,7 +615,9 @@ function RoundAccordion({
               ls={ls}
               setLs={setLs}
               onSave={(matchId, a, b, sets) => onSave(matchId, a, b, sets)}
-              onEdit={(matchId) => onEdit(matchId)}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              locked={locked}
               accentColor="#059669"
               scoringFormat={scoringFormat}
             />

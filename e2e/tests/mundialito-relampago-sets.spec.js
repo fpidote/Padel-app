@@ -126,6 +126,8 @@ test("Mundialito por sets: carga grupos completos y pasa a eliminatoria", async 
   const koBtn = page.getByRole("button", { name: /Iniciar Fase Eliminatoria/i });
   await expect(koBtn).toBeVisible({ timeout: 5000 });
   await koBtn.click();
+  // Al iniciar la eliminatoria se avisa de que los resultados de grupos se cierran
+  await page.locator(".fixed.inset-0").getByRole("button", { name: "Iniciar", exact: true }).click();
 
   await expect.poll(async () => (await getTournamentData(CODE)).phase).toBe("knockout");
   data = await getTournamentData(CODE);
@@ -143,6 +145,20 @@ test("Mundialito por sets: carga grupos completos y pasa a eliminatoria", async 
     ),
   );
   expect(qualifiers).toEqual(expected);
+
+  // Con la eliminatoria en marcha los resultados de grupos quedan cerrados
+  await page.getByRole("button", { name: /Grupos/ }).click();
+  await expect(page.getByText(/Resultados de grupos cerrados/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Editar" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Eliminar" })).toHaveCount(0);
+
+  // Sin partidos jugados en la eliminatoria se puede volver a la fase de grupos
+  await page.getByRole("button", { name: /Eliminatoria/ }).click();
+  await page.getByRole("button", { name: /Volver a la fase de grupos/ }).click();
+  await page.locator(".fixed.inset-0").getByRole("button", { name: "Volver a grupos" }).click();
+  await expect.poll(async () => (await getTournamentData(CODE)).phase).toBe("groups");
+  data = await getTournamentData(CODE);
+  expect(data.knockoutBracket ?? null).toBeNull();
 });
 
 test("Mundialito por sets: un 1-1 sin tercer set no se puede guardar", async ({ page }) => {
@@ -176,6 +192,7 @@ test("Mundialito por games (sin cambios): flujo original sigue funcionando", asy
     await expect.poll(async () => (await getTournamentData(CODE)).groups[0].matches.filter((m) => m.saved).length).toBe(i + 1);
   }
   await page.getByRole("button", { name: /Iniciar Fase Eliminatoria/i }).click();
+  await page.locator(".fixed.inset-0").getByRole("button", { name: "Iniciar", exact: true }).click();
   await expect.poll(async () => (await getTournamentData(CODE)).phase).toBe("knockout");
 });
 
