@@ -554,7 +554,7 @@ function PozoAllRoundsView({ t, isAdmin, ls, setLs, onSaveCourt, onEditCourt, ma
     return String(pair?.id) === String(highlightId);
   }
 
-  function renderHistoricalCourt(court, ci) {
+  function renderHistoricalCourt(court) {
     const a = parseInt(court.scoreA), b = parseInt(court.scoreB);
     const wonA = !isNaN(a) && !isNaN(b) && a > b;
     const wonB = !isNaN(a) && !isNaN(b) && b > a;

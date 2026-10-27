@@ -25,7 +25,7 @@ function SectionHeader({ children }) {
   );
 }
 
-export default function SetupAmericano({ t, code, isAdmin, saving, persist, copyCode, onExitEdit }) {
+export default function SetupAmericano({ t, code, isAdmin, saving, persist, onExitEdit }) {
   const isPairs = t.config.mode === "pairs";
 
   const [localName,     setLocalName]     = useState(t.config.name        || "");

@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { generateRules } from "../../logic/constants";
 import { pk } from "../../logic/utils";
 import { standingsLabels } from "../../logic/standings";
@@ -604,7 +604,7 @@ function FilteredCurrentRound({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSe
   );
 }
 
-function AllRoundsPlayerView({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSearch, useLevels, showLevelsToggle, search, isPairs }) {
+function AllRoundsPlayerView({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSearch, useLevels, showLevelsToggle, search }) {
   const hasPast = (t.rounds || []).length > 0;
   const hasFuture = t.precomputedRounds && t.precomputedRounds.length > t.roundNum;
 
@@ -963,13 +963,13 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onFi
 }
 
 function HistoryRound({ round, roundNum, matchesSearch, isAdmin, useLevels, showLevelsToggle, players, highlightId, playerView }) {
-  if (!round) return null;
-  const showLevel = useLevels && isAdmin && showLevelsToggle;
   const playersDict = useMemo(() => {
     const dict = {};
     players?.forEach(p => { dict[p.id] = p; });
     return dict;
   }, [players]);
+  if (!round) return null;
+  const showLevel = useLevels && isAdmin && showLevelsToggle;
   const renderPairName = (pair) => {
     if (Array.isArray(pair)) {
       return pair.map((p, i) => {
@@ -1080,13 +1080,13 @@ function HistoryRound({ round, roundNum, matchesSearch, isAdmin, useLevels, show
 }
 
 function FutureRound({ round, roundNum, matchesSearch, isAdmin, useLevels, showLevelsToggle, players, highlightId, playerView }) {
-  if (!round) return null;
-  const showLevel = useLevels && isAdmin && showLevelsToggle;
   const playersDict = useMemo(() => {
     const dict = {};
     players?.forEach(p => { dict[p.id] = p; });
     return dict;
   }, [players]);
+  if (!round) return null;
+  const showLevel = useLevels && isAdmin && showLevelsToggle;
 
   function renderPair(pair) {
     if (!pair) return null;

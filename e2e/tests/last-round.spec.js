@@ -12,7 +12,6 @@ import {
   deleteTournament,
   getTournamentData,
   getTestToken,
-  TEST_UID,
 } from "../helpers/seed.js";
 
 const CODE = "LRTEST";
@@ -69,13 +68,6 @@ test.beforeEach(async () => {
 test.afterEach(async () => {
   await deleteTournament(CODE).catch(() => {});
 });
-
-async function signInAsAdmin(page) {
-  const token = await getTestToken();
-  await page.evaluate(async (t) => {
-    await window.__e2eSignIn(t);
-  }, token);
-}
 
 test("en la última ronda el botón dice Finalizar Torneo y al pulsarlo termina sin crear ronda extra", async ({ page }) => {
   await seedTournament(CODE, playingTournament());

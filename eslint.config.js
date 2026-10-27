@@ -29,10 +29,20 @@ export default [
       ...react.configs['jsx-runtime'].rules,
       ...reactHooks.configs.recommended.rules,
       'react/jsx-no-target-blank': 'off',
+      // El proyecto es JavaScript puro sin PropTypes ni TypeScript: no se validan las props
+      'react/prop-types': 'off',
+      // Un catch que ignora el error a propósito (copiar al portapapeles, emulador ya conectado)
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'no-unused-vars': ['error', { caughtErrors: 'none' }],
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },
       ],
     },
+  },
+  {
+    // Tests y archivos de configuración corren en Node, no en el navegador
+    files: ['e2e/**/*.js', '*.config.js', 'firestore.rules.test.js', 'src/**/*.test.{js,jsx}'],
+    languageOptions: { globals: { ...globals.node } },
   },
 ]

@@ -21,7 +21,7 @@ function SectionHeader({ children }) {
   );
 }
 
-export default function SetupPairs({ t, code, isAdmin, saving, persist, copyCode, typeInfo, onExitEdit }) {
+export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo, onExitEdit }) {
   const color = typeInfo?.color || "#10b981";
 
   const [localName,     setLocalName]     = useState(t.config.name       || "");
