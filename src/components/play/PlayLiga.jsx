@@ -282,7 +282,6 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                 ))}
                 {thirdMatch && (
                   <div>
-                    <div className="text-gray-400 font-bold mb-2 uppercase text-xs tracking-wide">🥉 3.º y 4.º puesto</div>
                     <MatchCard
                       match={thirdMatch}
                       isAdmin={isAdmin}

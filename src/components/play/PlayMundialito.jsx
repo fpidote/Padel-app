@@ -510,7 +510,6 @@ export default function PlayMundialito({
                 ))}
                 {thirdMatch && (
                   <div>
-                    <div className="mb-2 text-[13px] font-bold uppercase text-[#94a3b8]">🥉 3.º y 4.º puesto</div>
                     <MatchCard
                       match={thirdMatch}
                       isAdmin={isAdmin}
