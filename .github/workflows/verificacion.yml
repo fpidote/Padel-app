@@ -28,7 +28,8 @@ jobs:
 
       - run: npm ci
       - run: npm install -g firebase-tools@15.19.0
-      - run: npx playwright install --with-deps chromium
+      # Solo el navegador: con --with-deps (apt) el paso tardaba ~12 min y el runner ya trae las librerías
+      - run: npx playwright install chromium
 
       - run: npm run lint
       - run: npm run test:rules
