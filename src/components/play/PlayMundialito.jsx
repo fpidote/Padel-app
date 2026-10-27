@@ -8,6 +8,7 @@ import {
   canReopenMundialito,
   reopenMundialitoPatch,
   mundialitoThirdPlace,
+  extraQualifiersText,
 } from "../../logic/mundialito";
 import { computeStandings, sortStandings, standingsLabels } from "../../logic/standings";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
@@ -155,7 +156,7 @@ export default function PlayMundialito({
       const bracket = buildKnockoutFromGroups(
         groupsWithRounds,
         t.config.advancePerGroup || 2,
-        { thirdPlace: mundialitoThirdPlace(t.config) },
+        { thirdPlace: mundialitoThirdPlace(t.config), extraQualifiers: t.config.extraQualifiers || 0 },
       );
       await persist({
         ...t,
@@ -298,6 +299,7 @@ export default function PlayMundialito({
                           className="flex-1 font-bold text-[#f1f5f9]"
                         >
                           {si < (t.config.advancePerGroup || 2) && "⚡ "}
+                          {si === (t.config.advancePerGroup || 2) && t.config.extraQualifiers > 0 && "🔸 "}
                           {s.p1} / {s.p2}
                         </div>
                         <div
@@ -402,9 +404,11 @@ export default function PlayMundialito({
                 <p
                   className="mb-5 text-center text-[13px] text-[#94a3b8]"
                 >
-                  Al terminar los grupos, los cruces se armarán enfrentando a
-                  los líderes contra los peores clasificados.
+                  {t.config.extraQualifiers > 0
+                    ? `Pasan los ${t.config.advancePerGroup || 2} primeros de cada grupo y ${extraQualifiersText(t.config.advancePerGroup || 2, t.config.extraQualifiers)} (🔸). Los cruces se arman al terminar los grupos.`
+                    : "Al terminar los grupos, los cruces se armarán enfrentando a los líderes contra los peores clasificados."}
                 </p>
+                {!(t.config.extraQualifiers > 0) && (
                 <div
                   className="flex flex-col gap-3"
                 >
@@ -445,6 +449,7 @@ export default function PlayMundialito({
                     );
                   })}
                 </div>
+                )}
               </div>
             )}
 

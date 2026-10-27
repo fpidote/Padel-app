@@ -1,5 +1,5 @@
 // src/logic/constants.js
-import { knockoutInfo, knockoutByesText, mundialitoThirdPlace } from "./mundialito";
+import { knockoutInfo, knockoutByesText, mundialitoThirdPlace, extraQualifiersText } from "./mundialito";
 import { ligaQualifiers, ligaThirdPlace } from "./liga";
 
 export const TOURNAMENT_TYPES = [
@@ -123,7 +123,10 @@ export function generateRules(type, config, context = {}) {
       return [
         `${config.groupCount ?? 2} ${(config.groupCount ?? 2) === 1 ? "grupo" : "grupos"} en fase inicial. Los ${config.advancePerGroup ?? 2} mejores de cada grupo avanzan a eliminatorias.`,
         "Clasifica quien gane más partidos. No hay empates.",
-        ...[knockoutByesText(knockoutInfo(config.groupCount, config.advancePerGroup))].filter(Boolean),
+        ...(config.extraQualifiers > 0
+          ? [`Además pasan ${extraQualifiersText(config.advancePerGroup ?? 2, config.extraQualifiers)} de todos los grupos. Se comparan por victorias por partido jugado y, si empatan, por diferencia.`]
+          : []),
+        ...[knockoutByesText(knockoutInfo(config.groupCount, config.advancePerGroup, config.extraQualifiers))].filter(Boolean),
         ...(mundialitoThirdPlace(config) ? [THIRD_PLACE_RULE] : []),
         "Desempate: 1º el resultado del partido entre las parejas igualadas, 2º diferencia entre lo que anotan a favor y en contra, 3º diferencia de games.",
         scoringDesc(),

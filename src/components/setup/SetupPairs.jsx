@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { shuffle, buildShareMessage } from "../../logic/utils";
-import { validateMundialitoConfig, knockoutInfo, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail, describeFormat } from "../../logic/mundialito";
+import { validateMundialitoConfig, knockoutInfo, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail, describeFormat, positionName } from "../../logic/mundialito";
 import { buildPozoRound, shufflePlayers } from "../../logic/pozo";
 import MatchFormatPicker from "../shared/MatchFormatPicker";
 import LaunchModal, { SummaryRow, SummaryCard } from "../shared/LaunchModal";
@@ -82,18 +82,18 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
       (sit > 0 ? ` · ⏳ ${sit} descansan` : need > 0 ? ` · ⚠️ faltan ${need}` : " · ✓ listo");
 
   const mundialitoCheck = t.type === "mundialito"
-    ? validateMundialitoConfig(tot, t.config.groupCount || 2, t.config.advancePerGroup ?? 2)
+    ? validateMundialitoConfig(tot, t.config.groupCount || 2, t.config.advancePerGroup ?? 2, t.config.extraQualifiers || 0)
     : null;
-  // Formatos sugeridos (hasta 5; si el elegido es otro, también se muestra) y modo manual
+  // Formatos sugeridos (hasta 6; si el elegido es otro, también se muestra) y modo manual
   const formatOptions = t.type === "mundialito" ? mundialitoFormatOptions(tot) : [];
   const currentFormat = formatOptions.find(
-    (o) => o.groupCount === (t.config.groupCount || 2) && o.advancePerGroup === (t.config.advancePerGroup ?? 2),
+    (o) => o.groupCount === (t.config.groupCount || 2) && o.advancePerGroup === (t.config.advancePerGroup ?? 2) && o.extraQualifiers === (t.config.extraQualifiers || 0),
   );
-  const formatCards = formatOptions.slice(0, 5);
+  const formatCards = formatOptions.slice(0, 6);
   // Con Personalizar abierto el resumen de abajo ya describe lo elegido; no se repite como tarjeta
   if (currentFormat && !formatCards.includes(currentFormat) && !customOpen) formatCards.push(currentFormat);
   const customVisible = tot >= 4 && (customOpen || formatCards.length === 0 || !currentFormat);
-  const customSummary = describeFormat(tot, t.config.groupCount || 2, t.config.advancePerGroup ?? 2);
+  const customSummary = describeFormat(tot, t.config.groupCount || 2, t.config.advancePerGroup ?? 2, t.config.extraQualifiers || 0);
   const ok = isMixer
     ? players.length >= act && players.every(p => p.name.trim())
     : isPozo
@@ -390,8 +390,8 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
                         {formatCards.map((o) => {
                           const active = o === currentFormat;
                           return (
-                            <button key={`${o.groupCount}-${o.advancePerGroup}`}
-                              onClick={() => { setCustomOpen(false); persist({ ...t, config: { ...t.config, groupCount: o.groupCount, advancePerGroup: o.advancePerGroup } }); }}
+                            <button key={`${o.groupCount}-${o.advancePerGroup}-${o.extraQualifiers}`}
+                              onClick={() => { setCustomOpen(false); persist({ ...t, config: { ...t.config, groupCount: o.groupCount, advancePerGroup: o.advancePerGroup, extraQualifiers: o.extraQualifiers } }); }}
                               className={`w-full text-left rounded-xl border px-3.5 py-3 cursor-pointer transition-colors ${active ? "text-white" : "bg-[#1f2937] border-[#374151] text-[#cbd5e1]"}`}
                               style={active ? { background: color, borderColor: color } : undefined}
                             >
@@ -416,7 +416,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
                         <div className="flex flex-wrap gap-2">
                           {Array.from({ length: Math.max(1, mundialitoCheck.maxGroups - 1) }, (_, i) => i + 2).map(n => (
                             <button key={n}
-                              onClick={() => persist({ ...t, config: { ...t.config, groupCount: n } })}
+                              onClick={() => persist({ ...t, config: { ...t.config, groupCount: n, extraQualifiers: Math.min(t.config.extraQualifiers || 0, n - 1) } })}
                               className={`flex-1 min-w-[3rem] py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer ${t.config.groupCount === n ? "text-white" : "bg-[#1f2937] text-[#94a3b8]"}`}
                               style={t.config.groupCount === n ? { background: color } : undefined}
                             >{n}</button>
@@ -435,6 +435,25 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
                           ))}
                         </div>
                       </div>
+                      {mundialitoCheck.maxExtra >= 1 && (t.config.advancePerGroup ?? 2) < mundialitoCheck.maxAdvance && (
+                        <div>
+                          <label className="text-xs text-gray-400 font-semibold block mb-1">
+                            Mejores {positionName(t.config.advancePerGroup ?? 2, 2)} que también pasan <span className="font-normal text-gray-500">(opcional)</span>
+                          </label>
+                          <p className="text-xs text-gray-500 mb-2">
+                            Se suman a los que pasan por grupo y se eligen entre todos los grupos por rendimiento por partido. Sirve para completar el cuadro.
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {Array.from({ length: mundialitoCheck.maxExtra + 1 }, (_, i) => i).map(n => (
+                              <button key={n}
+                                onClick={() => persist({ ...t, config: { ...t.config, extraQualifiers: n } })}
+                                className={`flex-1 min-w-[3rem] py-2.5 rounded-xl font-bold text-sm transition-colors cursor-pointer ${(t.config.extraQualifiers || 0) === n ? "text-white" : "bg-[#1f2937] text-[#94a3b8]"}`}
+                                style={(t.config.extraQualifiers || 0) === n ? { background: color } : undefined}
+                              >{n === 0 ? "Ninguno" : n}</button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       {customSummary && (
                         <div className="rounded-xl bg-[#1f2937] border border-[#374151] px-3.5 py-3">
                           <div className="font-bold text-sm text-gray-100">{formatTitle(customSummary)}</div>
@@ -443,7 +462,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
                       )}
                     </>
                   )}
-                  {tot >= 4 && knockoutInfo(t.config.groupCount || 2, t.config.advancePerGroup ?? 2).qualifiers >= 4 && (
+                  {tot >= 4 && knockoutInfo(t.config.groupCount || 2, t.config.advancePerGroup ?? 2, t.config.extraQualifiers || 0).qualifiers >= 4 && (
                     <div>
                       <label className="text-xs text-gray-400 font-semibold block mb-2">Partido por el 3.º y 4.º puesto</label>
                       <div className="flex gap-2">
@@ -841,7 +860,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
         saving={saving}
       >
         {launchTab === "sorteo" && t.type === "mundialito" && (
-          <GroupsPreview groups={activeDraw.groups} advancePerGroup={t.config.advancePerGroup ?? 2} knockout={knockoutInfo(t.config.groupCount || 2, t.config.advancePerGroup ?? 2)} />
+          <GroupsPreview groups={activeDraw.groups} advancePerGroup={t.config.advancePerGroup ?? 2} extraQualifiers={t.config.extraQualifiers || 0} knockout={knockoutInfo(t.config.groupCount || 2, t.config.advancePerGroup ?? 2, t.config.extraQualifiers || 0)} />
         )}
         {launchTab === "sorteo" && t.type === "liga" && (
           <FixturePreview rounds={activeDraw.rounds} matches={activeDraw.matches} />
@@ -863,9 +882,10 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
                 {t.type !== "liga" && <SummaryRow label="Pistas" value={t.config.courts} />}
                 {t.type === "mundialito" && <SummaryRow label="Grupos" value={t.config.groupCount || 2} />}
                 {t.type === "mundialito" && <SummaryRow label="Avanzan por grupo" value={t.config.advancePerGroup ?? 2} />}
-                {t.type === "mundialito" && <SummaryRow label="Clasifican a la eliminatoria" value={`${knockoutInfo(t.config.groupCount || 2, t.config.advancePerGroup ?? 2).qualifiers} parejas`} />}
-                {t.type === "mundialito" && knockoutInfo(t.config.groupCount || 2, t.config.advancePerGroup ?? 2).byes > 0 && (
-                  <SummaryRow label="Pasan directo" value={knockoutInfo(t.config.groupCount || 2, t.config.advancePerGroup ?? 2).byes} />
+                {t.type === "mundialito" && t.config.extraQualifiers > 0 && <SummaryRow label={`Mejores ${positionName(t.config.advancePerGroup ?? 2, 2)} extra`} value={t.config.extraQualifiers} />}
+                {t.type === "mundialito" && <SummaryRow label="Clasifican a la eliminatoria" value={`${knockoutInfo(t.config.groupCount || 2, t.config.advancePerGroup ?? 2, t.config.extraQualifiers || 0).qualifiers} parejas`} />}
+                {t.type === "mundialito" && knockoutInfo(t.config.groupCount || 2, t.config.advancePerGroup ?? 2, t.config.extraQualifiers || 0).byes > 0 && (
+                  <SummaryRow label="Pasan directo" value={knockoutInfo(t.config.groupCount || 2, t.config.advancePerGroup ?? 2, t.config.extraQualifiers || 0).byes} />
                 )}
                 {t.type === "relampago" && <SummaryRow label="Cuadro" value={t.config.seedByOrder ? "Por orden de carga" : "Sorteado al azar"} />}
                 {t.type === "liga" && <SummaryRow label="Jornadas" value={activeDraw.rounds.length} />}

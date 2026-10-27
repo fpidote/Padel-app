@@ -335,7 +335,7 @@ describe("Torneo por grupos — partido por el 3.º puesto", () => {
 });
 
 describe("mundialitoFormatOptions — formatos sugeridos según las parejas", () => {
-  const find = (opts, g, a) => opts.find((o) => o.groupCount === g && o.advancePerGroup === a);
+  const find = (opts, g, a) => opts.find((o) => o.groupCount === g && o.advancePerGroup === a && !o.extraQualifiers);
 
   it("T-FMT-01: 12 parejas ofrece 4 grupos de 3 con pase de 1 (2 partidos por pareja, 4 clasificados)", () => {
     const o = find(mundialitoFormatOptions(12), 4, 1);
@@ -387,7 +387,7 @@ describe("mundialitoFormatOptions — formatos sugeridos según las parejas", ()
 });
 
 describe("textos de los formatos sugeridos", () => {
-  const find = (n, g, a) => mundialitoFormatOptions(n).find((o) => o.groupCount === g && o.advancePerGroup === a);
+  const find = (n, g, a) => mundialitoFormatOptions(n).find((o) => o.groupCount === g && o.advancePerGroup === a && !o.extraQualifiers);
 
   it("T-FMT-08: título con grupos parejos y pase de 1", () => {
     expect(formatTitle(find(12, 4, 1))).toBe("4 grupos de 3 · pasa 1 de cada grupo");
@@ -415,5 +415,84 @@ describe("describeFormat — resumen de cualquier configuración", () => {
     expect(describeFormat(3, 2, 1)).toBeNull();
     expect(describeFormat(8, 4, 3)).toBeNull();
     expect(describeFormat(0, 2, 2)).toBeNull();
+  });
+});
+
+describe("clasificados extra: mejores terceros (extraQualifiers)", () => {
+  // 3 grupos de 4; los terceros rinden distinto: C3 (1 victoria de 3), A3 (1 de 3, peor diferencia), B3 (0 de 3)
+  const st = (id, wins, played, gf, gc) => ({ id, p1: `A${id}`, p2: `B${id}`, pts: wins, wins, played, gf, gc });
+  const groups = [
+    { standings: [st("A1", 3, 3, 6, 0), st("A2", 2, 3, 4, 2), st("A3", 1, 3, 2, 4), st("A4", 0, 3, 0, 6)] },
+    { standings: [st("B1", 3, 3, 6, 0), st("B2", 2, 3, 4, 2), st("B3", 0, 3, 1, 5), st("B4", 0, 3, 0, 6)] },
+    { standings: [st("C1", 3, 3, 6, 0), st("C2", 2, 3, 4, 2), st("C3", 1, 3, 3, 3), st("C4", 0, 3, 0, 6)] },
+  ];
+  const ids = (bracket) => new Set(bracket.flatMap((m) => [m.pairA?.id, m.pairB?.id]).filter((id) => id && id !== "bye"));
+
+  it("T-EXT-01: knockoutInfo suma los extra: 3 grupos pasando 2 + 2 mejores terceros = 8, cuadro exacto", () => {
+    expect(knockoutInfo(3, 2, 2)).toMatchObject({ qualifiers: 8, size: 8, byes: 0 });
+    expect(knockoutInfo(3, 2)).toMatchObject({ qualifiers: 6, byes: 2 });
+  });
+
+  it("T-EXT-02: seedQualifiers incluye a los 2 mejores terceros por rendimiento y deja fuera al peor", () => {
+    const seeded = seedQualifiers(groups, 2, 2).map((p) => p.id);
+    expect(seeded).toHaveLength(8);
+    expect(seeded).toContain("C3");
+    expect(seeded).toContain("A3");
+    expect(seeded).not.toContain("B3");
+  });
+
+  it("T-EXT-03: los extra se siembran al final (no reciben pasa directo antes que un segundo)", () => {
+    const seeded = seedQualifiers(groups, 2, 1).map((p) => p.id);
+    expect(seeded).toHaveLength(7);
+    expect(seeded.slice(-2)).not.toContain("A1");
+    expect(seeded).not.toContain("A3");
+  });
+
+  it("T-EXT-04: buildKnockoutFromGroups arma el cuadro con los extra", () => {
+    const bracket = buildKnockoutFromGroups(groups, 2, { extraQualifiers: 2 });
+    expect(ids(bracket).size).toBe(8);
+    expect(bracket.filter((m) => m.round === 1 && m.bracket === "winners")).toHaveLength(4);
+    expect(ids(buildKnockoutFromGroups(groups, 2)).size).toBe(6);
+  });
+
+  it("T-EXT-05: validateMundialitoConfig limita los extra a menos que los grupos y exige que el grupo tenga ese puesto", () => {
+    expect(validateMundialitoConfig(12, 3, 2, 2)).toMatchObject({ ok: true, maxExtra: 2 });
+    expect(validateMundialitoConfig(12, 3, 2, 3).ok).toBe(false);
+    expect(validateMundialitoConfig(12, 3, 4, 1).ok).toBe(false); // pasaría todo el grupo y no hay 5.º
+    expect(validateMundialitoConfig(12, 3, 2).ok).toBe(true);
+  });
+
+  it("T-EXT-06: mundialitoThirdPlace cuenta los extra para tener semifinales", () => {
+    expect(mundialitoThirdPlace({ groupCount: 3, advancePerGroup: 1, extraQualifiers: 1, thirdPlace: true })).toBe(true);
+    expect(mundialitoThirdPlace({ groupCount: 3, advancePerGroup: 1, thirdPlace: true })).toBe(false);
+  });
+
+  it("T-EXT-07: 12 parejas sugiere 3 grupos de 4 pasando 2 + 2 mejores terceros como formato recomendado", () => {
+    const o = mundialitoFormatOptions(12).find((x) => x.groupCount === 3 && x.advancePerGroup === 2 && x.extraQualifiers === 2);
+    expect(o).toMatchObject({ qualifiers: 8, byes: 0, recommended: true });
+    expect(mundialitoFormatOptions(12).find((x) => x.groupCount === 3 && x.advancePerGroup === 2 && !x.extraQualifiers)).toMatchObject({ qualifiers: 6, byes: 2, recommended: false });
+  });
+
+  it("T-EXT-08: las sugerencias con extra solo aparecen si completan un cuadro exacto", () => {
+    for (const n of [9, 12, 15, 20]) {
+      for (const o of mundialitoFormatOptions(n).filter((x) => x.extraQualifiers > 0)) {
+        expect(o.byes).toBe(0);
+        expect(o.extraQualifiers).toBeLessThan(o.groupCount);
+      }
+    }
+  });
+
+  it("T-EXT-09: título y resumen mencionan a los mejores terceros", () => {
+    const o = describeFormat(12, 3, 2, 2);
+    expect(formatTitle(o)).toBe("3 grupos de 4 · pasan 2 de cada grupo + los 2 mejores terceros");
+    expect(formatDetail(o)).toBe("Cada pareja juega 3 partidos · 18 partidos en grupos · Clasifican 8: cuartos de final");
+    expect(formatTitle(describeFormat(12, 4, 1, 1))).toBe("4 grupos de 3 · pasa 1 de cada grupo + el mejor segundo");
+  });
+
+  it("T-EXT-10: las reglas explican cómo se eligen los mejores terceros", () => {
+    const rules = generateRules("mundialito", { groupCount: 3, advancePerGroup: 2, extraQualifiers: 2 }).join(" ");
+    expect(rules).toMatch(/2 mejores terceros/);
+    expect(rules).toMatch(/victorias por partido jugado/);
+    expect(generateRules("mundialito", { groupCount: 3, advancePerGroup: 2 }).join(" ")).not.toMatch(/mejores terceros/);
   });
 });

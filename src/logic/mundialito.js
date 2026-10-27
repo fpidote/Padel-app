@@ -45,9 +45,11 @@ export function buildGroups(pairs, groupCount) {
 
 // Cada grupo necesita al menos 2 parejas para tener partidos, y no pueden
 // avanzar más parejas que las del grupo más chico.
-export function validateMundialitoConfig(pairCount, groupCount, advancePerGroup) {
+export function validateMundialitoConfig(pairCount, groupCount, advancePerGroup, extraQualifiers = 0) {
   const maxGroups = Math.floor(pairCount / 2);
   const maxAdvance = groupCount >= 1 ? Math.floor(pairCount / groupCount) : 0;
+  // Los extra son los mejores del siguiente puesto: menos que los grupos (si no pasaría todo ese puesto)
+  const maxExtra = Math.max(0, groupCount - 1);
   let error = null;
   if (pairCount < 4) {
     error = "Necesitas al menos 4 parejas";
@@ -55,23 +57,28 @@ export function validateMundialitoConfig(pairCount, groupCount, advancePerGroup)
     error = `Con ${pairCount} parejas el máximo es ${maxGroups} ${maxGroups === 1 ? "grupo" : "grupos"}`;
   } else if (advancePerGroup > maxAdvance) {
     error = `Con ${groupCount} grupos pueden avanzar como máximo ${maxAdvance} por grupo`;
+  } else if (extraQualifiers > maxExtra) {
+    error = `Con ${groupCount} grupos pueden pasar como máximo ${maxExtra} ${positionName(advancePerGroup, maxExtra)} extra`;
+  } else if (extraQualifiers > 0 && advancePerGroup >= maxAdvance) {
+    error = "Los grupos no tienen suficientes parejas para sumar mejores del siguiente puesto";
   }
-  return { ok: error === null, maxGroups, maxAdvance, error };
+  return { ok: error === null, maxGroups, maxAdvance, maxExtra, error };
 }
 
 // Formatos sugeridos para el organizador según cuántas parejas tiene: cada uno dice cuántos grupos y de
 // qué tamaño, cuántos partidos juega cada pareja, cuántos clasifican y si el cuadro necesita pasa directo.
 // Grupos de 3 parejas o más, sin que pase todo el grupo y hasta 16 clasificados. Primero los
 // recomendados (grupos parejos y cuadro exacto: 4, 8 o 16 clasificados).
-function formatOption(pairCount, groupCount, advancePerGroup) {
+function formatOption(pairCount, groupCount, advancePerGroup, extraQualifiers = 0) {
   const base = Math.floor(pairCount / groupCount);
   const extra = pairCount % groupCount;
   // buildGroups reparte por turnos: los primeros grupos quedan con una pareja más
   const groupSizes = Array.from({ length: groupCount }, (_, i) => (i < extra ? base + 1 : base));
-  const { qualifiers, byes } = knockoutInfo(groupCount, advancePerGroup);
+  const { qualifiers, byes } = knockoutInfo(groupCount, advancePerGroup, extraQualifiers);
   return {
     groupCount,
     advancePerGroup,
+    extraQualifiers,
     groupSizes,
     matchesPerPair: [base - 1, extra > 0 ? base : base - 1],
     groupMatches: groupSizes.reduce((sum, size) => sum + (size * (size - 1)) / 2, 0),
@@ -82,25 +89,30 @@ function formatOption(pairCount, groupCount, advancePerGroup) {
 }
 
 // Resumen de cualquier configuración (la sugerida o la manual); null si no es válida para esas parejas.
-export function describeFormat(pairCount, groupCount, advancePerGroup) {
-  if (!validateMundialitoConfig(pairCount, groupCount, advancePerGroup).ok) return null;
-  return formatOption(pairCount, groupCount, advancePerGroup);
+export function describeFormat(pairCount, groupCount, advancePerGroup, extraQualifiers = 0) {
+  if (!validateMundialitoConfig(pairCount, groupCount, advancePerGroup, extraQualifiers).ok) return null;
+  return formatOption(pairCount, groupCount, advancePerGroup, extraQualifiers);
 }
 
 export function mundialitoFormatOptions(pairCount) {
   const options = [];
   for (let groupCount = 2; groupCount <= Math.floor(pairCount / 3); groupCount++) {
     for (let advancePerGroup = 1; advancePerGroup < Math.floor(pairCount / groupCount); advancePerGroup++) {
-      if (knockoutInfo(groupCount, advancePerGroup).qualifiers > 16) continue;
-      options.push(formatOption(pairCount, groupCount, advancePerGroup));
+      // Sin extra siempre; con mejores del siguiente puesto solo si completan un cuadro exacto
+      for (let extra = 0; extra < groupCount; extra++) {
+        const { qualifiers, byes } = knockoutInfo(groupCount, advancePerGroup, extra);
+        if (qualifiers > 16 || (extra > 0 && (byes > 0 || qualifiers < 4))) continue;
+        options.push(formatOption(pairCount, groupCount, advancePerGroup, extra));
+      }
     }
   }
-  // Menos clasificados primero y, a igualdad, más grupos (menos partidos por pareja)
-  const rank = (o) => [o.recommended ? 0 : 1, o.groupSizes[0] === o.groupSizes[o.groupSizes.length - 1] ? 0 : 1, o.byes, o.qualifiers];
+  // Menos clasificados primero, los formatos sin extra antes que sus variantes con extra y, a igualdad,
+  // más grupos (menos partidos por pareja)
+  const rank = (o) => [o.recommended ? 0 : 1, o.groupSizes[0] === o.groupSizes[o.groupSizes.length - 1] ? 0 : 1, o.byes, o.qualifiers, o.extraQualifiers > 0 ? 1 : 0];
   return options.sort((a, b) => {
     const ra = rank(a), rb = rank(b);
     for (let i = 0; i < ra.length; i++) if (ra[i] !== rb[i]) return ra[i] - rb[i];
-    return b.groupCount - a.groupCount || a.advancePerGroup - b.advancePerGroup;
+    return b.groupCount - a.groupCount || a.advancePerGroup - b.advancePerGroup || a.extraQualifiers - b.extraQualifiers;
   });
 }
 
@@ -108,13 +120,14 @@ const KNOCKOUT_STAGE = { 2: "final", 4: "semifinales y final", 8: "cuartos de fi
 
 export function formatTitle(o) {
   const sizes = [...new Set(o.groupSizes)].sort((a, b) => b - a).join(" y ");
-  return `${o.groupCount} grupos de ${sizes} · ${o.advancePerGroup === 1 ? "pasa 1" : `pasan ${o.advancePerGroup}`} de cada grupo`;
+  const extra = extraQualifiersText(o.advancePerGroup, o.extraQualifiers);
+  return `${o.groupCount} grupos de ${sizes} · ${o.advancePerGroup === 1 ? "pasa 1" : `pasan ${o.advancePerGroup}`} de cada grupo${extra ? ` + ${extra}` : ""}`;
 }
 
 export function formatDetail(o) {
   const [min, max] = o.matchesPerPair;
   const matches = min === max ? `${min} partidos` : `${min} o ${max} partidos`;
-  const { size } = knockoutInfo(o.groupCount, o.advancePerGroup);
+  const { size } = knockoutInfo(o.groupCount, o.advancePerGroup, o.extraQualifiers);
   const direct = o.byes > 0 ? `, ${o.byes} ${o.byes === 1 ? "pasa" : "pasan"} directo` : "";
   return `Cada pareja juega ${matches} · ${o.groupMatches} partidos en grupos · Clasifican ${o.qualifiers}: ${KNOCKOUT_STAGE[size] ?? "cuadro final"}${direct}`;
 }
@@ -156,22 +169,28 @@ function avoidFirstRoundClashes(entries) {
 
 // Orden de siembra de los clasificados: primero los primeros de grupo, luego los segundos, etc.;
 // dentro de cada puesto, por rendimiento. Así los pasa directo van a los mejores y no al grupo A.
-export function seedQualifiers(groups, advancePerGroup) {
+export function seedQualifiers(groups, advancePerGroup, extraQualifiers = 0) {
   const entries = [];
+  const candidates = [];
   groups.forEach((g, gi) => {
-    sortStandings(g.standings, g.matches || [])
-      .slice(0, advancePerGroup)
-      .forEach((pair, pos) => entries.push({ pair, gi, pos }));
+    const sorted = sortStandings(g.standings, g.matches || []);
+    sorted.slice(0, advancePerGroup).forEach((pair, pos) => entries.push({ pair, gi, pos }));
+    // Los extra salen del puesto siguiente de cada grupo, comparados por rendimiento por partido
+    if (extraQualifiers > 0 && sorted[advancePerGroup]) candidates.push({ pair: sorted[advancePerGroup], gi, pos: advancePerGroup });
   });
+  candidates
+    .sort((a, b) => byPerformance(a.pair, b.pair) || a.gi - b.gi)
+    .slice(0, extraQualifiers)
+    .forEach((c) => entries.push(c));
   entries.sort((a, b) => a.pos - b.pos || byPerformance(a.pair, b.pair) || a.gi - b.gi);
   avoidFirstRoundClashes(entries);
   return entries.map((e) => e.pair);
 }
 
 // Cuántos clasifican, de qué tamaño es el cuadro y cuántos pasan directo a la segunda ronda.
-export function knockoutInfo(groupCount, advancePerGroup) {
+export function knockoutInfo(groupCount, advancePerGroup, extraQualifiers = 0) {
   const groups = groupCount ?? 2;
-  const qualifiers = groups * (advancePerGroup ?? 2);
+  const qualifiers = groups * (advancePerGroup ?? 2) + (extraQualifiers || 0);
   let size = 1;
   while (size < qualifiers) size *= 2;
   return { qualifiers, size, byes: size - qualifiers, groups };
@@ -185,6 +204,20 @@ const POSITIONS = [
   ["quinto", "quintos"],
   ["sexto", "sextos"],
 ];
+
+// "tercero" / "terceros" para el puesto que sigue a los que pasan directo (advancePerGroup + 1).
+export function positionName(advancePerGroup, count) {
+  const pos = advancePerGroup;
+  const [one, many] = POSITIONS[pos] || [`${pos + 1}.º`, `${pos + 1}.º`];
+  return count === 1 ? one : many;
+}
+
+// "los 2 mejores terceros" / "el mejor segundo" (null si no hay extra)
+export function extraQualifiersText(advancePerGroup, extraQualifiers) {
+  if (!extraQualifiers) return null;
+  const name = positionName(advancePerGroup, extraQualifiers);
+  return extraQualifiers === 1 ? `el mejor ${name}` : `los ${extraQualifiers} mejores ${name}`;
+}
 
 // Quiénes pasan directo: la siembra reparte los lugares libres primero entre los primeros de grupo,
 // luego entre los segundos, etc. (dentro de cada puesto, los de mejor rendimiento).
@@ -230,12 +263,12 @@ export function reopenMundialitoPatch() {
   return { knockoutBracket: null, phase: "groups" };
 }
 
-export function buildKnockoutFromGroups(groups, advancePerGroup, { thirdPlace = false } = {}) {
-  return buildBracket(seedQualifiers(groups, advancePerGroup), { consolation: false, thirdPlace });
+export function buildKnockoutFromGroups(groups, advancePerGroup, { thirdPlace = false, extraQualifiers = 0 } = {}) {
+  return buildBracket(seedQualifiers(groups, advancePerGroup, extraQualifiers), { consolation: false, thirdPlace });
 }
 
 // ¿Se juega el partido por el 3.º y 4.º puesto? Solo con la opción activada y semifinales
 // (4 clasificados o más).
 export function mundialitoThirdPlace(config) {
-  return !!config?.thirdPlace && knockoutInfo(config.groupCount, config.advancePerGroup).qualifiers >= 4;
+  return !!config?.thirdPlace && knockoutInfo(config.groupCount, config.advancePerGroup, config.extraQualifiers).qualifiers >= 4;
 }
