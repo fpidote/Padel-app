@@ -11,6 +11,8 @@ import {
   reopenLigaPatch,
   clearLigaMatch,
   ligaThirdPlace,
+  ligaCanFinish,
+  finishPatch,
 } from "./liga.js";
 import { generateRules } from "./constants.js";
 
@@ -482,5 +484,31 @@ describe("Liga — partido por el 3.º puesto", () => {
     const on = generateRules("liga", { ...base, thirdPlace: true }, { pairCount: 6 }).join(" ");
     expect(off).not.toMatch(/3\.º/);
     expect(on).toMatch(/3\.º y 4\.º puesto/);
+  });
+});
+
+describe("Liga — finalizar el torneo", () => {
+  const matchesDone = [{ id: "a", saved: true }, { id: "b", saved: true }];
+  const base = { status: "playing", phase: "fixture", config: { playoffEnabled: false }, matches: matchesDone };
+  const brk = (extra = {}) => [{ id: "w_r1_m0", saved: true, round: 1, bracket: "winners", ...extra }];
+
+  test("T-FIN-L1: sin eliminatoria se puede finalizar cuando todos los partidos están jugados", () => {
+    expect(ligaCanFinish(base)).toBe(true);
+    expect(ligaCanFinish({ ...base, matches: [{ id: "a", saved: true }, { id: "b", saved: false }] })).toBe(false);
+    expect(ligaCanFinish({ ...base, matches: [] })).toBe(false);
+  });
+
+  test("T-FIN-L2: con eliminatoria hace falta la fase final completa", () => {
+    const t = { ...base, config: { playoffEnabled: true }, phase: "playoff" };
+    expect(ligaCanFinish({ ...t, knockoutBracket: brk() })).toBe(true);
+    expect(ligaCanFinish({ ...t, knockoutBracket: brk({ saved: false }) })).toBe(false);
+    expect(ligaCanFinish({ ...base, config: { playoffEnabled: true } })).toBe(false); // aún en la liga
+  });
+
+  test("T-FIN-L3: ya finalizado no se puede volver a finalizar y los resultados quedan cerrados", () => {
+    expect(ligaCanFinish({ ...base, status: "finished" })).toBe(false);
+    expect(ligaResultsLocked({ ...base, status: "finished" })).toBe(true);
+    expect(canReopenLiga({ status: "finished", phase: "playoff", knockoutBracket: [] })).toBe(false);
+    expect(finishPatch()).toEqual({ status: "finished" });
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildKnockoutFromGroups, validateMundialitoConfig, seedQualifiers, knockoutInfo, knockoutByesText, mundialitoGroupsLocked, canReopenMundialito, reopenMundialitoPatch, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail, describeFormat, availableStages, optionsForStage, stageLabel, stageChoiceLabel } from "./mundialito";
+import { buildKnockoutFromGroups, validateMundialitoConfig, seedQualifiers, knockoutInfo, knockoutByesText, mundialitoGroupsLocked, canReopenMundialito, reopenMundialitoPatch, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail, describeFormat, availableStages, optionsForStage, stageLabel, stageChoiceLabel, mundialitoCanFinish } from "./mundialito";
 import { firstRoundSeedPairs } from "./relampago";
 import { generateRules } from "./constants";
 
@@ -525,5 +525,24 @@ describe("elegir por objetivo: hasta qué ronda quiere llegar el organizador", (
 describe("stageChoiceLabel — cuántas parejas pasan a la fase final", () => {
   it("T-STG-07: el botón dice cuántas pasan y entre paréntesis con qué ronda empieza el cuadro", () => {
     expect([2, 4, 8, 16].map(stageChoiceLabel)).toEqual(["2 (final)", "4 (semifinales)", "8 (cuartos)", "16 (octavos)"]);
+  });
+});
+
+describe("Torneo por grupos — finalizar el torneo", () => {
+  const done = [{ id: "w_r1_m0", saved: true }];
+
+  it("T-FIN-M1: se puede finalizar con la fase final completa", () => {
+    expect(mundialitoCanFinish({ status: "playing", phase: "knockout", knockoutBracket: done })).toBe(true);
+  });
+
+  it("T-FIN-M2: no antes de terminar la fase final ni en grupos ni ya finalizado", () => {
+    expect(mundialitoCanFinish({ status: "playing", phase: "knockout", knockoutBracket: [{ id: "x", saved: false }] })).toBe(false);
+    expect(mundialitoCanFinish({ status: "playing", phase: "groups", knockoutBracket: null })).toBe(false);
+    expect(mundialitoCanFinish({ status: "finished", phase: "knockout", knockoutBracket: done })).toBe(false);
+  });
+
+  it("T-FIN-M3: finalizado, los resultados de grupo y de eliminatoria quedan cerrados y no se reabre", () => {
+    expect(mundialitoGroupsLocked({ status: "finished", phase: "knockout" })).toBe(true);
+    expect(canReopenMundialito({ status: "finished", phase: "knockout", knockoutBracket: [] })).toBe(false);
   });
 });

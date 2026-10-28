@@ -1,6 +1,6 @@
 // ── Liga Logic ───────────────────────────────────────────────
 import { shuffle } from "./utils";
-import { buildBracket, hasPlayedRealMatch } from "./relampago";
+import { buildBracket, hasPlayedRealMatch, bracketComplete } from "./relampago";
 import { sortStandings } from "./standings";
 
 // Método del calendario (circle method): arma todas las rondas de un
@@ -175,13 +175,13 @@ export function ligaThirdPlace(config, pairCount) {
 // Los resultados de la liga se cierran al iniciar la eliminatoria: a partir de ahí el cuadro depende
 // de la tabla y modificarla lo dejaría incoherente.
 export function ligaResultsLocked(t) {
-  return t?.phase === "playoff";
+  return t?.phase === "playoff" || t?.status === "finished";
 }
 
 // Se puede volver a la fase de liga mientras no se haya jugado ningún partido real de la eliminatoria
 // (los pasa directo que se resuelven solos no cuentan).
 export function canReopenLiga(t) {
-  return t?.phase === "playoff" && !hasPlayedRealMatch(t.knockoutBracket);
+  return t?.status !== "finished" && t?.phase === "playoff" && !hasPlayedRealMatch(t.knockoutBracket);
 }
 
 export function reopenLigaPatch() {
@@ -194,4 +194,17 @@ export function clearLigaMatch(matches, matchId) {
   return matches.map((m) =>
     m.id === matchId ? { ...m, saved: false, scoreA: "", scoreB: "", sets: null } : m,
   );
+}
+
+// ¿Se puede cerrar el torneo? Sin eliminatoria, con todos los partidos de liga jugados; con
+// eliminatoria, con la fase final completa (final y, si hay, partido por el 3.º puesto).
+export function ligaCanFinish(t) {
+  if (!t || t.status === "finished") return false;
+  if (t.config?.playoffEnabled) return t.phase === "playoff" && bracketComplete(t.knockoutBracket);
+  return (t.matches || []).length > 0 && t.matches.every((m) => m.saved);
+}
+
+// Al finalizar, los resultados se cierran (ligaResultsLocked).
+export function finishPatch() {
+  return { status: "finished" };
 }

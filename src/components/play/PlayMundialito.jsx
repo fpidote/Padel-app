@@ -1,7 +1,7 @@
 // src/components/play/PlayMundialito.jsx
 import { useState } from "react";
 import { generateRules } from "../../logic/constants";
-import { advanceBracket, unadvanceBracket, canEditBracketMatch, bracketRoundName, bracketPodium } from "../../logic/relampago";
+import { advanceBracket, unadvanceBracket, canEditBracketMatch, bracketRoundName, bracketPodium, bracketSemifinalLosers } from "../../logic/relampago";
 import {
   buildKnockoutFromGroups,
   mundialitoGroupsLocked,
@@ -9,11 +9,13 @@ import {
   reopenMundialitoPatch,
   mundialitoThirdPlace,
   extraQualifiersText,
+  mundialitoCanFinish,
 } from "../../logic/mundialito";
 import { computeStandings, sortStandings, standingsLabels } from "../../logic/standings";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import { showToast } from "../../logic/toast";
 import MatchCard from "../shared/MatchCard";
+import PodiumCard from "../shared/PodiumCard";
 import PairStandings from "../shared/PairStandings";
 
 export default function PlayMundialito({
@@ -26,7 +28,7 @@ export default function PlayMundialito({
 }) {
   const [tab, setTab] = useState("groups");
   const [ls, setLs] = useState({});
-  const [confirm, setConfirm] = useState(null); // { kind: "delete" | "start" | "reopen", groupId?, matchId? }
+  const [confirm, setConfirm] = useState(null); // { kind: "delete" | "start" | "reopen" | "finish", groupId?, matchId? }
   const locked = mundialitoGroupsLocked(t);
 
   const isSetFormat =
@@ -189,6 +191,17 @@ export default function PlayMundialito({
     await persist({ ...t, knockoutBracket: updated, scoringStarted: true });
   }
 
+  async function onFinishTournament() {
+    setConfirm(null);
+    if (!mundialitoCanFinish(t)) return;
+    try {
+      await persist({ ...t, status: "finished" });
+    } catch (err) {
+      console.error("Error al finalizar el torneo:", err);
+      showToast("No se pudo finalizar el torneo. Inténtalo de nuevo.");
+    }
+  }
+
   async function onEditKnockoutMatch(matchId) {
     if (!canEditBracketMatch(t.knockoutBracket, matchId)) return;
     await persist({ ...t, knockoutBracket: unadvanceBracket(t.knockoutBracket, matchId) });
@@ -203,6 +216,7 @@ export default function PlayMundialito({
     (m) => !m.nextMatchId && m.saved && m.bracket !== "third",
   )?.winner;
 
+  const finished = t.status === "finished";
   const podium = bracketPodium(t.knockoutBracket);
   // Quiénes pasaron a la fase final: los que ya están en el cuadro (los pasa directo incluidos)
   const qualifiedIds = t.knockoutBracket
@@ -484,6 +498,19 @@ export default function PlayMundialito({
                     </div>
                   </div>
                 )}
+                {isAdmin && mundialitoCanFinish(t) && (
+                  <button
+                    onClick={() => setConfirm({ kind: "finish" })}
+                    className="w-full cursor-pointer rounded-xl border-0 bg-[#10b981] py-3.5 text-[15px] font-bold text-white"
+                  >
+                    🏁 Finalizar torneo
+                  </button>
+                )}
+                {finished && (
+                  <div className="rounded-xl border border-[#334155] bg-[#1e293b] px-4 py-3 text-center text-[12px] text-[#94a3b8]">
+                    🏁 Torneo finalizado: los resultados están cerrados.
+                  </div>
+                )}
                 {koRounds.map((round) => (
                   <div key={round}>
                     <div
@@ -502,12 +529,12 @@ export default function PlayMundialito({
                           setLs={setLs}
                           onSave={onSaveKnockoutMatch}
                           onEdit={
-                            canEditBracketMatch(t.knockoutBracket, match.id)
+                            !finished && canEditBracketMatch(t.knockoutBracket, match.id)
                               ? onEditKnockoutMatch
                               : undefined
                           }
                           locked={
-                            match.saved && !canEditBracketMatch(t.knockoutBracket, match.id)
+                            match.saved && (finished || !canEditBracketMatch(t.knockoutBracket, match.id))
                           }
                           accentColor="#059669"
                           scoringFormat={t.config?.scoringFormat || "games"}
@@ -524,12 +551,12 @@ export default function PlayMundialito({
                       setLs={setLs}
                       onSave={onSaveKnockoutMatch}
                       onEdit={
-                        canEditBracketMatch(t.knockoutBracket, thirdMatch.id)
+                        !finished && canEditBracketMatch(t.knockoutBracket, thirdMatch.id)
                           ? onEditKnockoutMatch
                           : undefined
                       }
                       locked={
-                        thirdMatch.saved && !canEditBracketMatch(t.knockoutBracket, thirdMatch.id)
+                        thirdMatch.saved && (finished || !canEditBracketMatch(t.knockoutBracket, thirdMatch.id))
                       }
                       accentColor="#059669"
                       scoringFormat={t.config?.scoringFormat || "games"}
@@ -543,28 +570,12 @@ export default function PlayMundialito({
 
         {tab === "standings" && (
           <>
-            {podium.champion && (
-              <div className="mb-4 rounded-xl border-2 border-[#f59e0b] bg-[#1e293b] p-4">
-                <div className="mb-3 text-center text-[12px] font-bold uppercase text-[#f59e0b]">Resultado final</div>
-                <div className="flex flex-col gap-2">
-                  {[
-                    ["🏆", "Campeón", podium.champion],
-                    ["🥈", "Subcampeón", podium.runnerUp],
-                    ...(thirdMatch ? [["🥉", "Tercer puesto", podium.third]] : []),
-                  ].map(([icon, label, pair]) => (
-                    <div key={label} className="flex items-center gap-3 rounded-lg bg-[#0f172a] px-3 py-2.5">
-                      <span className="text-[22px]">{icon}</span>
-                      <div className="min-w-0">
-                        <div className="text-[11px] font-bold uppercase text-[#94a3b8]">{label}</div>
-                        <div className="text-[15px] font-extrabold text-[#f1f5f9]">
-                          {pair ? `${pair.p1} / ${pair.p2}` : "Por definir"}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <PodiumCard
+              podium={podium}
+              hasThird={!!thirdMatch}
+              semifinalists={bracketSemifinalLosers(t.knockoutBracket)}
+              finished={finished}
+            />
             <div className="mb-3 text-[12px] text-[#94a3b8]">
               Clasifica quien tenga más partidos ganados (PG). En el grupo, si hay empate, decide el partido entre las parejas igualadas y después la diferencia a favor y en contra.
             </div>
@@ -638,6 +649,15 @@ export default function PlayMundialito({
           danger={false}
           onClose={() => setConfirm(null)}
           onConfirm={onStartKnockout}
+        />
+      )}
+      {confirm?.kind === "finish" && (
+        <SimpleModal
+          icon="🏁"
+          message="Al finalizar el torneo los resultados se cierran y ya no se podrán modificar. ¿Finalizar el torneo?"
+          confirmLabel="Finalizar"
+          onClose={() => setConfirm(null)}
+          onConfirm={onFinishTournament}
         />
       )}
       {confirm?.kind === "reopen" && (

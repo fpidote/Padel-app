@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildBracket, advanceBracket, unadvanceBracket, countPlayed, firstRoundSeedPairs, canEditBracketMatch, hasPlayedRealMatch, bracketRoundName, bracketPodium } from "./relampago.js";
+import { buildBracket, advanceBracket, unadvanceBracket, countPlayed, firstRoundSeedPairs, canEditBracketMatch, hasPlayedRealMatch, bracketRoundName, bracketPodium, bracketComplete, bracketSemifinalLosers } from "./relampago.js";
 
 function makePairs(n) {
   return Array.from({ length: n }, (_, i) => ({
@@ -528,5 +528,48 @@ describe("bracketPodium — campeón, subcampeón y 3.º puesto", () => {
     const pod = bracketPodium(b);
     expect(pod.champion.id).toBe("p1");
     expect(pod.runnerUp.id).toBe("p0");
+  });
+});
+
+describe("bracketComplete y bracketSemifinalLosers", () => {
+  const play = (b, id, x, y) => advanceBracket(b, id, x, y);
+  const jugarTodo = (b) => {
+    for (const m of b.filter((x) => x.round === 1 && x.bracket === "winners")) b = play(b, m.id, 6, 2);
+    return play(b, "w_r2_m0", 6, 4);
+  };
+
+  it("T-FIN-01: está completo cuando todos los partidos están jugados, incluido el del 3.º puesto", () => {
+    let b = buildBracket(makePairs(4), { consolation: false, thirdPlace: true });
+    expect(bracketComplete(b)).toBe(false);
+    b = jugarTodo(b);
+    expect(bracketComplete(b)).toBe(false); // falta el 3.º puesto
+    b = play(b, "w_third", 6, 1);
+    expect(bracketComplete(b)).toBe(true);
+  });
+
+  it("T-FIN-02: sin partido por el 3.º, completo en cuanto se juega la final", () => {
+    expect(bracketComplete(jugarTodo(buildBracket(makePairs(4), { consolation: false })))).toBe(true);
+  });
+
+  it("T-FIN-03: sin cuadro no está completo", () => {
+    expect(bracketComplete(null)).toBe(false);
+    expect(bracketComplete([])).toBe(false);
+  });
+
+  it("T-FIN-04: los perdedores de semifinales (con 4 y con 8 parejas)", () => {
+    for (const n of [4, 8]) {
+      let b = buildBracket(makePairs(n), { consolation: false });
+      const semis = (x) => x.filter((m) => m.bracket === "winners" && m.round === Math.log2(n) - 1);
+      expect(bracketSemifinalLosers(b)).toEqual([]);
+      for (let r = 1; r <= Math.log2(n) - 1; r++) {
+        for (const m of b.filter((x) => x.bracket === "winners" && x.round === r)) b = play(b, m.id, 6, 2);
+      }
+      expect(bracketSemifinalLosers(b).map((p) => p.id).sort()).toEqual(semis(b).map((m) => m.loser.id).sort());
+      expect(bracketSemifinalLosers(b)).toHaveLength(2);
+    }
+  });
+
+  it("T-FIN-05: con 2 parejas no hay semifinales", () => {
+    expect(bracketSemifinalLosers(buildBracket(makePairs(2), { consolation: false }))).toEqual([]);
   });
 });

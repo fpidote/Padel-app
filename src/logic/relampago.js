@@ -45,6 +45,22 @@ export function bracketPodium(bracket) {
   };
 }
 
+// ¿Se jugó todo el cuadro? Los pasa directo se resuelven solos, así que basta con que todo esté guardado
+// (incluido el partido por el 3.º puesto si existe).
+export function bracketComplete(bracket) {
+  return !!bracket?.length && bracket.every((m) => m.saved);
+}
+
+// Los dos perdedores de semifinales (para mostrarlos cuando no hay partido por el 3.º puesto).
+export function bracketSemifinalLosers(bracket) {
+  const winners = (bracket || []).filter((m) => m.bracket === "winners");
+  if (winners.length < 3) return [];
+  const finalRound = Math.max(...winners.map((m) => m.round));
+  return winners
+    .filter((m) => m.round === finalRound - 1 && m.saved && m.loser && m.loser.id !== "bye")
+    .map((m) => m.loser);
+}
+
 const BYE_PAIR = { id: "bye", p1: "BYE", p2: "BYE" };
 
 // Con { consolation: false } es eliminación directa pura (Mundialito y Liga); por defecto incluye

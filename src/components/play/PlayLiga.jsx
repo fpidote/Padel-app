@@ -1,7 +1,7 @@
 // src/components/play/PlayLiga.jsx
 import { useState } from "react";
 import { generateRules } from "../../logic/constants";
-import { advanceBracket, unadvanceBracket, canEditBracketMatch, bracketRoundName } from "../../logic/relampago";
+import { advanceBracket, unadvanceBracket, canEditBracketMatch, bracketRoundName, bracketPodium, bracketSemifinalLosers } from "../../logic/relampago";
 import {
   recomputeLigaStandings,
   buildLigaKnockout,
@@ -11,16 +11,20 @@ import {
   canReopenLiga,
   reopenLigaPatch,
   clearLigaMatch,
+  ligaCanFinish,
+  finishPatch,
 } from "../../logic/liga";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import MatchCard from "../shared/MatchCard";
 import PairStandings from "../shared/PairStandings";
+import PodiumCard from "../shared/PodiumCard";
+import { showToast } from "../../logic/toast";
 import { sortStandings, standingsLabels } from "../../logic/standings";
 
 export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTournament }) {
   const [tab, setTab] = useState("fixture");
   const [ls, setLs] = useState({});
-  const [confirm, setConfirm] = useState(null); // { kind: "delete" | "start" | "reopen", matchId? }
+  const [confirm, setConfirm] = useState(null); // { kind: "delete" | "start" | "reopen" | "finish", matchId? }
 
   const playoffEnabled = !!t.config?.playoffEnabled;
   const locked = ligaResultsLocked(t);
@@ -82,6 +86,17 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
     }
   }
 
+  async function onFinishTournament() {
+    setConfirm(null);
+    if (!ligaCanFinish(t)) return;
+    try {
+      await persist({ ...t, ...finishPatch() });
+    } catch (err) {
+      console.error("Error al finalizar el torneo:", err);
+      showToast("No se pudo finalizar el torneo. Inténtalo de nuevo.");
+    }
+  }
+
   async function onSetRoundDate(roundNum, date) {
     const updatedRounds = rounds.map((r) =>
       r.round === roundNum ? { ...r, date: date || null } : r,
@@ -124,7 +139,12 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
     await persist({ ...t, knockoutBracket: unadvanceBracket(t.knockoutBracket, matchId) });
   }
 
+  const finished = t.status === "finished";
   const thirdMatch = t.knockoutBracket?.find((m) => m.bracket === "third");
+  const podium = bracketPodium(t.knockoutBracket);
+  const qualifiedIds = t.knockoutBracket
+    ? new Set(t.knockoutBracket.flatMap((m) => [m.pairA?.id, m.pairB?.id]).filter((id) => id !== undefined && id !== null && id !== "bye"))
+    : null;
   const koRounds = t.knockoutBracket
     ? [...new Set(t.knockoutBracket.map((m) => m.round))].sort((a, b) => a - b)
     : [];
@@ -159,7 +179,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
       <div className="px-4">
         {tab === "fixture" && (
           <div className="flex flex-col gap-3 mt-4">
-            {locked && (
+            {locked && t.phase === "playoff" && (
               <div className="bg-[#1f2937] border border-[#374151] rounded-2xl px-4 py-3 text-xs text-gray-400 text-center">
                 🔒 Resultados de la liga cerrados: la fase final ya está en marcha con esta tabla.
               </div>
@@ -169,6 +189,19 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                 <div className="text-3xl">🏆</div>
                 <div className="text-yellow-400 font-black text-xs uppercase tracking-wide mt-1">Campeón de la Liga</div>
                 <div className="text-gray-50 font-black text-lg mt-1">{champion.p1} / {champion.p2}</div>
+              </div>
+            )}
+            {!playoffEnabled && isAdmin && ligaCanFinish(t) && (
+              <button
+                onClick={() => setConfirm({ kind: "finish" })}
+                className="w-full bg-[#10b981] text-white font-bold rounded-xl py-4 text-base cursor-pointer border-0"
+              >
+                🏁 Finalizar torneo
+              </button>
+            )}
+            {!playoffEnabled && finished && (
+              <div className="bg-[#1f2937] border border-[#374151] rounded-2xl px-4 py-3 text-xs text-gray-400 text-center">
+                🏁 Torneo finalizado: los resultados están cerrados.
               </div>
             )}
             {rounds
@@ -208,19 +241,50 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
 
         {tab === "standings" && (
           <div className="mt-4">
+            {playoffEnabled && (
+              <PodiumCard
+                podium={podium}
+                hasThird={!!thirdMatch}
+                semifinalists={bracketSemifinalLosers(t.knockoutBracket)}
+                finished={finished}
+              />
+            )}
             <PairStandings
               pairs={t.pairs || []}
-              title="Tabla de posiciones"
+              title={playoffEnabled ? "Tabla de la liga" : "Tabla de posiciones"}
               scoringFormat={t.config?.scoringFormat || "sets3"}
               config={t.config}
               matches={matches}
+              medals={!playoffEnabled}
+              qualified={qualifiedIds}
               extra={
                 <p className="text-xs text-gray-500 mb-3">
+                  {playoffEnabled && "Esta es la tabla de la liga regular: el campeón se decide en la eliminatoria. "}
                   Victoria = 1 punto · Derrota = 0 puntos · Desempate: partido entre las igualadas y luego diferencia de{" "}
                   {bySets ? "sets y luego de games" : standingsLabels(t.config).unit === "points" ? "puntos" : "games"}
                 </p>
               }
             />
+            {playoffEnabled && t.knockoutBracket && (
+              <div className="bg-[#0f172a] rounded-xl overflow-hidden mb-4">
+                <div className="px-4 pt-3.5 pb-2.5 text-base font-black text-[#f1f5f9]">⚡ Fase final</div>
+                {[...koRounds.map((round) => ({ key: round, title: bracketRoundName(round, Math.max(...koRounds)), bracket: "winners", round })),
+                  ...(thirdMatch ? [{ key: "third", title: "3.º y 4.º puesto", bracket: "third", round: thirdMatch.round }] : [])].map((sec) => (
+                  <div key={sec.key} className="px-4 pb-3">
+                    <div className="mb-1.5 text-[11px] font-bold uppercase text-gray-500">{sec.title}</div>
+                    {t.knockoutBracket
+                      .filter((m) => m.round === sec.round && (sec.bracket === "third" ? m.bracket === "third" : m.bracket !== "third") && m.pairA && m.pairB && m.pairA.id !== "bye" && m.pairB.id !== "bye")
+                      .map((m) => (
+                        <div key={m.id} className="mb-1.5 flex items-center gap-2 rounded-lg bg-[#1f2937] px-3 py-2 text-[13px]">
+                          <span className={`flex-1 text-right ${m.saved && m.winner?.id === m.pairA.id ? "font-extrabold text-gray-50" : "text-gray-400"}`}>{m.pairA.p1} / {m.pairA.p2}</span>
+                          <span className="min-w-[44px] text-center font-black text-sky-400">{m.saved ? `${m.scoreA} - ${m.scoreB}` : "vs"}</span>
+                          <span className={`flex-1 text-left ${m.saved && m.winner?.id === m.pairB.id ? "font-extrabold text-gray-50" : "text-gray-400"}`}>{m.pairB.p1} / {m.pairB.p2}</span>
+                        </div>
+                      ))}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -251,6 +315,19 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                     <div className="text-gray-50 font-black text-lg mt-1">{champion.p1} / {champion.p2}</div>
                   </div>
                 )}
+                {isAdmin && playoffEnabled && ligaCanFinish(t) && (
+                  <button
+                    onClick={() => setConfirm({ kind: "finish" })}
+                    className="w-full bg-[#10b981] text-white font-bold rounded-xl py-4 text-base cursor-pointer border-0"
+                  >
+                    🏁 Finalizar torneo
+                  </button>
+                )}
+                {finished && (
+                  <div className="bg-[#1f2937] border border-[#374151] rounded-2xl px-4 py-3 text-xs text-gray-400 text-center">
+                    🏁 Torneo finalizado: los resultados están cerrados.
+                  </div>
+                )}
                 {koRounds.map((round) => (
                   <div key={round}>
                     <div className="text-gray-400 font-bold mb-2 uppercase text-xs tracking-wide">
@@ -267,12 +344,12 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                           setLs={setLs}
                           onSave={onSaveKnockoutMatch}
                           onEdit={
-                            canEditBracketMatch(t.knockoutBracket, match.id)
+                            !finished && canEditBracketMatch(t.knockoutBracket, match.id)
                               ? onEditKnockoutMatch
                               : undefined
                           }
                           locked={
-                            match.saved && !canEditBracketMatch(t.knockoutBracket, match.id)
+                            match.saved && (finished || !canEditBracketMatch(t.knockoutBracket, match.id))
                           }
                           accentColor="#db2777"
                           scoringFormat={t.config?.scoringFormat || "sets3"}
@@ -335,6 +412,15 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
           danger={false}
           onClose={() => setConfirm(null)}
           onConfirm={onStartKnockout}
+        />
+      )}
+      {confirm?.kind === "finish" && (
+        <SimpleModal
+          icon="🏁"
+          message="Al finalizar el torneo los resultados se cierran y ya no se podrán modificar. ¿Finalizar el torneo?"
+          confirmLabel="Finalizar"
+          onClose={() => setConfirm(null)}
+          onConfirm={onFinishTournament}
         />
       )}
       {confirm?.kind === "reopen" && (

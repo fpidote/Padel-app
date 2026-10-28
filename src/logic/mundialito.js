@@ -1,6 +1,6 @@
 // ── Mundialito Logic ─────────────────────────────────────────
 import { shuffle } from "./utils";
-import { buildBracket, firstRoundSeedPairs, hasPlayedRealMatch } from "./relampago";
+import { buildBracket, firstRoundSeedPairs, hasPlayedRealMatch, bracketComplete } from "./relampago";
 import { sortStandings, winsOf } from "./standings";
 export function buildGroups(pairs, groupCount) {
   const shuffled = shuffle(pairs);
@@ -267,12 +267,17 @@ export function knockoutByesText({ qualifiers, byes, groups = 2 }) {
 // Los resultados de grupos se cierran al iniciar la eliminatoria: el cuadro sale de esas tablas y
 // modificarlas lo dejaría incoherente.
 export function mundialitoGroupsLocked(t) {
-  return t?.phase === "knockout";
+  return t?.phase === "knockout" || t?.status === "finished";
 }
 
 // Se puede volver a la fase de grupos mientras no se haya jugado ningún partido real de la eliminatoria.
 export function canReopenMundialito(t) {
-  return t?.phase === "knockout" && !hasPlayedRealMatch(t.knockoutBracket);
+  return t?.status !== "finished" && t?.phase === "knockout" && !hasPlayedRealMatch(t.knockoutBracket);
+}
+
+// ¿Se puede cerrar el torneo? Con la fase final completa (final y, si hay, partido por el 3.º puesto).
+export function mundialitoCanFinish(t) {
+  return !!t && t.status !== "finished" && t.phase === "knockout" && bracketComplete(t.knockoutBracket);
 }
 
 export function reopenMundialitoPatch() {
