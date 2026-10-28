@@ -265,7 +265,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-gray-400 font-semibold block mb-1.5">Nombre del torneo</label>
-                <input value={localName} onChange={e => handleName(e.target.value)} className={inputCls} />
+                <input data-testid="input-tournament-name" value={localName} onChange={e => handleName(e.target.value)} className={inputCls} />
               </div>
               <div>
                 <label className="text-xs text-gray-400 font-semibold block mb-1.5">

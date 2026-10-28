@@ -1,5 +1,11 @@
 import { TOURNAMENT_TYPES } from "./constants";
 
+// "Torneo Americano", pero "Torneo por grupos" ya empieza por Torneo
+function defaultName(type) {
+  const name = TOURNAMENT_TYPES.find((x) => x.id === type).name;
+  return /^torneo\b/i.test(name) ? name : `Torneo ${name}`;
+}
+
 export function buildInitialTournament(type, ownerUid) {
   const base = {
     ver: 1,
@@ -7,7 +13,7 @@ export function buildInitialTournament(type, ownerUid) {
     type,
     ownerUid,
     config: {
-      name: `Torneo ${TOURNAMENT_TYPES.find((x) => x.id === type).name}`,
+      name: defaultName(type),
       courts: 2,
       scoringSystem: "timed",
       matchMinutes: 10,
