@@ -5,6 +5,13 @@
 // estado del servidor y no se escribe nada.
 import { VersionConflictError } from "./saveQueue";
 
+// Identificador de cada guardado. crypto.randomUUID no existe en Safari anterior a 15.4 ni fuera de HTTPS,
+// y solo hace falta que sea único por guardado.
+export function newWriteId() {
+  if (typeof globalThis.crypto?.randomUUID === "function") return globalThis.crypto.randomUUID();
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+}
+
 // tx: transacción de Firestore (get/set). baseVer: versión del último estado que esta pantalla sabe guardado.
 export async function applyVersionedWrite(tx, ref, state, baseVer) {
   const snap = await tx.get(ref);

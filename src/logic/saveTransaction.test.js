@@ -53,3 +53,20 @@ describe("applyVersionedWrite", () => {
     expect(tx.set).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("newWriteId", () => {
+  it("T-SV-20: devuelve un identificador distinto en cada llamada aunque no exista crypto.randomUUID", async () => {
+    const { newWriteId } = await import("./saveTransaction");
+    const original = globalThis.crypto;
+    vi.stubGlobal("crypto", {});
+    try {
+      const a = newWriteId();
+      const b = newWriteId();
+      expect(typeof a).toBe("string");
+      expect(a.length).toBeGreaterThan(8);
+      expect(a).not.toBe(b);
+    } finally {
+      vi.stubGlobal("crypto", original);
+    }
+  });
+});

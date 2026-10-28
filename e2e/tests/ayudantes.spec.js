@@ -147,3 +147,10 @@ test("el dueño añade ayudantes desde la pantalla, confirma el correo y el sext
   await modal.getByRole("button", { name: "Quitar" }).first().click();
   await expect(modal.getByTestId("ayudante")).toHaveCount(4);
 });
+
+test("el dueño sigue siéndolo aunque un ayudante cambie el ownerUid guardado dentro de data", async ({ browser }) => {
+  await seedTournament(CODE, { ...liga(), ownerUid: "otra-persona" });
+  const dueno = await abrir(browser, {});
+  await expect(dueno.getByText("✏️ Editar torneo")).toBeVisible({ timeout: 8000 });
+  await expect(dueno.getByTestId("btn-ayudantes")).toBeVisible();
+});

@@ -152,7 +152,7 @@ setT(data);
 
 - Organizadores: **Google Auth** (`signInWithPopup` con `GoogleAuthProvider`)
 - Espectadores/jugadores: sin sesión
-- **Dueño** (`isOwner`): `auth.currentUser.uid === t.ownerUid`. Es el único que prepara, lanza, edita y borra el torneo y gestiona ayudantes.
+- **Dueño** (`isOwner`): `auth.currentUser.uid` igual al `ownerUid` de **primer nivel** del documento (`tournamentOwnerUid`; el de dentro de `data` lo puede reescribir un ayudante). Es el único que prepara, lanza, edita y borra el torneo y gestiona ayudantes.
 - **Ayudante** (`isHelper`): alguien con sesión de Google y correo verificado cuyo documento existe en `torneos/{code}/helpers/{correo en minúsculas}`; el dueño lo añade desde "👥 Ayudantes" (máximo 5, solo en la pantalla). Puede cargar y corregir resultados, pasar de ronda y finalizar. `canScore = isOwner || isHelper` es lo que reciben los `Play*` como `isAdmin`; los `Setup*` reciben `isOwner`. El correo se lee de los claims del token (lo mismo que miran las reglas) con una sola lectura de su propio documento, sin listener.
 - Los permisos **no** usan localStorage — son puro Firebase Auth. "Solo resultados" se aplica en la pantalla, no en el servidor (el torneo es un único bloque `data`): el ayudante debe ser de confianza
 
@@ -346,7 +346,7 @@ useEffect(() => {
 - **Admin**: verificado siempre via `auth.currentUser.uid === t.ownerUid`
 - **Nunca** usar `localStorage` para determinar permisos de admin
 - **Nunca** confiar en datos del cliente para operaciones sensibles
-- Las Firestore Rules (`firestore.rules`) validan `ownerUid`, los campos permitidos del documento y que quien crea no sea una sesión anónima; la subcolección `torneos/{code}/matches` (hoy sin uso: el Pozo ya no registra partidos) solo la escribe y la lee el dueño. La subcolección `torneos/{code}/helpers/{correo}` (ayudantes) solo la lista, crea y borra el dueño y cada ayudante lee únicamente su propio documento, así el documento público del torneo no expone correos; un ayudante puede actualizar solo `data` (no `ownerUid`, `createdAt` ni campos extra), nunca crear ni borrar el torneo. Cualquier cambio en las reglas se cubre en `firestore.rules.test.js` (`npm run test:rules`, usa `vitest.rules.config.js`; si ya hay un emulador de Firestore levantado en el 8080, `npx vitest run --config vitest.rules.config.js` corre contra él) y se despliega a mano con `firebase deploy --only firestore:rules`
+- Al borrar un torneo desde el panel se borran antes sus ayudantes (`deleteTournamentWithHelpers`), porque sin el documento las reglas ya no dejan tocarlos. Las Firestore Rules (`firestore.rules`) validan `ownerUid`, los campos permitidos del documento y que quien crea no sea una sesión anónima; la subcolección `torneos/{code}/matches` (hoy sin uso: el Pozo ya no registra partidos) solo la escribe y la lee el dueño. La subcolección `torneos/{code}/helpers/{correo}` (ayudantes) solo la lista, crea y borra el dueño y cada ayudante lee únicamente su propio documento, así el documento público del torneo no expone correos; un ayudante puede actualizar solo `data` (no `ownerUid`, `createdAt` ni campos extra), nunca crear ni borrar el torneo. Cualquier cambio en las reglas se cubre en `firestore.rules.test.js` (`npm run test:rules`, usa `vitest.rules.config.js`; si ya hay un emulador de Firestore levantado en el 8080, `npx vitest run --config vitest.rules.config.js` corre contra él) y se despliega a mano con `firebase deploy --only firestore:rules`
 
 ---
 

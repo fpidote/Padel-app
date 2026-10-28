@@ -1,10 +1,11 @@
 // src/Panel.jsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { collection, query, where, orderBy, onSnapshot, deleteDoc, doc } from "firebase/firestore";
+import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { db, auth } from "./firebase";
 import { TOURNAMENT_TYPES } from "./logic/constants";
+import { deleteTournamentWithHelpers } from "./hooks/useHelpers";
 import { SimpleModal } from "./components/shared/Components";
 
 const STATUS = {
@@ -66,7 +67,7 @@ export default function Panel() {
       onConfirm: async () => {
         try {
           setModalMsg(null);
-          await deleteDoc(doc(db, "torneos", code));
+          await deleteTournamentWithHelpers(code);
         } catch (err) {
           console.error("Error al eliminar torneo:", err);
           setModalMsg({ message: "No se pudo eliminar el torneo. Intentá de nuevo." });

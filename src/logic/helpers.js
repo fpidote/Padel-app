@@ -16,3 +16,9 @@ export function validateNewHelper(raw, currentEmails) {
   if ((currentEmails || []).length >= MAX_HELPERS) return `Máximo ${MAX_HELPERS} ayudantes por torneo`;
   return null;
 }
+
+// Dueño del torneo: manda el campo de primer nivel del documento, que las reglas protegen. El ownerUid que
+// va dentro de `data` lo puede reescribir un ayudante, así que solo se usa si el documento no trae el otro.
+export function tournamentOwnerUid(docOwnerUid, data) {
+  return docOwnerUid || data?.ownerUid || null;
+}

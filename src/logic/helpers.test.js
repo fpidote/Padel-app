@@ -46,3 +46,15 @@ describe("validateNewHelper", () => {
     expect(validateNewHelper("nuevo@gmail.com", cinco)).toBe("Máximo 5 ayudantes por torneo");
   });
 });
+
+describe("tournamentOwnerUid", () => {
+  it("T-HLP-20: manda el campo de primer nivel del documento sobre el ownerUid de data", async () => {
+    const { tournamentOwnerUid } = await import("./helpers");
+    expect(tournamentOwnerUid("dueno", { ownerUid: "ayudante" })).toBe("dueno");
+  });
+
+  it("T-HLP-21: si el documento no trae ownerUid de primer nivel usa el de data", async () => {
+    const { tournamentOwnerUid } = await import("./helpers");
+    expect(tournamentOwnerUid(undefined, { ownerUid: "dueno" })).toBe("dueno");
+  });
+});

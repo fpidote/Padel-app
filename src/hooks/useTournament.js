@@ -5,9 +5,9 @@ import { onAuthStateChanged, signInWithPopup } from "firebase/auth";
 import { db, auth, googleProvider } from "../firebase";
 import { buildShareMessage } from "../logic/utils";
 import { showToast } from "../logic/toast";
-import { normalizeEmail } from "../logic/helpers";
+import { normalizeEmail, tournamentOwnerUid } from "../logic/helpers";
 import { createSaveQueue } from "../logic/saveQueue";
-import { applyVersionedWrite } from "../logic/saveTransaction";
+import { applyVersionedWrite, newWriteId } from "../logic/saveTransaction";
 
 export function useTournament(code) {
   const [authUser, setAuthUser] = useState(null);
@@ -18,10 +18,11 @@ export function useTournament(code) {
   const [sessionExpired, setSessionExpired] = useState(false);
 
   // Dueño: quien creó el torneo. Ayudante: alguien con sesión cuyo correo (verificado) añadió el dueño.
-  const isOwner = !!(authUser?.uid && t?.ownerUid && authUser.uid === t.ownerUid);
+  const [ownerUid, setOwnerUid] = useState(null);
+  const isOwner = !!(authUser?.uid && ownerUid && authUser.uid === ownerUid);
   const [isHelper, setIsHelper] = useState(false);
   const canScore = isOwner || isHelper;
-  const hasTournament = !!t?.ownerUid;
+  const hasTournament = !!ownerUid;
 
   const verRef = useRef(null);
   const wasAdminRef = useRef(false);
@@ -112,6 +113,7 @@ export function useTournament(code) {
     verRef.current = null;
     queueRef.current.confirm(null);
     setT(null);
+    setOwnerUid(null);
     setNotFound(false);
     setError(null);
     const unsub = onSnapshot(
@@ -131,6 +133,7 @@ export function useTournament(code) {
         }
         if (!data || data.ver <= verRef.current) return;
         verRef.current = data.ver;
+        setOwnerUid(tournamentOwnerUid(snap.data().ownerUid, data));
         queueRef.current.confirm(data);
         setT(data);
       },
@@ -157,7 +160,7 @@ export function useTournament(code) {
       showToast("El torneo todavía se está cargando. Inténtalo de nuevo en un momento.");
       return;
     }
-    const updated = { ...newT, ver: Math.max(newT.ver || 0, verRef.current ?? 0) + 1, writeId: crypto.randomUUID() };
+    const updated = { ...newT, ver: Math.max(newT.ver || 0, verRef.current ?? 0) + 1, writeId: newWriteId() };
     verRef.current = updated.ver;
     setT(updated);
     setSaving(true);

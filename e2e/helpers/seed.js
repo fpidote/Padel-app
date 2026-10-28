@@ -98,3 +98,12 @@ export async function addHelper(code, email) {
 export async function removeHelper(code, email) {
   await db().collection("torneos").doc(code).collection("helpers").doc(email.toLowerCase()).delete();
 }
+
+export async function listHelpers(code) {
+  const snap = await db().collection("torneos").doc(code).collection("helpers").get();
+  return snap.docs.map((d) => d.id);
+}
+
+export async function tournamentExists(code) {
+  return (await db().collection("torneos").doc(code).get()).exists;
+}

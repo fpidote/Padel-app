@@ -57,3 +57,11 @@ export function useHelpers(code, enabled) {
 
   return { helpers, loading, add, remove };
 }
+
+// Borra el torneo y sus ayudantes. La subcolección no se borra con el documento y, una vez borrado este,
+// las reglas ya no dejan al dueño tocarla: por eso los ayudantes se borran primero.
+export async function deleteTournamentWithHelpers(code) {
+  const snap = await getDocs(collection(db, "torneos", code, "helpers"));
+  await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+  await deleteDoc(doc(db, "torneos", code));
+}
