@@ -8,6 +8,7 @@ import { GroupsPreview, FixturePreview, BracketPreview, PozoPreview } from "./Dr
 import { hasDraw, drawIsRandom, drawKey, buildStartDraw, startPatch } from "../../logic/launchDraw";
 import { matchFormatSummary } from "../../logic/matchFormat";
 import { ligaQualifierOptions, ligaQualifiers, ligaThirdPlace } from "../../logic/liga";
+import { relampagoSetupStatus } from "../../logic/relampago";
 
 function SectionHeader({ children }) {
   return (
@@ -61,7 +62,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
   const isLigaType = t.type === "liga";
   const act       = isLigaType ? 2 : isMixer ? t.config.courts * 4 : t.config.courts * 2;
   const tot       = isMixer ? players.length : pairs.length;
-  const sit       = isLigaType ? tot % 2 : Math.max(0, tot - act);
+  const sit       = isLigaType ? tot % 2 : t.type === "relampago" ? 0 : Math.max(0, tot - act);
   const need      = Math.max(0, act - tot);
 
   const statusBg  = need > 0 ? "bg-red-400/10 border-red-400/20"    : sit > 0 ? "bg-yellow-400/10 border-yellow-400/20"    : "bg-green-400/10 border-green-400/20";
@@ -78,6 +79,8 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
       : sit === 0
         ? `✅ Pistas completas (Nadie descansa)`
         : `⏳ Descansan ${sit} ${isMixer ? "jugadores" : "parejas"} por ronda`
+    : t.type === "relampago"
+    ? relampagoSetupStatus(tot, need)
     : `${tot} parejas · ${t.config.courts} pistas · ${Math.min(tot, act)} juegan` +
       (sit > 0 ? ` · ⏳ ${sit} descansan` : need > 0 ? ` · ⚠️ faltan ${need}` : " · ✓ listo");
 

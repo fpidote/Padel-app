@@ -54,6 +54,16 @@ export function relampagoPodium(bracket) {
   return { champion, runnerUp, third };
 }
 
+// Aviso al armar el cuadro. En eliminación no "descansa" nadie: las parejas que sobran hasta la
+// siguiente potencia de 2 pasan directo a la segunda ronda.
+export function relampagoSetupStatus(pairCount, missing = 0) {
+  if (missing > 0) return `⚠️ Faltan ${missing} ${missing === 1 ? "pareja" : "parejas"}`;
+  let size = 1;
+  while (size < pairCount) size *= 2;
+  const byes = size - pairCount;
+  return `${pairCount} parejas` + (byes > 0 ? ` · ${byes} ${byes === 1 ? "pasa" : "pasan"} directo en la 1.ª ronda` : " · ✓ listo");
+}
+
 // ¿Se puede cerrar el torneo? Con todo el cuadro jugado, revancha incluida, y solo una vez.
 export function relampagoCanFinish(t) {
   return !!t && t.status !== "finished" && bracketComplete(t.bracket);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildBracket, advanceBracket, unadvanceBracket, countPlayed, firstRoundSeedPairs, canEditBracketMatch, hasPlayedRealMatch, bracketRoundName, bracketPodium, bracketComplete, bracketSemifinalLosers, relampagoPodium, relampagoCanFinish } from "./relampago.js";
+import { buildBracket, advanceBracket, unadvanceBracket, countPlayed, firstRoundSeedPairs, canEditBracketMatch, hasPlayedRealMatch, bracketRoundName, bracketPodium, bracketComplete, bracketSemifinalLosers, relampagoPodium, relampagoCanFinish, relampagoSetupStatus } from "./relampago.js";
 import { generateRules, TOURNAMENT_TYPES } from "./constants.js";
 
 function makePairs(n) {
@@ -655,5 +655,23 @@ describe("relampagoCanFinish — cuándo se puede finalizar el torneo", () => {
     const t = { status: "playing", bracket: jugar(buildBracket(makePairs(8))) };
     expect(relampagoCanFinish(t)).toBe(true);
     expect(relampagoCanFinish({ ...t, status: "finished" })).toBe(false);
+  });
+});
+
+describe("relampagoSetupStatus — aviso al armar el cuadro", () => {
+  it("con potencia de 2 no hay pases directos", () => {
+    expect(relampagoSetupStatus(8, 0)).toBe("8 parejas · ✓ listo");
+  });
+
+  it("indica cuántas parejas pasan directo en la primera ronda, sin hablar de pistas ni de descansos", () => {
+    expect(relampagoSetupStatus(6, 0)).toBe("6 parejas · 2 pasan directo en la 1.ª ronda");
+    expect(relampagoSetupStatus(7, 0)).toBe("7 parejas · 1 pasa directo en la 1.ª ronda");
+    expect(relampagoSetupStatus(5, 0)).toBe("5 parejas · 3 pasan directo en la 1.ª ronda");
+    expect(relampagoSetupStatus(6, 0)).not.toMatch(/descansan|juegan|pistas/);
+  });
+
+  it("si faltan parejas lo dice, en singular y plural", () => {
+    expect(relampagoSetupStatus(2, 2)).toBe("⚠️ Faltan 2 parejas");
+    expect(relampagoSetupStatus(3, 1)).toBe("⚠️ Faltan 1 pareja");
   });
 });

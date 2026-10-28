@@ -1,5 +1,5 @@
 // src/components/play/PlayRelampago.jsx
-import { useState, Fragment } from "react";
+import { useState, useRef, useEffect, Fragment } from "react";
 import { generateRules } from "../../logic/constants";
 import { advanceBracket, unadvanceBracket, canEditBracketMatch, countPlayed, bracketRoundName, relampagoPodium, relampagoCanFinish } from "../../logic/relampago";
 import { analyzeSets } from "../../logic/sets";
@@ -71,6 +71,21 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, canEdit =
     );
   }
 
+  function save() {
+    if (isSetFormat) onSave(match.id, live.setsA, live.setsB, live.sets);
+    else onSave(match.id, parseInt(aVal), parseInt(bVal));
+    setExpanded(false);
+  }
+
+  // Sin signos ni decimales en el marcador; Enter guarda cuando el resultado ya es válido
+  function onScoreKey(e) {
+    if (["-", "e", ".", ","].includes(e.key)) e.preventDefault();
+    else if (e.key === "Enter" && canSave) {
+      e.preventDefault();
+      save();
+    }
+  }
+
   function handleCardClick() {
     if (!isAdmin || isTBD || isBye || match.saved) return;
     setExpanded(!expanded);
@@ -113,7 +128,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, canEdit =
             value={aVal}
             onClick={(e) => e.stopPropagation()}
             onChange={(e) => setLs((prev) => ({ ...prev, [`${match.id}_A`]: e.target.value }))}
-            onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
+            onKeyDown={onScoreKey}
             className="w-9 h-7 rounded-md bg-[#0f172a] border border-[#334155] text-center text-sky-400 font-bold text-sm outline-none"
           />
         ) : (
@@ -137,7 +152,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, canEdit =
             value={bVal}
             onClick={(e) => e.stopPropagation()}
             onChange={(e) => setLs((prev) => ({ ...prev, [`${match.id}_B`]: e.target.value }))}
-            onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
+            onKeyDown={onScoreKey}
             className="w-9 h-7 rounded-md bg-[#0f172a] border border-[#334155] text-center text-sky-400 font-bold text-sm outline-none"
           />
         ) : (
@@ -170,7 +185,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, canEdit =
                     value={ls[`${match.id}_set${i}_${side}`] ?? ""}
                     onClick={(e) => e.stopPropagation()}
                     onChange={(e) => setLs((prev) => ({ ...prev, [`${match.id}_set${i}_${side}`]: e.target.value }))}
-                    onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
+                    onKeyDown={onScoreKey}
                     className={`w-9 h-7 rounded-md bg-[#0f172a] border text-center text-sm font-bold text-sky-400 outline-none ${live.errorIndex === i ? "border-red-500/60" : "border-[#334155]"}`}
                   />
                 </Fragment>
@@ -189,9 +204,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, canEdit =
         <button
           onClick={(e) => {
             e.stopPropagation();
-            if (isSetFormat) onSave(match.id, live.setsA, live.setsB, live.sets);
-            else onSave(match.id, parseInt(aVal), parseInt(bVal));
-            setExpanded(false);
+            save();
           }}
           className="mt-2 w-full py-[5px] rounded-md text-white font-bold text-xs border-0 cursor-pointer"
           style={{ background: accentColor }}
@@ -219,6 +232,20 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, canEdit =
 function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, canEditMatch = () => true, accentColor, scoringFormat }) {
   // La tarjeta abierta se eleva: con sets es más alta que su slot y se solaparía con la siguiente
   const [openId, setOpenId] = useState(null);
+  const scrollRef = useRef(null);
+  const [canScrollMore, setCanScrollMore] = useState(false);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return undefined;
+    const check = () => setCanScrollMore(el.scrollWidth - el.clientWidth - el.scrollLeft > 8);
+    check();
+    el.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("resize", check);
+    return () => {
+      el.removeEventListener("scroll", check);
+      window.removeEventListener("resize", check);
+    };
+  }, [matches.length]);
   const rounds = [...new Set(matches.map((m) => m.round))].sort((a, b) => a - b);
   if (rounds.length === 0) return null;
 
@@ -239,7 +266,13 @@ function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, canEditMatch
   }
 
   return (
-    <div className="flex flex-row overflow-x-auto items-start p-[16px_8px] min-h-[300px]">
+    <>
+    {canScrollMore && (
+      <div data-testid="bracket-scroll-hint" className="text-center text-[11px] font-semibold text-slate-400">
+        Desliza → para ver el resto del cuadro
+      </div>
+    )}
+    <div ref={scrollRef} className="flex flex-row overflow-x-auto items-start p-[16px_8px] min-h-[300px]">
       {rounds.map((round, ri) => {
         const roundMatches = matchesByRound[round];
         const label = bracketRoundName(round, maxRound);
@@ -323,6 +356,7 @@ function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, canEditMatch
         );
       })}
     </div>
+    </>
   );
 }
 
