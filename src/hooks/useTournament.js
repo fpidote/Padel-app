@@ -1,10 +1,11 @@
 // src/hooks/useTournament.js
 import { useState, useEffect, useRef } from "react";
-import { onSnapshot, doc, runTransaction } from "firebase/firestore";
+import { onSnapshot, doc, getDoc, runTransaction } from "firebase/firestore";
 import { onAuthStateChanged, signInWithPopup } from "firebase/auth";
 import { db, auth, googleProvider } from "../firebase";
 import { buildShareMessage } from "../logic/utils";
 import { showToast } from "../logic/toast";
+import { normalizeEmail } from "../logic/helpers";
 import { createSaveQueue } from "../logic/saveQueue";
 import { applyVersionedWrite } from "../logic/saveTransaction";
 
@@ -16,7 +17,11 @@ export function useTournament(code) {
   const [saving, setSaving] = useState(false);
   const [sessionExpired, setSessionExpired] = useState(false);
 
-  const isAdmin = !!(authUser?.uid && t?.ownerUid && authUser.uid === t.ownerUid);
+  // Dueño: quien creó el torneo. Ayudante: alguien con sesión cuyo correo (verificado) añadió el dueño.
+  const isOwner = !!(authUser?.uid && t?.ownerUid && authUser.uid === t.ownerUid);
+  const [isHelper, setIsHelper] = useState(false);
+  const canScore = isOwner || isHelper;
+  const hasTournament = !!t?.ownerUid;
 
   const verRef = useRef(null);
   const wasAdminRef = useRef(false);
@@ -42,7 +47,11 @@ export function useTournament(code) {
           verRef.current = lastSaved.ver;
           setT(lastSaved);
         }
-        showToast("No se pudieron guardar los cambios. Revisa la conexión e inténtalo de nuevo.");
+        showToast(
+          err?.code === "permission-denied"
+            ? "No tienes permiso para guardar en este torneo. Puede que te hayan quitado el acceso."
+            : "No se pudieron guardar los cambios. Revisa la conexión e inténtalo de nuevo.",
+        );
       },
     });
   }
@@ -51,17 +60,40 @@ export function useTournament(code) {
     return onAuthStateChanged(auth, (user) => setAuthUser(user));
   }, []);
 
+  // ── ¿Soy ayudante de este torneo? ───────────────────────────
+  // Una sola lectura de mi propio documento helpers/{correo}. El correo sale de los claims del token (lo
+  // mismo que miran las reglas). Sin sesión, sin correo verificado o si no existe: no soy ayudante, sin avisos.
+  useEffect(() => {
+    setIsHelper(false);
+    if (!authUser || !hasTournament || isOwner || !code) return undefined;
+    let cancelled = false;
+    authUser
+      .getIdTokenResult()
+      .then(({ claims }) => {
+        const email = normalizeEmail(claims.email);
+        if (!email || claims.email_verified !== true) return null;
+        return getDoc(doc(db, "torneos", code, "helpers", email));
+      })
+      .then((snap) => {
+        if (!cancelled && snap?.exists()) setIsHelper(true);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [authUser, hasTournament, isOwner, code]);
+
   // ── Detección de sesión expirada ────────────────────────────
   // Si el usuario era admin y dejó de serlo porque se deslogueó (no porque
   // cambió el dueño del torneo), avisamos para que se vuelva a autenticar.
   useEffect(() => {
-    if (wasAdminRef.current && !isAdmin && authUser === null) {
+    if (wasAdminRef.current && !isOwner && authUser === null) {
       setSessionExpired(true);
-    } else if (isAdmin) {
+    } else if (isOwner) {
       setSessionExpired(false);
     }
-    wasAdminRef.current = isAdmin;
-  }, [isAdmin, authUser]);
+    wasAdminRef.current = isOwner;
+  }, [isOwner, authUser]);
 
   async function reauthenticate() {
     try {
@@ -143,5 +175,5 @@ export function useTournament(code) {
     }
   }
 
-  return { t, notFound, isAdmin, error, saving, persist, copyCode, sessionExpired, reauthenticate };
+  return { t, notFound, isOwner, isHelper, canScore, signedIn: !!authUser, error, saving, persist, copyCode, sessionExpired, reauthenticate };
 }

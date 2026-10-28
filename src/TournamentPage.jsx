@@ -5,6 +5,8 @@ import { useTournament } from "./hooks/useTournament";
 import { useOnline } from "./hooks/useOnline";
 import { TOURNAMENT_TYPES } from "./logic/constants";
 import { SimpleModal } from "./components/shared/Components";
+import { RoleContext } from "./components/shared/RoleContext";
+import HelpersModal from "./components/shared/HelpersModal";
 
 const SetupAmericano = lazy(() => import('./components/setup/SetupAmericano'));
 const SetupPairs = lazy(() => import('./components/setup/SetupPairs'));
@@ -17,9 +19,10 @@ const PlayLiga = lazy(() => import('./components/play/PlayLiga'));
 export default function TournamentPage() {
   const { code } = useParams();
   const navigate = useNavigate();
-  const { t, notFound, isAdmin, error, saving, persist, copyCode, sessionExpired, reauthenticate } = useTournament(code);
+  const { t, notFound, isOwner, isHelper, canScore, signedIn, error, saving, persist, copyCode, sessionExpired, reauthenticate } = useTournament(code);
   const online = useOnline();
   const [editMode, setEditMode] = useState(false);
+  const [showHelpers, setShowHelpers] = useState(false);
 
   if (notFound)
     return (
@@ -66,14 +69,18 @@ export default function TournamentPage() {
       </div>
     );
 
-  const props = { t, code, isAdmin, saving, persist, copyCode };
+  // Los ayudantes cargan resultados (canScore); preparar, lanzar y editar el torneo es solo del dueño
+  const props = { t, code, isAdmin: canScore, saving, persist, copyCode };
+  const setupProps = { ...props, isAdmin: isOwner };
   const typeInfo = TOURNAMENT_TYPES.find((x) => x.id === t.type) || TOURNAMENT_TYPES[0];
 
   const canEditTournament = !t.scoringStarted;
-  const onEditTournament = canEditTournament ? () => setEditMode(true) : undefined;
+  const onEditTournament = isOwner && canEditTournament ? () => setEditMode(true) : undefined;
+
+  const role = { isHelper, onHelpers: isOwner ? () => setShowHelpers(true) : undefined };
 
   return (
-    <>
+    <RoleContext.Provider value={role}>
       {(!online || error) && (
         <div role="alert" className="sticky top-0 z-50 bg-amber-500/95 text-[#1c1917] text-xs font-bold text-center px-4 py-2">
           {!online
@@ -91,8 +98,8 @@ export default function TournamentPage() {
       <Suspense fallback={<div className="p-4 text-center text-[#f1f5f9]">Cargando torneo...</div>}>
         {(t.status === "setup" || editMode) ? (
           t.type === "americano"
-            ? <SetupAmericano {...props} onExitEdit={editMode ? () => setEditMode(false) : undefined} />
-            : <SetupPairs {...props} typeInfo={typeInfo} onExitEdit={editMode ? () => setEditMode(false) : undefined} />
+            ? <SetupAmericano {...setupProps} onExitEdit={editMode ? () => setEditMode(false) : undefined} />
+            : <SetupPairs {...setupProps} typeInfo={typeInfo} onExitEdit={editMode ? () => setEditMode(false) : undefined} />
         ) : (
           <div className="min-h-screen bg-[#0f172a]">
             <div className="max-w-2xl mx-auto w-full">
@@ -105,6 +112,20 @@ export default function TournamentPage() {
           </div>
         )}
       </Suspense>
-    </>
+      {/* Quien no tiene sesión puede iniciarla aquí (un ayudante entra por el mismo enlace del torneo) */}
+      {!signedIn && (
+        <div className="text-center py-6">
+          <button
+            type="button"
+            data-testid="btn-iniciar-sesion"
+            onClick={reauthenticate}
+            className="text-xs text-[#64748b] hover:text-[#f1f5f9] underline bg-transparent border-0 cursor-pointer"
+          >
+            ¿Eres organizador o ayudante? Iniciar sesión
+          </button>
+        </div>
+      )}
+      {showHelpers && isOwner && <HelpersModal code={code} onClose={() => setShowHelpers(false)} />}
+    </RoleContext.Provider>
   );
 }
