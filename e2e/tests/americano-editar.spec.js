@@ -12,7 +12,8 @@ test.afterEach(async () => {
   await deleteTournament(CODE).catch(() => {});
 });
 
-const pista = async (code, i = 0) => (await getTournamentData(code)).currentRound[i];
+// Justo tras lanzar, el documento puede no tener aún currentRound: devuelve {} para que expect.poll reintente
+const pista = async (code, i = 0) => (await getTournamentData(code))?.currentRound?.[i] ?? {};
 
 test("editar mantiene el resultado para el espectador, se puede cancelar y guardar la corrección", async ({ page, browser }) => {
   await seedTournament(CODE, {
