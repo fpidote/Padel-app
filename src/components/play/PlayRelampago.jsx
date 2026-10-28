@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, Fragment } from "react";
 import { generateRules } from "../../logic/constants";
 import { advanceBracket, canEditBracketMatch, countPlayed, bracketRoundName, relampagoPodium, relampagoCanFinish, relampagoRankingOrder, startEditBracketMatch, cancelEditBracketMatch, correctBracketMatch, adminBracketMatchView } from "../../logic/relampago";
 import { analyzeSets, validateGamesScore } from "../../logic/sets";
-import { blockNonIntegerKey } from "../../logic/scoreInput";
+import { blockNonIntegerKey, goToNextScore } from "../../logic/scoreInput";
 import { applyMatchToPairs } from "../../logic/standings";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import PairStandings from "../shared/PairStandings";
@@ -100,12 +100,13 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
     setExpanded(false);
   }
 
-  // Sin signos ni decimales en el marcador; Enter guarda cuando el resultado ya es válido
+  // Sin signos ni decimales en el marcador; Enter guarda cuando el resultado ya es válido y si no pasa a la casilla siguiente
   function onScoreKey(e) {
     if (["-", "e", ".", ","].includes(e.key)) blockNonIntegerKey(e);
-    else if (e.key === "Enter" && canSave) {
+    else if (e.key === "Enter") {
       e.preventDefault();
-      save();
+      if (canSave) save();
+      else goToNextScore(e.currentTarget);
     }
   }
 
@@ -152,6 +153,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
             onClick={(e) => e.stopPropagation()}
             onChange={(e) => setLs((prev) => ({ ...prev, [`${match.id}_A`]: e.target.value }))}
             onKeyDown={onScoreKey}
+            data-score="" enterKeyHint="next"
             className="w-9 h-7 rounded-md bg-[#0f172a] border border-[#334155] text-center text-sky-400 font-bold text-sm outline-none"
           />
         ) : (
@@ -176,6 +178,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
             onClick={(e) => e.stopPropagation()}
             onChange={(e) => setLs((prev) => ({ ...prev, [`${match.id}_B`]: e.target.value }))}
             onKeyDown={onScoreKey}
+            data-score="" enterKeyHint="next"
             className="w-9 h-7 rounded-md bg-[#0f172a] border border-[#334155] text-center text-sky-400 font-bold text-sm outline-none"
           />
         ) : (
@@ -209,6 +212,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
                     onClick={(e) => e.stopPropagation()}
                     onChange={(e) => setLs((prev) => ({ ...prev, [`${match.id}_set${i}_${side}`]: e.target.value }))}
                     onKeyDown={onScoreKey}
+            data-score="" enterKeyHint="next"
                     className={`w-9 h-7 rounded-md bg-[#0f172a] border text-center text-sm font-bold text-sky-400 outline-none ${live.errorIndex === i ? "border-red-500/60" : "border-[#334155]"}`}
                   />
                 </Fragment>
