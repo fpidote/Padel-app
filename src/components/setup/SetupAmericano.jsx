@@ -741,7 +741,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
                   <div className="bg-[#1f2937] border border-gray-700 rounded-xl px-4 py-3 text-xs text-gray-500">
                     {isPairs
                       ? "El sorteo de la primera ronda se genera al iniciar."
-                      : "Emparejamiento Mexicano: desde ronda 2 los mejores juegan entre sí."}
+                      : "Emparejamiento Mexicano: desde ronda 2 los mejores juegan entre sí, por eso pueden repetirse compañeros y rivales."}
                   </div>
                 )}
 

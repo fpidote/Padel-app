@@ -68,3 +68,15 @@ describe("reglas escritas: cómo se clasifica el Americano", () => {
     expect(text).toContain("partidos ganados");
   });
 });
+
+describe("reglas escritas: Mexicano", () => {
+  it("T-RUL-11: avisa de que los mejores juegan entre sí y por eso pueden repetirse compañeros y rivales", () => {
+    const text = americano({ matchmaking: "mexicano" });
+    expect(text).toContain("pueden repetirse compañeros y rivales");
+    expect(text).toContain("Clásico");
+  });
+
+  it("T-RUL-12: el Clásico no lleva ese aviso", () => {
+    expect(americano({ matchmaking: "americano" })).not.toContain("pueden repetirse");
+  });
+});

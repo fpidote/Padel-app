@@ -97,7 +97,7 @@ export function generateRules(type, config, context = {}) {
         rotationDesc = `${config.mode === "pairs" ? "Gana la pareja" : "Gana el jugador"} con más partidos ganados; si empatan, decide la diferencia de ${metric}.`;
       } else if (config.mode === "individual" || !config.mode) {
         rotationDesc = matchmaking === "mexicano"
-          ? "Emparejamiento Mexicano: desde ronda 2 los mejores juegan entre sí."
+          ? "Emparejamiento Mexicano: desde ronda 2 los mejores juegan entre sí, por eso pueden repetirse compañeros y rivales. Para máxima variedad, usa el Clásico."
           : "Americano: parejas aleatorias cada ronda según clasificación.";
       } else {
         rotationDesc = "Modo parejas: las parejas rotan juntas según su clasificación.";
