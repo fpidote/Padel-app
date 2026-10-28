@@ -112,3 +112,15 @@ describe("MatchCard — marcador por games inválido", () => {
     expect(html).toContain("Gana");
   });
 });
+
+describe("MatchCard — ganador por sets", () => {
+  const open = { ...match, saved: false, scoreA: "", scoreB: "", sets: null };
+  const ls = { m1_set0_A: "4", m1_set0_B: "6", m1_set1_A: "3", m1_set1_B: "6" };
+
+  it("anuncia el resultado en sets desde el lado del ganador (2 a 0, no 0 a 2)", () => {
+    const html = render({ match: open, ls });
+    expect(html).toContain("Eva / Pau");
+    expect(html).toContain("(2 sets a 0)");
+    expect(html).not.toContain("(0 sets a 2)");
+  });
+});

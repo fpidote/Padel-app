@@ -238,7 +238,7 @@ export default function MatchCard({
               {finalScoreA > finalScoreB
                 ? `${match.pairA?.p1} / ${match.pairA?.p2}`
                 : `${match.pairB?.p1} / ${match.pairB?.p2}`}
-              {isSetFormat && ` (${finalScoreA} sets a ${finalScoreB})`}
+              {isSetFormat && ` (${Math.max(finalScoreA, finalScoreB)} sets a ${Math.min(finalScoreA, finalScoreB)})`}
             </div>
           )}
         </div>
