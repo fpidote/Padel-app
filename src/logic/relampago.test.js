@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildBracket, advanceBracket, unadvanceBracket, countPlayed, firstRoundSeedPairs, canEditBracketMatch, hasPlayedRealMatch, bracketRoundName, bracketPodium, bracketComplete, bracketSemifinalLosers, relampagoPodium, relampagoCanFinish, relampagoSetupStatus } from "./relampago.js";
+import { buildBracket, advanceBracket, unadvanceBracket, countPlayed, firstRoundSeedPairs, canEditBracketMatch, hasPlayedRealMatch, bracketRoundName, bracketPodium, bracketComplete, bracketSemifinalLosers, relampagoPodium, relampagoCanFinish, relampagoSetupStatus, startEditBracketMatch, cancelEditBracketMatch, correctBracketMatch, adminBracketMatchView } from "./relampago.js";
 import { generateRules, TOURNAMENT_TYPES } from "./constants.js";
 
 function makePairs(n) {
@@ -673,5 +673,77 @@ describe("relampagoSetupStatus — aviso al armar el cuadro", () => {
   it("si faltan parejas lo dice, en singular y plural", () => {
     expect(relampagoSetupStatus(2, 2)).toBe("⚠️ Faltan 2 parejas");
     expect(relampagoSetupStatus(3, 1)).toBe("⚠️ Faltan 1 pareja");
+  });
+});
+
+describe("corregir un resultado sin perder el anterior (editing)", () => {
+  // 4 parejas: dos semifinales del cuadro principal, ambas jugadas
+  function playedBracket() {
+    let b = buildBracket(makePairs(4));
+    const r1 = b.filter((m) => m.bracket === "winners" && m.round === 1).sort((x, y) => x.matchIndex - y.matchIndex);
+    b = advanceBracket(b, r1[0].id, 6, 3);
+    b = advanceBracket(b, r1[1].id, 6, 4);
+    return { b, r1 };
+  }
+
+  it("T-REL-30: startEditBracketMatch marca la tarjeta y deja intacto el resultado y el cuadro", () => {
+    const { b, r1 } = playedBracket();
+    const out = startEditBracketMatch(b, r1[0].id);
+    const m = out.find((x) => x.id === r1[0].id);
+    expect(m).toMatchObject({ editing: true, saved: true, scoreA: "6", scoreB: "3" });
+    const final = out.find((x) => x.bracket === "winners" && !x.nextMatchId);
+    expect(final.pairA).toEqual(b.find((x) => x.id === final.id).pairA);
+  });
+
+  it("T-REL-31: no deja editar un partido cuyo resultado ya se usó (cerrado)", () => {
+    const { b, r1 } = playedBracket();
+    const final = b.find((x) => x.bracket === "winners" && !x.nextMatchId);
+    const jugado = advanceBracket(b, final.id, 6, 2);
+    const out = startEditBracketMatch(jugado, r1[0].id);
+    expect(out.find((x) => x.id === r1[0].id).editing).toBeFalsy();
+  });
+
+  it("T-REL-32: cancelEditBracketMatch quita la marca sin cambiar nada más", () => {
+    const { b, r1 } = playedBracket();
+    const out = cancelEditBracketMatch(startEditBracketMatch(b, r1[0].id), r1[0].id);
+    expect(out.find((x) => x.id === r1[0].id).editing).toBe(false);
+    expect(out.find((x) => x.id === r1[0].id)).toMatchObject({ saved: true, scoreA: "6", scoreB: "3" });
+  });
+
+  it("T-REL-33: correctBracketMatch con otro ganador cambia a la vez el cuadro y la revancha", () => {
+    const { b, r1 } = playedBracket();
+    const original = b.find((x) => x.id === r1[0].id);
+    const out = correctBracketMatch(startEditBracketMatch(b, r1[0].id), r1[0].id, 2, 6, [{ a: 2, b: 6 }]);
+    const m = out.find((x) => x.id === r1[0].id);
+    expect(m).toMatchObject({ saved: true, editing: false, scoreA: "2", scoreB: "6" });
+    expect(m.sets).toEqual([{ a: 2, b: 6 }]);
+    expect(m.winner.id).toBe(original.pairB.id);
+    const final = out.find((x) => x.bracket === "winners" && !x.nextMatchId);
+    const finalPairs = [final.pairA?.id, final.pairB?.id];
+    expect(finalPairs).toContain(original.pairB.id);
+    expect(finalPairs).not.toContain(original.pairA.id);
+    const cons = out.find((x) => x.id === original.loserMatchId);
+    expect([cons.pairA?.id, cons.pairB?.id]).toContain(original.pairA.id);
+  });
+
+  it("T-REL-34: correctBracketMatch con el mismo ganador solo cambia el marcador", () => {
+    const { b, r1 } = playedBracket();
+    const out = correctBracketMatch(startEditBracketMatch(b, r1[0].id), r1[0].id, 6, 1, null);
+    expect(out.find((x) => x.id === r1[0].id)).toMatchObject({ saved: true, editing: false, scoreA: "6", scoreB: "1" });
+    const final = out.find((x) => x.bracket === "winners" && !x.nextMatchId);
+    expect(final.pairA?.id ?? final.pairB?.id).toBeDefined();
+  });
+
+  it("T-REL-35: adminBracketMatchView abre solo la tarjeta en edición", () => {
+    const { b, r1 } = playedBracket();
+    const [editing] = startEditBracketMatch(b, r1[0].id).filter((x) => x.id === r1[0].id);
+    expect(adminBracketMatchView(editing)).toMatchObject({ saved: false, scoreA: "6" });
+    expect(adminBracketMatchView(b[0])).toBe(b[0]);
+  });
+
+  it("T-REL-36: con una tarjeta en edición no se puede finalizar el torneo", () => {
+    const base = { status: "playing", bracket: [{ id: "a", saved: true }, { id: "b", saved: true, editing: true }] };
+    expect(relampagoCanFinish(base)).toBe(false);
+    expect(relampagoCanFinish({ ...base, bracket: [{ id: "a", saved: true }] })).toBe(true);
   });
 });

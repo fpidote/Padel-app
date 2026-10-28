@@ -49,7 +49,7 @@ test("finalizar pide confirmación, cierra los resultados y el podio queda como 
   await entrarComoAdmin(page);
   const boton = page.getByRole("button", { name: /Finalizar torneo/ });
   await expect(boton).toBeVisible({ timeout: 8000 });
-  await expect(page.getByText("✏️ editar").first()).toBeVisible();
+  await expect(page.getByText("✏️ Corregir resultado").first()).toBeVisible();
 
   await boton.click();
   await expect(page.getByText(/los resultados se cierran/)).toBeVisible();
@@ -60,7 +60,7 @@ test("finalizar pide confirmación, cierra los resultados y el podio queda como 
   await page.locator(".fixed.inset-0").getByRole("button", { name: "Finalizar", exact: true }).click();
   await expect.poll(async () => (await getTournamentData(CODE)).status).toBe("finished");
   await expect(page.getByText(/Torneo finalizado: los resultados están cerrados/)).toBeVisible();
-  await expect(page.getByText("✏️ editar")).toHaveCount(0);
+  await expect(page.getByText("✏️ Corregir resultado")).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Finalizar torneo/ })).toHaveCount(0);
 
   await page.getByRole("button", { name: /Posiciones/ }).click();

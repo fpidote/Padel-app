@@ -72,7 +72,7 @@ export function relampagoCanFinish(t) {
 // ¿Se jugó todo el cuadro? Los pasa directo se resuelven solos, así que basta con que todo esté guardado
 // (incluido el partido por el 3.º puesto si existe).
 export function bracketComplete(bracket) {
-  return !!bracket?.length && bracket.every((m) => m.saved);
+  return !!bracket?.length && bracket.every((m) => m.saved && !m.editing);
 }
 
 // Los dos perdedores de semifinales (para mostrarlos cuando no hay partido por el 3.º puesto).
@@ -375,6 +375,30 @@ export function unadvanceBracket(matches, matchId) {
   match.saved = false;
   return updated;
 }
+
+// Corregir un resultado: la tarjeta sigue guardada (el cuadro y el espectador ven el resultado anterior)
+// y solo se marca como en edición. Solo se puede si nada posterior depende de ella.
+export function startEditBracketMatch(matches, matchId) {
+  const m = (matches || []).find((x) => x.id === matchId);
+  if (!m || !m.saved || m.pairA?.id === "bye" || m.pairB?.id === "bye") return matches;
+  if (!canEditBracketMatch(matches, matchId)) return matches;
+  return matches.map((x) => (x.id === matchId ? { ...x, editing: true } : x));
+}
+
+export function cancelEditBracketMatch(matches, matchId) {
+  return (matches || []).map((x) => (x.id === matchId ? { ...x, editing: false } : x));
+}
+
+// Guarda la corrección de una sola vez: suelta las plazas que ocupaba el resultado anterior y coloca las
+// del nuevo, así el cuadro nunca queda a medias para quien lo mira.
+export function correctBracketMatch(matches, matchId, scoreA, scoreB, sets) {
+  return advanceBracket(unadvanceBracket(matches, matchId), matchId, scoreA, scoreB).map((m) =>
+    m.id === matchId ? { ...m, sets: sets || null, editing: false } : m,
+  );
+}
+
+// Lo que ve el organizador: la tarjeta en edición aparece con sus casillas abiertas.
+export const adminBracketMatchView = (m) => (m?.editing ? { ...m, saved: false } : m);
 
 function rippleByes(matches) {
   let changed = true;

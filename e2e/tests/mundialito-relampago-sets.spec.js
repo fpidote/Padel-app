@@ -197,7 +197,7 @@ test("Mundialito por games (sin cambios): flujo original sigue funcionando", asy
   await expect.poll(async () => (await getTournamentData(CODE)).phase).toBe("knockout");
 });
 
-test("Relámpago por sets: guarda sets, actualiza posiciones y revierte al editar", async ({ page }) => {
+test("Relámpago por sets: guarda sets, actualiza posiciones y conserva las estadísticas al corregir", async ({ page }) => {
   await seedTournament(CODE, setupTournament("relampago", "sets3", 4));
   await startTournament(page);
 
@@ -236,16 +236,19 @@ test("Relámpago por sets: guarda sets, actualiza posiciones y revierte al edita
   await page.getByRole("button", { name: /Posiciones/i }).click();
   await expect(page.getByText("DS", { exact: true })).toBeVisible();
 
-  // Editar → las estadísticas vuelven a cero
+  // Corregir: las estadísticas no cambian hasta guardar; cancelar lo deja todo igual
   await page.getByRole("button", { name: /Cuadro$/ }).first().click();
-  await page.getByText("✏️ editar").first().click();
-  await expect.poll(async () => (await getTournamentData(CODE)).bracket.find((m) => m.id === first.id).saved).toBe(false);
+  await page.getByText("✏️ Corregir resultado").first().click();
+  await expect.poll(async () => (await getTournamentData(CODE)).bracket.find((m) => m.id === first.id).editing).toBe(true);
   data = await getTournamentData(CODE);
-  const w2 = data.pairs.find((p) => p.id === first.pairA.id);
-  expect(w2.pts).toBe(0);
-  expect(w2.gf).toBe(0);
-  expect(w2.gamesFor).toBe(0);
-  expect(w2.played).toBe(0);
+  expect(data.bracket.find((m) => m.id === first.id).saved).toBe(true);
+  expect(data.pairs.find((p) => p.id === first.pairA.id)).toEqual(winner);
+
+  await page.getByTestId("btn-cancelar-edicion").click();
+  await expect.poll(async () => (await getTournamentData(CODE)).bracket.find((m) => m.id === first.id).editing).toBe(false);
+  data = await getTournamentData(CODE);
+  expect(data.bracket.find((m) => m.id === first.id).saved).toBe(true);
+  expect(data.pairs.find((p) => p.id === first.pairA.id)).toEqual(winner);
 });
 
 test("Mundialito por sets: rechaza sets inválidos con mensaje y deja guardar al corregir", async ({ page }) => {

@@ -1,8 +1,9 @@
 // src/components/play/PlayRelampago.jsx
 import { useState, useRef, useEffect, Fragment } from "react";
 import { generateRules } from "../../logic/constants";
-import { advanceBracket, unadvanceBracket, canEditBracketMatch, countPlayed, bracketRoundName, relampagoPodium, relampagoCanFinish } from "../../logic/relampago";
-import { analyzeSets } from "../../logic/sets";
+import { advanceBracket, canEditBracketMatch, countPlayed, bracketRoundName, relampagoPodium, relampagoCanFinish, startEditBracketMatch, cancelEditBracketMatch, correctBracketMatch, adminBracketMatchView } from "../../logic/relampago";
+import { analyzeSets, validateGamesScore } from "../../logic/sets";
+import { blockNonIntegerKey } from "../../logic/scoreInput";
 import { applyMatchToPairs } from "../../logic/standings";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import PairStandings from "../shared/PairStandings";
@@ -13,7 +14,7 @@ const SLOT_HEIGHT = 110;
 // Con sets la tarjeta abierta es más alta: más espacio por partido para que no tape a la vecina
 const SLOT_HEIGHT_SETS = 220;
 
-function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, canEdit = true, accentColor, scoringFormat = "games", onToggle }) {
+function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel, finished = false, canEdit = true, accentColor, scoringFormat = "games", onToggle }) {
   const [expanded, setExpandedState] = useState(false);
   function setExpanded(next) {
     setExpandedState(next);
@@ -23,6 +24,28 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, canEdit =
   const isSetFormat = scoringFormat === "sets3" || scoringFormat === "sets5";
   const maxSets = scoringFormat === "sets5" ? 5 : 3;
   const setsNeeded = maxSets === 5 ? 3 : 2;
+
+  // Al corregir un resultado la tarjeta se abre con lo que había escrito (también tras recargar)
+  const editing = isAdmin && !!match.editing;
+  useEffect(() => {
+    if (!editing) return;
+    setExpandedState(true);
+    onToggle?.(true);
+    setLs((prev) => {
+      const next = { ...prev };
+      if (isSetFormat) {
+        (match.sets || []).forEach((set, i) => {
+          if (next[`${match.id}_set${i}_A`] === undefined) next[`${match.id}_set${i}_A`] = String(set.a);
+          if (next[`${match.id}_set${i}_B`] === undefined) next[`${match.id}_set${i}_B`] = String(set.b);
+        });
+      } else {
+        if (next[`${match.id}_A`] === undefined) next[`${match.id}_A`] = String(match.scoreA);
+        if (next[`${match.id}_B`] === undefined) next[`${match.id}_B`] = String(match.scoreB);
+      }
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing]);
 
   // Sets cargados hasta ahora, validados con las reglas del pádel
   const live = analyzeSets(
@@ -43,11 +66,10 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, canEdit =
 
   const aVal = ls[`${match.id}_A`] ?? "";
   const bVal = ls[`${match.id}_B`] ?? "";
+  const gamesError = isSetFormat ? null : validateGamesScore(aVal, bVal);
   const canSave = isSetFormat
     ? live.finished
-    : aVal !== "" && bVal !== "" &&
-      Number(aVal) >= 0 && Number(bVal) >= 0 &&
-      Number(aVal) !== Number(bVal);
+    : aVal !== "" && bVal !== "" && !gamesError;
 
   const wonA = match.saved && match.winner?.id === match.pairA?.id;
   const wonB = match.saved && match.winner?.id === match.pairB?.id;
@@ -65,7 +87,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, canEdit =
           {realPairName}
         </div>
         <div className="text-[11px] text-slate-500">
-          Exento — pasa directo
+          Pasa directo a la siguiente ronda
         </div>
       </div>
     );
@@ -79,7 +101,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, canEdit =
 
   // Sin signos ni decimales en el marcador; Enter guarda cuando el resultado ya es válido
   function onScoreKey(e) {
-    if (["-", "e", ".", ","].includes(e.key)) e.preventDefault();
+    if (["-", "e", ".", ","].includes(e.key)) blockNonIntegerKey(e);
     else if (e.key === "Enter" && canSave) {
       e.preventDefault();
       save();
@@ -200,6 +222,10 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, canEdit =
         </div>
       )}
 
+      {expanded && gamesError && (
+        <p data-testid="games-error" className="mt-1.5 text-[11px] font-semibold text-amber-400">⚠️ {gamesError}</p>
+      )}
+
       {expanded && canSave && (
         <button
           onClick={(e) => {
@@ -213,23 +239,35 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, canEdit =
         </button>
       )}
 
-      {match.saved && isAdmin && !isBye && (canEdit ? (
-        <div
-          onClick={(e) => { e.stopPropagation(); onEdit(match.id); }}
-          className="mt-1.5 text-center text-[10px] text-slate-700 cursor-pointer"
+      {editing && (
+        <button
+          type="button"
+          data-testid="btn-cancelar-edicion"
+          onClick={(e) => { e.stopPropagation(); onCancel(match.id); }}
+          className="mt-2 w-full py-1.5 rounded-md text-white font-bold text-xs border-0 cursor-pointer bg-red-700"
         >
-          ✏️ editar
-        </div>
+          ✕ Cancelar
+        </button>
+      )}
+
+      {match.saved && isAdmin && !isBye && (canEdit ? (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onEdit(match.id); }}
+          className="mt-1.5 w-full py-1.5 rounded-md text-center text-[11px] font-semibold text-slate-300 bg-[#0f172a] border border-[#334155] cursor-pointer"
+        >
+          ✏️ Corregir resultado
+        </button>
       ) : (
-        <div className="mt-1.5 text-center text-[10px] text-slate-600">
-          🔒 cerrado
+        <div className="mt-1.5 text-center text-[10px] leading-snug text-slate-500">
+          {finished ? "🔒 Cerrado" : "🔒 Cerrado: ya se jugó el partido siguiente. Corrige primero ese."}
         </div>
       ))}
     </div>
   );
 }
 
-function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, canEditMatch = () => true, accentColor, scoringFormat }) {
+function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, onCancel, finished, canEditMatch = () => true, accentColor, scoringFormat }) {
   // La tarjeta abierta se eleva: con sets es más alta que su slot y se solaparía con la siguiente
   const [openId, setOpenId] = useState(null);
   const scrollRef = useRef(null);
@@ -335,12 +373,14 @@ function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, canEditMatch
                       style={{ top: centerY }}
                     >
                       <BracketMatchCard
-                        match={match}
+                        match={isAdmin ? adminBracketMatchView(match) : match}
                         isAdmin={isAdmin}
                         ls={ls}
                         setLs={setLs}
                         onSave={onSave}
                         onEdit={onEdit}
+                        onCancel={onCancel}
+                        finished={finished}
                         canEdit={canEditMatch(match.id)}
                         accentColor={accentColor}
                         scoringFormat={scoringFormat}
@@ -368,12 +408,8 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
 
   async function onSaveMatch(matchId, a, b, sets) {
     const match = t.bracket.find((m) => m.id === matchId);
-    if (!match || match.saved) return;
+    if (!match || (match.saved && !match.editing)) return;
     if (isNaN(a) || isNaN(b) || a < 0 || b < 0 || a === b) return;
-
-    const updated = advanceBracket(t.bracket, matchId, a, b).map((m) =>
-      m.id === matchId ? { ...m, sets: sets || null } : m,
-    );
 
     setLs((prev) => {
       const n = { ...prev };
@@ -382,21 +418,40 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
       });
       return n;
     });
+
+    if (match.editing) {
+      // Corrección: se quitan las estadísticas del resultado anterior y se suman las del nuevo, todo de una vez
+      const quitadas = applyMatchToPairs(t.pairs, match, parseInt(match.scoreA), parseInt(match.scoreB), match.sets, -1);
+      const pairs = applyMatchToPairs(quitadas, match, a, b, sets, 1);
+      await persist({ ...t, bracket: correctBracketMatch(t.bracket, matchId, a, b, sets), pairs });
+      return;
+    }
+
+    const updated = advanceBracket(t.bracket, matchId, a, b).map((m) =>
+      m.id === matchId ? { ...m, sets: sets || null } : m,
+    );
     const pairs = applyMatchToPairs(t.pairs, match, a, b, sets, 1);
     await persist({ ...t, bracket: updated, pairs, scoringStarted: true });
   }
 
+  // Corregir: la tarjeta sigue guardada para todos hasta que se guarde la corrección
   async function onEditMatch(matchId) {
     const match = t.bracket.find((m) => m.id === matchId);
     if (!match) return;
     if (match.pairA?.id === "bye" || match.pairB?.id === "bye") return;
     if (finished || !canEditBracketMatch(t.bracket, matchId)) return;
+    await persist({ ...t, bracket: startEditBracketMatch(t.bracket, matchId) });
+  }
 
-    const a = parseInt(match.scoreA);
-    const b = parseInt(match.scoreB);
-    const pairs = applyMatchToPairs(t.pairs, match, a, b, match.sets, -1);
-
-    await persist({ ...t, bracket: unadvanceBracket(t.bracket, matchId), pairs });
+  async function onCancelEdit(matchId) {
+    setLs((prev) => {
+      const n = { ...prev };
+      Object.keys(n).forEach((k) => {
+        if (k.startsWith(`${matchId}_`)) delete n[k];
+      });
+      return n;
+    });
+    await persist({ ...t, bracket: cancelEditBracketMatch(t.bracket, matchId) });
   }
 
   async function onFinishTournament() {
@@ -487,6 +542,8 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
               setLs={setLs}
               onSave={onSaveMatch}
               onEdit={onEditMatch}
+              onCancel={onCancelEdit}
+              finished={finished}
               canEditMatch={(id) => !finished && canEditBracketMatch(t.bracket, id)}
               accentColor="#7c3aed"
               scoringFormat={t.config?.scoringFormat || "games"}
@@ -519,6 +576,8 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
               setLs={setLs}
               onSave={onSaveMatch}
               onEdit={onEditMatch}
+              onCancel={onCancelEdit}
+              finished={finished}
               canEditMatch={(id) => !finished && canEditBracketMatch(t.bracket, id)}
               accentColor="#0284c7"
               scoringFormat={t.config?.scoringFormat || "games"}

@@ -58,11 +58,21 @@ test("con 5 parejas los pasa directo avanzan solos y el partido real enruta gana
   expect(slotsOf(d.bracket, "c_")).not.toContain(real.pairA.id);
   await page.screenshot({ path: "test-results/cuadro-byes-390.png", fullPage: true });
 
-  // Editar el resultado lo devuelve todo a su lugar
-  await page.getByText("✏️ editar").first().click();
-  await expect.poll(async () => (await getTournamentData(CODE)).bracket.find((m) => m.id === real.id).saved).toBe(false);
+  // Corregir: el resultado sigue publicado hasta guardar la corrección
+  await page.getByText("✏️ Corregir resultado").first().click();
+  await expect.poll(async () => (await getTournamentData(CODE)).bracket.find((m) => m.id === real.id).editing).toBe(true);
   d = await getTournamentData(CODE);
+  expect(d.bracket.find((m) => m.id === real.id).saved).toBe(true);
+  expect(slotsOf(d.bracket, "w_r2")).toContain(real.pairA.id);
+
+  // Se corrige a favor de la pareja B: el cuadro y la revancha se intercambian de una vez
+  for (const [i, v] of [["0", "4"], ["1", "6"], ["2", "3"], ["3", "6"]]) await inputs.nth(Number(i)).fill(v);
+  await page.getByRole("button", { name: /Guardar/ }).click();
+  await expect.poll(async () => (await getTournamentData(CODE)).bracket.find((m) => m.id === real.id).editing).toBe(false);
+  d = await getTournamentData(CODE);
+  expect(slotsOf(d.bracket, "w_r2")).toContain(real.pairB.id);
   expect(slotsOf(d.bracket, "w_r2")).not.toContain(real.pairA.id);
+  expect(slotsOf(d.bracket, "c_")).toContain(real.pairA.id);
   expect(slotsOf(d.bracket, "c_")).not.toContain(real.pairB.id);
-  expect(slotsOf(d.bracket, "w_r2")).toHaveLength(3);                // los pasa directo siguen donde estaban
+  expect(slotsOf(d.bracket, "w_r2")).toHaveLength(4);                // 3 pasa directo + el nuevo ganador
 });
