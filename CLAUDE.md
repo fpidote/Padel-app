@@ -132,7 +132,9 @@ await setDoc(doc(db, "torneos", code), {
 
 ### Cola de guardado (no descartar cambios)
 
-`persist` actualiza la pantalla al instante y guarda por una cola (`src/logic/saveQueue.js`): escribe de uno en uno y, si se pide otro cambio mientras se guarda, lo junta en un único guardado posterior con el estado más reciente. **Nunca** descartar un `persist` por "ya hay uno en curso" (así se perdían parejas al añadirlas rápido o con red lenta). Si falla la escritura se vuelve al último estado guardado y se avisa con un toast.
+`persist` actualiza la pantalla al instante y guarda por una cola (`src/logic/saveQueue.js`): escribe de uno en uno y, si se pide otro cambio mientras se guarda, lo junta en un único guardado posterior con el estado más reciente. **Nunca** descartar un `persist` por "ya hay uno en curso" (así se perdían parejas al añadirlas rápido o con red lenta). Si falla la escritura se vuelve al último estado guardado y se avisa con un toast (con `permission-denied`, el aviso explica que quizá quitaron el acceso).
+
+**Control de versión al guardar.** La escritura es una transacción (`src/logic/saveTransaction.js`, `applyVersionedWrite`) que solo guarda si el `ver` del servidor es el de la versión sobre la que se armó el lote (`baseVer`, que la cola fija **al pedir** el guardado, no al escribir: así un cambio de otro organizador que llegue por el listener se detecta como conflicto en vez de pisarse). Si no coincide lanza `VersionConflictError`: se descarta el cambio, se carga la versión del servidor y se avisa. Cada guardado lleva un `writeId` dentro de `data` para que un reintento de un guardado que sí entró no cuente como conflicto. Un documento sin `ver` se trata como versión 0.
 
 ### Versioning anti-race-condition
 
@@ -149,9 +151,10 @@ setT(data);
 ### Auth
 
 - Organizadores: **Google Auth** (`signInWithPopup` con `GoogleAuthProvider`)
-- Espectadores/jugadores: acceso anónimo sin login
-- `isAdmin = auth.currentUser.uid === t.ownerUid`
-- El flag de admin **no** usa localStorage — es puro Firebase Auth
+- Espectadores/jugadores: sin sesión
+- **Dueño** (`isOwner`): `auth.currentUser.uid === t.ownerUid`. Es el único que prepara, lanza, edita y borra el torneo y gestiona ayudantes.
+- **Ayudante** (`isHelper`): alguien con sesión de Google y correo verificado cuyo documento existe en `torneos/{code}/helpers/{correo en minúsculas}`; el dueño lo añade desde "👥 Ayudantes" (máximo 5, solo en la pantalla). Puede cargar y corregir resultados, pasar de ronda y finalizar. `canScore = isOwner || isHelper` es lo que reciben los `Play*` como `isAdmin`; los `Setup*` reciben `isOwner`. El correo se lee de los claims del token (lo mismo que miran las reglas) con una sola lectura de su propio documento, sin listener.
+- Los permisos **no** usan localStorage — son puro Firebase Auth. "Solo resultados" se aplica en la pantalla, no en el servidor (el torneo es un único bloque `data`): el ayudante debe ser de confianza
 
 ---
 
@@ -343,7 +346,7 @@ useEffect(() => {
 - **Admin**: verificado siempre via `auth.currentUser.uid === t.ownerUid`
 - **Nunca** usar `localStorage` para determinar permisos de admin
 - **Nunca** confiar en datos del cliente para operaciones sensibles
-- Las Firestore Rules (`firestore.rules`) validan `ownerUid`, los campos permitidos del documento y que quien crea no sea una sesión anónima; la subcolección `torneos/{code}/matches` (hoy sin uso: el Pozo ya no registra partidos) solo la escribe y la lee el dueño. Cualquier cambio en las reglas se cubre en `firestore.rules.test.js` (`npm run test:rules`, usa `vitest.rules.config.js`) y se despliega a mano con `firebase deploy --only firestore:rules`
+- Las Firestore Rules (`firestore.rules`) validan `ownerUid`, los campos permitidos del documento y que quien crea no sea una sesión anónima; la subcolección `torneos/{code}/matches` (hoy sin uso: el Pozo ya no registra partidos) solo la escribe y la lee el dueño. La subcolección `torneos/{code}/helpers/{correo}` (ayudantes) solo la lista, crea y borra el dueño y cada ayudante lee únicamente su propio documento, así el documento público del torneo no expone correos; un ayudante puede actualizar solo `data` (no `ownerUid`, `createdAt` ni campos extra), nunca crear ni borrar el torneo. Cualquier cambio en las reglas se cubre en `firestore.rules.test.js` (`npm run test:rules`, usa `vitest.rules.config.js`; si ya hay un emulador de Firestore levantado en el 8080, `npx vitest run --config vitest.rules.config.js` corre contra él) y se despliega a mano con `firebase deploy --only firestore:rules`
 
 ---
 
