@@ -1,7 +1,7 @@
 // src/components/play/PlayMundialito.jsx
 import { useState } from "react";
 import { generateRules } from "../../logic/constants";
-import { advanceBracket, unadvanceBracket, canEditBracketMatch, bracketRoundName } from "../../logic/relampago";
+import { advanceBracket, unadvanceBracket, canEditBracketMatch, bracketRoundName, bracketPodium } from "../../logic/relampago";
 import {
   buildKnockoutFromGroups,
   mundialitoGroupsLocked,
@@ -203,7 +203,11 @@ export default function PlayMundialito({
     (m) => !m.nextMatchId && m.saved && m.bracket !== "third",
   )?.winner;
 
-  const allPairs = groupsWithRounds.flatMap((g) => g.standings);
+  const podium = bracketPodium(t.knockoutBracket);
+  // Quiénes pasaron a la fase final: los que ya están en el cuadro (los pasa directo incluidos)
+  const qualifiedIds = t.knockoutBracket
+    ? new Set(t.knockoutBracket.flatMap((m) => [m.pairA?.id, m.pairB?.id]).filter((id) => id !== undefined && id !== null && id !== "bye"))
+    : null;
 
   return (
     <div className="pb-[80px]">
@@ -538,17 +542,65 @@ export default function PlayMundialito({
         )}
 
         {tab === "standings" && (
-          <PairStandings
-            pairs={allPairs}
-            title="Posiciones"
-            scoringFormat={t.config?.scoringFormat}
-            config={t.config}
-            extra={
-              <div className="mb-3 text-[12px] text-[#94a3b8]">
-                Clasifica quien tenga más partidos ganados (PG). En el grupo, si hay empate, decide el partido entre las parejas igualadas y después la diferencia a favor y en contra.
+          <>
+            {podium.champion && (
+              <div className="mb-4 rounded-xl border-2 border-[#f59e0b] bg-[#1e293b] p-4">
+                <div className="mb-3 text-center text-[12px] font-bold uppercase text-[#f59e0b]">Resultado final</div>
+                <div className="flex flex-col gap-2">
+                  {[
+                    ["🏆", "Campeón", podium.champion],
+                    ["🥈", "Subcampeón", podium.runnerUp],
+                    ...(thirdMatch ? [["🥉", "Tercer puesto", podium.third]] : []),
+                  ].map(([icon, label, pair]) => (
+                    <div key={label} className="flex items-center gap-3 rounded-lg bg-[#0f172a] px-3 py-2.5">
+                      <span className="text-[22px]">{icon}</span>
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-bold uppercase text-[#94a3b8]">{label}</div>
+                        <div className="text-[15px] font-extrabold text-[#f1f5f9]">
+                          {pair ? `${pair.p1} / ${pair.p2}` : "Por definir"}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            }
-          />
+            )}
+            <div className="mb-3 text-[12px] text-[#94a3b8]">
+              Clasifica quien tenga más partidos ganados (PG). En el grupo, si hay empate, decide el partido entre las parejas igualadas y después la diferencia a favor y en contra.
+            </div>
+            {groupsWithRounds.map((g) => (
+              <PairStandings
+                key={g.id}
+                pairs={g.standings}
+                matches={g.matches}
+                title={g.name}
+                medals={false}
+                qualified={qualifiedIds}
+                scoringFormat={t.config?.scoringFormat}
+                config={t.config}
+              />
+            ))}
+            {t.knockoutBracket && (
+              <div className="mb-4 rounded-xl bg-[#0f172a] overflow-hidden">
+                <div className="px-4 pt-3.5 pb-2.5 text-base font-black text-[#f1f5f9]">⚡ Fase final</div>
+                {[...koRounds.map((round) => ({ key: round, title: bracketRoundName(round, Math.max(...koRounds)), bracket: "winners", round })),
+                  ...(thirdMatch ? [{ key: "third", title: "3.º y 4.º puesto", bracket: "third", round: thirdMatch.round }] : [])].map((sec) => (
+                  <div key={sec.key} className="px-4 pb-3">
+                    <div className="mb-1.5 text-[11px] font-bold uppercase text-[#64748b]">{sec.title}</div>
+                    {t.knockoutBracket
+                      .filter((m) => m.round === sec.round && (sec.bracket === "third" ? m.bracket === "third" : m.bracket !== "third") && m.pairA && m.pairB && m.pairA.id !== "bye" && m.pairB.id !== "bye")
+                      .map((m) => (
+                        <div key={m.id} className="mb-1.5 flex items-center gap-2 rounded-lg bg-[#1e293b] px-3 py-2 text-[13px]">
+                          <span className={`flex-1 text-right ${m.saved && m.winner?.id === m.pairA.id ? "font-extrabold text-[#f1f5f9]" : "text-[#94a3b8]"}`}>{m.pairA.p1} / {m.pairA.p2}</span>
+                          <span className="min-w-[44px] text-center font-black text-[#38bdf8]">{m.saved ? `${m.scoreA} - ${m.scoreB}` : "vs"}</span>
+                          <span className={`flex-1 text-left ${m.saved && m.winner?.id === m.pairB.id ? "font-extrabold text-[#f1f5f9]" : "text-[#94a3b8]"}`}>{m.pairB.p1} / {m.pairB.p2}</span>
+                        </div>
+                      ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
         {tab === "rules" && (

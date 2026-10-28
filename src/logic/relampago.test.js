@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildBracket, advanceBracket, unadvanceBracket, countPlayed, firstRoundSeedPairs, canEditBracketMatch, hasPlayedRealMatch, bracketRoundName } from "./relampago.js";
+import { buildBracket, advanceBracket, unadvanceBracket, countPlayed, firstRoundSeedPairs, canEditBracketMatch, hasPlayedRealMatch, bracketRoundName, bracketPodium } from "./relampago.js";
 
 function makePairs(n) {
   return Array.from({ length: n }, (_, i) => ({
@@ -476,5 +476,57 @@ describe("bracketRoundName — nombre de cada ronda según su distancia a la fin
   it("T-RND-05: coincide con un cuadro real de 8 parejas", () => {
     const rounds = [...new Set(buildBracket(makePairs(8), { consolation: false }).map((m) => m.round))];
     expect(rounds.map((r) => bracketRoundName(r, Math.max(...rounds)))).toEqual(["Cuartos de final", "Semifinales", "Final"]);
+  });
+});
+
+describe("bracketPodium — campeón, subcampeón y 3.º puesto", () => {
+  const play = (b, id, x, y) => advanceBracket(b, id, x, y);
+  const semis = (b) => b.filter((m) => m.bracket === "winners" && m.round === 1);
+
+  it("T-POD-01: sin la final jugada no hay podio", () => {
+    const b = buildBracket(makePairs(4), { consolation: false });
+    expect(bracketPodium(b)).toEqual({ champion: null, runnerUp: null, third: null, fourth: null });
+    expect(bracketPodium(null)).toEqual({ champion: null, runnerUp: null, third: null, fourth: null });
+  });
+
+  it("T-POD-02: con la final jugada hay campeón y subcampeón, y sin partido por el 3.º no hay tercero", () => {
+    let b = buildBracket(makePairs(4), { consolation: false });
+    const [s0, s1] = semis(b);
+    b = play(b, s0.id, 6, 2);
+    b = play(b, s1.id, 6, 3);
+    b = play(b, "w_r2_m0", 6, 4);
+    const pod = bracketPodium(b);
+    expect(pod.champion.id).toBe(s0.pairA.id);
+    expect(pod.runnerUp.id).toBe(s1.pairA.id);
+    expect(pod.third).toBeNull();
+  });
+
+  it("T-POD-03: con partido por el 3.º jugado salen tercero y cuarto", () => {
+    let b = buildBracket(makePairs(4), { consolation: false, thirdPlace: true });
+    const [s0, s1] = semis(b);
+    b = play(b, s0.id, 6, 2);
+    b = play(b, s1.id, 6, 3);
+    b = play(b, "w_r2_m0", 6, 4);
+    b = play(b, "w_third", 6, 1);
+    const pod = bracketPodium(b);
+    expect(pod.third.id).toBe(s0.pairB.id);
+    expect(pod.fourth.id).toBe(s1.pairB.id);
+  });
+
+  it("T-POD-04: con el partido por el 3.º sin jugar todavía no hay tercero", () => {
+    let b = buildBracket(makePairs(4), { consolation: false, thirdPlace: true });
+    const [s0, s1] = semis(b);
+    b = play(b, s0.id, 6, 2);
+    b = play(b, s1.id, 6, 3);
+    b = play(b, "w_r2_m0", 6, 4);
+    expect(bracketPodium(b).third).toBeNull();
+  });
+
+  it("T-POD-05: con 2 parejas la final decide campeón y subcampeón", () => {
+    let b = buildBracket(makePairs(2), { consolation: false });
+    b = play(b, b[0].id, 3, 6);
+    const pod = bracketPodium(b);
+    expect(pod.champion.id).toBe("p1");
+    expect(pod.runnerUp.id).toBe("p0");
   });
 });

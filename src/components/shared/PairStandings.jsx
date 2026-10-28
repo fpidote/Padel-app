@@ -5,7 +5,8 @@ const TH = "px-2.5 py-2 text-[11px] font-bold text-[#475569] uppercase tracking-
 const diffColor = (d) => (d > 0 ? "#4ade80" : d < 0 ? "#f87171" : "#64748b");
 const fmtDiff = (d) => (d > 0 ? `+${d}` : d);
 
-export default function PairStandings({ pairs, title, extra, scoringFormat = "games", config, matches = [] }) {
+// medals=false para tablas de grupo (ahí un puesto no es un podio); qualified = ids que pasaron a la fase final.
+export default function PairStandings({ pairs, title, extra, scoringFormat = "games", config, matches = [], medals = true, qualified = null }) {
   const isSetFormat = scoringFormat === "sets3" || scoringFormat === "sets5";
   const labels = standingsLabels({ ...(config || {}), scoringFormat });
   const sorted = sortStandings(pairs || [], matches);
@@ -33,7 +34,7 @@ export default function PairStandings({ pairs, title, extra, scoringFormat = "ga
           {sorted.map((p, i) => {
             const d = p.gf - p.gc;
             const dj = (p.gamesFor || 0) - (p.gamesAgainst || 0);
-            const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
+            const medal = !medals ? null : i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
             return (
               <tr
                 key={p.id}
@@ -44,6 +45,7 @@ export default function PairStandings({ pairs, title, extra, scoringFormat = "ga
                   {medal || <span className="text-[#64748b] text-sm">{i + 1}</span>}
                 </td>
                 <td className="px-3 py-2.5 text-sm font-semibold text-[#f1f5f9]">
+                  {qualified?.has(p.id) && <span title="Pasó a la fase final">⚡ </span>}
                   {p.name || `${p.p1} / ${p.p2}`}
                 </td>
                 <td className="px-2.5 py-2.5 text-center text-sm text-[#94a3b8]">{p.played ?? "–"}</td>
@@ -65,6 +67,7 @@ export default function PairStandings({ pairs, title, extra, scoringFormat = "ga
       </table>
       <div className="px-4 py-2 text-[11px] text-[#475569]">
         {labels.legend}
+        {qualified && " · ⚡ pasó a la fase final"}
       </div>
     </div>
   );

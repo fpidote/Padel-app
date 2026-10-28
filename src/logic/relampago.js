@@ -29,6 +29,22 @@ export function bracketRoundName(round, finalRound) {
   return ROUND_NAMES[finalRound - round] ?? `Ronda ${round}`;
 }
 
+// Podio de un cuadro de eliminación directa: la final decide campeón y subcampeón y, si se jugó el
+// partido por el 3.º puesto, también tercero y cuarto. Sin la final jugada no hay podio.
+export function bracketPodium(bracket) {
+  const empty = { champion: null, runnerUp: null, third: null, fourth: null };
+  const list = bracket || [];
+  const final = list.find((m) => !m.nextMatchId && m.bracket !== "third" && m.bracket !== "consolation");
+  if (!final?.saved) return empty;
+  const thirdMatch = list.find((m) => m.bracket === "third");
+  return {
+    champion: final.winner,
+    runnerUp: final.loser,
+    third: thirdMatch?.saved ? thirdMatch.winner : null,
+    fourth: thirdMatch?.saved ? thirdMatch.loser : null,
+  };
+}
+
 const BYE_PAIR = { id: "bye", p1: "BYE", p2: "BYE" };
 
 // Con { consolation: false } es eliminación directa pura (Mundialito y Liga); por defecto incluye
