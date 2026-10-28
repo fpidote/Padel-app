@@ -53,7 +53,7 @@ export const TOURNAMENT_TYPES = [
     desc: "Todos contra todos en una tabla única, a lo largo de varias jornadas.",
     tagline: "Una tabla, muchas fechas",
     landingDesc: "Parejas fijas que juegan todas contra todas. Ideal para competencias de varias semanas con tabla de posiciones.",
-    tags: ["Todos vs todos", "Jornada única o temporada"],
+    tags: ["Todos vs todos", "Ida o ida y vuelta"],
     color: "#db2777",
   },
 ];
