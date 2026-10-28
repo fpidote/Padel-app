@@ -42,7 +42,9 @@ test("5 parejas: cada jornada indica quién descansa, y las 5 descansan una vez"
   await entrarComoAdmin(page);
   await expect(page.getByText("Jornada 1", { exact: true })).toBeVisible({ timeout: 8000 });
   const avisos = page.getByText(/😴 Descansa:/);
-  await expect(avisos).toHaveCount(5);   // visible aunque la jornada esté plegada
+  await expect(avisos).toHaveCount(1);   // una sola jornada a la vista: solo su aviso
+  await page.getByTestId("chip-jornada-todas").click();
+  await expect(avisos).toHaveCount(5);   // en "Todas", visible aunque la jornada esté plegada
   const textos = await avisos.allTextContents();
   const quienes = textos.map((t) => t.replace("😴 Descansa: ", ""));
   expect(new Set(quienes).size).toBe(5);

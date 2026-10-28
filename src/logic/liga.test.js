@@ -603,3 +603,30 @@ describe("un partido en edición no cuenta como terminado", () => {
     expect(ligaMatchesDone([])).toBe(false);
   });
 });
+
+describe("selector de jornadas", () => {
+  const m = (round, saved, editing = false) => ({ id: `r${round}_${saved}${editing}`, round, saved, editing });
+  const rounds = [{ round: 1 }, { round: 2 }, { round: 3 }];
+
+  test("T-LIGA-60: ligaRoundDone es true solo si todos los partidos de esa jornada están guardados y sin corregir", async () => {
+    const { ligaRoundDone } = await import("./liga");
+    const matches = [m(1, true), m(1, true), m(2, true), m(2, false), m(3, true, true)];
+    expect(ligaRoundDone(matches, 1)).toBe(true);
+    expect(ligaRoundDone(matches, 2)).toBe(false);
+    expect(ligaRoundDone(matches, 3)).toBe(false);
+    expect(ligaRoundDone(matches, 9)).toBe(false);
+  });
+
+  test("T-LIGA-61: ligaCurrentRound es la primera jornada con partidos pendientes", async () => {
+    const { ligaCurrentRound } = await import("./liga");
+    expect(ligaCurrentRound(rounds, [m(1, true), m(2, false), m(3, false)])).toBe(2);
+    expect(ligaCurrentRound(rounds, [m(1, false), m(2, true), m(3, false)])).toBe(1);
+  });
+
+  test("T-LIGA-62: con todo jugado es la última jornada; sin jornadas es 1; respeta el orden numérico", async () => {
+    const { ligaCurrentRound } = await import("./liga");
+    expect(ligaCurrentRound(rounds, [m(1, true), m(2, true), m(3, true)])).toBe(3);
+    expect(ligaCurrentRound([], [])).toBe(1);
+    expect(ligaCurrentRound([{ round: 3 }, { round: 1 }, { round: 2 }], [m(1, true), m(2, false), m(3, false)])).toBe(2);
+  });
+});

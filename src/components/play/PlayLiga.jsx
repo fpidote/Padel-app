@@ -17,6 +17,8 @@ import {
   ligaMatchesDone,
   finishPatch,
   ligaQualifiedPairs,
+  ligaRoundDone,
+  ligaCurrentRound,
 } from "../../logic/liga";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import MatchCard from "../shared/MatchCard";
@@ -31,6 +33,8 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
   const [tab, setTab] = useState("fixture");
   const [ls, setLs] = useState({});
   const [confirm, setConfirm] = useState(null); // { kind: "delete" | "start" | "reopen" | "finish", matchId? }
+  // Jornada que se ve (número) o "all". Abre en la primera con partidos pendientes y no salta sola al completarla
+  const [roundView, setRoundView] = useState(() => ligaCurrentRound(t.rounds, t.matches));
 
   const playoffEnabled = !!t.config?.playoffEnabled;
   const locked = ligaResultsLocked(t);
@@ -38,6 +42,10 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
   const matches = t.matches || [];
   const rounds = t.rounds || [];
   const allMatchesDone = ligaMatchesDone(matches);
+  const sortedRounds = rounds.slice().sort((a, b) => a.round - b.round);
+  const shownRound = roundView === "all" || sortedRounds.some((r) => r.round === roundView) ? roundView : ligaCurrentRound(rounds, matches);
+  const shownIndex = sortedRounds.findIndex((r) => r.round === shownRound);
+  const nextRound = shownRound !== "all" ? sortedRounds[shownIndex + 1] : undefined;
 
   async function onSaveMatch(matchId, a, b, sets) {
     const match = matches.find((m) => m.id === matchId);
@@ -209,13 +217,40 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                 🏁 Torneo finalizado: los resultados están cerrados.
               </div>
             )}
-            {rounds
-              .slice()
-              .sort((a, b) => a.round - b.round)
+            {/* ── Selector de jornadas ── */}
+            {sortedRounds.length > 1 && (
+              <div className="flex gap-1.5 overflow-x-auto pb-1">
+                {sortedRounds.map((r) => (
+                  <button
+                    key={r.round}
+                    data-testid={`chip-jornada-${r.round}`}
+                    onClick={() => setRoundView(r.round)}
+                    className="shrink-0 p-[6px_12px] rounded-lg text-[13px] font-bold border-0 cursor-pointer"
+                    style={{
+                      background: shownRound === r.round ? "#db2777" : "#1f2937",
+                      color: shownRound === r.round ? "#fff" : ligaRoundDone(matches, r.round) ? "#4ade80" : "#64748b",
+                    }}
+                  >
+                    J{r.round}{ligaRoundDone(matches, r.round) ? " ✓" : ""}
+                  </button>
+                ))}
+                <button
+                  data-testid="chip-jornada-todas"
+                  onClick={() => setRoundView("all")}
+                  className="shrink-0 p-[6px_12px] rounded-lg text-[13px] font-bold border-0 cursor-pointer"
+                  style={{ background: shownRound === "all" ? "#db2777" : "#1f2937", color: shownRound === "all" ? "#fff" : "#94a3b8" }}
+                >
+                  Todas
+                </button>
+              </div>
+            )}
+            {sortedRounds
+              .filter((r) => shownRound === "all" || r.round === shownRound)
               .map((r) => (
                 <LigaRoundAccordion
                   key={r.round}
                   round={r}
+                  single={shownRound !== "all"}
                   matches={matches.filter((m) => m.round === r.round)}
                   allMatches={matches}
                   isAdmin={isAdmin}
@@ -229,6 +264,15 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                   scoringFormat={t.config?.scoringFormat || "sets3"}
                 />
               ))}
+            {nextRound && ligaRoundDone(matches, shownRound) && (
+              <button
+                data-testid="btn-siguiente-jornada"
+                onClick={() => setRoundView(nextRound.round)}
+                className="w-full bg-[#1f2937] border border-[#374151] text-gray-100 font-bold rounded-xl py-3 text-sm cursor-pointer"
+              >
+                Siguiente jornada →
+              </button>
+            )}
             {playoffEnabled && allMatchesDone && t.phase === "fixture" && isAdmin && (
               <button
                 onClick={() => setConfirm({ kind: "start" })}
@@ -453,21 +497,23 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
   );
 }
 
-function LigaRoundAccordion({ round, matches, allMatches, isAdmin, ls, setLs, onSave, onEdit, onDelete, locked, onSetDate, scoringFormat }) {
+function LigaRoundAccordion({ round, single, matches, allMatches, isAdmin, ls, setLs, onSave, onEdit, onDelete, locked, onSetDate, scoringFormat }) {
   const hasUnsaved = matches.some((m) => !m.saved);
-  const [isOpen, setIsOpen] = useState(hasUnsaved || round.round === 1);
+  const [isOpenState, setIsOpen] = useState(hasUnsaved || round.round === 1);
+  // Con una sola jornada a la vista no hay nada que plegar
+  const isOpen = single || isOpenState;
 
   return (
     <div className="bg-[#1f2937] rounded-2xl border border-[#374151] overflow-hidden">
       <div
-        onClick={() => setIsOpen(!isOpen)}
-        className={`px-4 py-3 flex items-center justify-between cursor-pointer ${hasUnsaved ? "text-sky-400" : "text-green-400"}`}
+        onClick={single ? undefined : () => setIsOpen(!isOpen)}
+        className={`px-4 py-3 flex items-center justify-between ${single ? "" : "cursor-pointer"} ${hasUnsaved ? "text-sky-400" : "text-green-400"}`}
       >
         <div className="flex items-center gap-2 font-black text-sm uppercase tracking-wide">
           <span>Jornada {round.round}</span>
           {!hasUnsaved && <span>✓</span>}
         </div>
-        <span className="text-gray-500 text-xs font-semibold">{isOpen ? "▲ OCULTAR" : "▼ VER PARTIDOS"}</span>
+        {!single && <span className="text-gray-500 text-xs font-semibold">{isOpen ? "▲ OCULTAR" : "▼ VER PARTIDOS"}</span>}
       </div>
       <div className="px-4"><RestingNote matches={allMatches} round={round.round} /></div>
       {isOpen && (

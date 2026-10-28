@@ -244,3 +244,17 @@ export function ligaCanFinish(t) {
 export function finishPatch() {
   return { status: "finished" };
 }
+
+// ── Selector de jornadas ─────────────────────────────────────
+// ¿Está completa la jornada? Todos sus partidos guardados y ninguno en corrección.
+export function ligaRoundDone(matches, roundNumber) {
+  const inRound = (matches || []).filter((m) => m.round === roundNumber);
+  return inRound.length > 0 && inRound.every((m) => m.saved && !m.editing);
+}
+
+// Jornada con la que se abre la pantalla: la primera con partidos pendientes; con todo jugado, la última.
+export function ligaCurrentRound(rounds, matches) {
+  const numbers = (rounds || []).map((r) => r.round).sort((a, b) => a - b);
+  if (numbers.length === 0) return 1;
+  return numbers.find((n) => !ligaRoundDone(matches, n)) ?? numbers[numbers.length - 1];
+}

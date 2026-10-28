@@ -61,11 +61,18 @@ test.afterEach(async () => {
   await deleteTournament(CODE).catch(() => {});
 });
 
+// La Liga abre en una sola jornada (la primera con partidos pendientes): estas pruebas miran las tarjetas de
+// partido de la jornada 1, así que pasan a la vista "Todas".
+async function verTodas(p) {
+  await p.getByTestId("chip-jornada-todas").click({ timeout: 8000 });
+  await expect(p.getByText("Jornada 1")).toBeVisible();
+}
+
 async function entrarComoAdmin(page) {
   await page.goto(`/torneo/${CODE}`);
   const token = await getTestToken();
   await page.evaluate(async (t) => { await window.__e2eSignIn(t); }, token);
-  await expect(page.getByText("Jornada 1")).toBeVisible({ timeout: 8000 });
+  await verTodas(page);
 }
 
 test("eliminar un resultado pide confirmación, deja el partido sin jugar y recalcula la tabla", async ({ page }) => {
@@ -152,7 +159,7 @@ test("si ya se jugó un partido de la eliminatoria no se puede volver a la liga"
 test("el espectador no ve Editar ni Eliminar", async ({ page }) => {
   await seedTournament(CODE, ligaTerminada());
   await page.goto(`/torneo/${CODE}`);
-  await expect(page.getByText("Jornada 1")).toBeVisible({ timeout: 8000 });
+  await verTodas(page);
   await expect(page.getByRole("button", { name: "Editar" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Eliminar" })).toHaveCount(0);
 });
@@ -204,14 +211,14 @@ test("mientras el organizador corrige un resultado, el espectador sigue viéndol
   // El espectador (sin sesión) sigue viendo el resultado de siempre
   const espectador = await (await browser.newContext()).newPage();
   await espectador.goto(`/torneo/${CODE}`);
-  await expect(espectador.getByText("Jornada 1")).toBeVisible({ timeout: 8000 });
+  await verTodas(espectador);
   if (!(await espectador.getByText("6-3").first().isVisible())) await espectador.getByText("Jornada 1").click();
   await expect(espectador.getByText("6-3").first()).toBeVisible();
   await expect(espectador.getByText("vs", { exact: true })).toHaveCount(0);
 
   // Si el organizador recarga durante la edición, las casillas conservan los sets anteriores
   await page.reload();
-  await expect(page.getByText("Jornada 1")).toBeVisible({ timeout: 8000 });
+  await verTodas(page);
   await expect(page.locator('input[type="number"]').first()).toHaveValue("6");
 
   // Corrige un set y guarda: se actualiza y desaparece la marca de edición
