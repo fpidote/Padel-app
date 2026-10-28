@@ -58,3 +58,19 @@ describe("tournamentOwnerUid", () => {
     expect(tournamentOwnerUid(undefined, { ownerUid: "dueno" })).toBe("dueno");
   });
 });
+
+describe("helperAllows", () => {
+  it("T-HLP-30: el dueño y quien no es ayudante siempre pueden", async () => {
+    const { helperAllows } = await import("./helpers");
+    expect(helperAllows(false, {}, "levels")).toBe(true);
+    expect(helperAllows(false, { helperPerms: { levels: false } }, "rename")).toBe(true);
+  });
+
+  it("T-HLP-31: el ayudante no puede salvo que el dueño lo active (torneos antiguos: no)", async () => {
+    const { helperAllows } = await import("./helpers");
+    expect(helperAllows(true, {}, "levels")).toBe(false);
+    expect(helperAllows(true, { helperPerms: {} }, "rename")).toBe(false);
+    expect(helperAllows(true, { helperPerms: { levels: true } }, "levels")).toBe(true);
+    expect(helperAllows(true, { helperPerms: { levels: true } }, "rename")).toBe(false);
+  });
+});

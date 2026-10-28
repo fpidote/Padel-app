@@ -154,7 +154,7 @@ setT(data);
 - Espectadores/jugadores: sin sesión
 - **Dueño** (`isOwner`): `auth.currentUser.uid` igual al `ownerUid` de **primer nivel** del documento (`tournamentOwnerUid`; el de dentro de `data` lo puede reescribir un ayudante). Es el único que prepara, lanza, edita y borra el torneo y gestiona ayudantes.
 - **Ayudante** (`isHelper`): alguien con sesión de Google y correo verificado cuyo documento existe en `torneos/{code}/helpers/{correo en minúsculas}`; el dueño lo añade desde "👥 Ayudantes" (máximo 5, solo en la pantalla). Puede cargar y corregir resultados, pasar de ronda y finalizar. `canScore = isOwner || isHelper` es lo que reciben los `Play*` como `isAdmin`; los `Setup*` reciben `isOwner`. El correo se lee de los claims del token (lo mismo que miran las reglas) con una sola lectura de su propio documento, sin listener.
-- Los permisos **no** usan localStorage — son puro Firebase Auth. "Solo resultados" se aplica en la pantalla, no en el servidor (el torneo es un único bloque `data`): el ayudante debe ser de confianza
+- Los permisos **no** usan localStorage — son puro Firebase Auth. En el Americano el dueño puede activar desde "👥 Ayudantes" que los ayudantes vean los niveles y renombren jugadores (`t.helperPerms.{levels, rename}`, desactivado por defecto, `helperAllows`). "Solo resultados" se aplica en la pantalla, no en el servidor (el torneo es un único bloque `data`): el ayudante debe ser de confianza
 
 ---
 

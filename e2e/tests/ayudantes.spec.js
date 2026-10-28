@@ -154,3 +154,23 @@ test("el dueño sigue siéndolo aunque un ayudante cambie el ownerUid guardado d
   await expect(dueno.getByText("✏️ Editar torneo")).toBeVisible({ timeout: 8000 });
   await expect(dueno.getByTestId("btn-ayudantes")).toBeVisible();
 });
+
+test("en el Americano el ayudante no ve niveles ni renombra hasta que el dueño lo permite", async ({ browser }) => {
+  await seedTournament(CODE, {});
+  await addHelper(CODE, EMAIL);
+  const dueno = await abrir(browser, {});
+  await dueno.getByTestId("btn-open-modal").click();
+  await dueno.getByTestId("btn-iniciar").click();
+  await expect(dueno.locator('input[type="number"]').first()).toBeVisible({ timeout: 8000 });
+
+  const ayudante = await abrir(browser, { uid: "ayudante-1", email: EMAIL });
+  await expect(ayudante.getByText("🤝 Ayudante")).toBeVisible({ timeout: 8000 });
+  await expect(ayudante.locator('input[type="number"]').first()).toBeVisible();
+  await expect(ayudante.getByText(/Ocultar niveles|Mostrar niveles/)).toHaveCount(0);
+
+  await dueno.getByTestId("btn-ayudantes").click();
+  await dueno.getByTestId("perm-niveles").check();
+  await expect.poll(async () => (await getTournamentData(CODE)).helperPerms?.levels, { timeout: 8000 }).toBe(true);
+
+  await expect(ayudante.getByText(/Ocultar niveles|Mostrar niveles/).first()).toBeVisible({ timeout: 8000 });
+});

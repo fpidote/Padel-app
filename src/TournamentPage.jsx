@@ -125,7 +125,7 @@ export default function TournamentPage() {
           </button>
         </div>
       )}
-      {showHelpers && isOwner && <HelpersModal code={code} onClose={() => setShowHelpers(false)} />}
+      {showHelpers && isOwner && <HelpersModal code={code} t={t} persist={persist} onClose={() => setShowHelpers(false)} />}
     </RoleContext.Provider>
   );
 }

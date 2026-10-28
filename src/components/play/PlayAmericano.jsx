@@ -1,9 +1,11 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useContext } from "react";
 import { generateRules } from "../../logic/constants";
 import { pk } from "../../logic/utils";
 import { standingsLabels } from "../../logic/standings";
 import { buildRoundAmericano, americanoStandings, americanoPodium, americanoMatchesPlayed, canFinishAnyRound, startEditCourt, adminCourtView, roundAllSaved, standingsTitle, hasStandingsData } from "../../logic/americano";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
+import { RoleContext } from "../shared/RoleContext";
+import { helperAllows } from "../../logic/helpers";
 import History from "../shared/History";
 import PodiumCard from "../shared/PodiumCard";
 import { validateGamesScore } from "../../logic/sets";
@@ -36,6 +38,11 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
   const [search, setSearch] = useState(null); // null = todos, playerID/pairID = filtrado
   const [modalMsg, setModalMsg] = useState(null);
   const [showLevelsToggle, setShowLevelsToggle] = useState(true);
+  // El ayudante solo ve niveles y renombra jugadores si el dueño lo activó (t.helperPerms)
+  const { isHelper } = useContext(RoleContext);
+  const seeLevels = isAdmin && helperAllows(isHelper, t, "levels");
+  const canRename = isAdmin && helperAllows(isHelper, t, "rename");
+  const showLevelsEff = seeLevels && showLevelsToggle;
 
   // Tras recargar con una pista en edición, las casillas arrancan con el resultado que había
   useEffect(() => {
@@ -303,7 +310,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
             </div>
 
             {/* ── Toggle niveles ── */}
-            {isAdmin && t.config.useLevels && (
+            {seeLevels && t.config.useLevels && (
               <div className="flex justify-end mb-2">
                 <button
                   onClick={() => setShowLevelsToggle(v => !v)}
@@ -326,7 +333,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                 onEdit={onEdit}
                 matchesSearch={matchesSearch}
                 useLevels={!!t.config.useLevels}
-                showLevelsToggle={showLevelsToggle}
+                showLevelsToggle={showLevelsEff}
                 search={search}
               />
             ) : (
@@ -391,7 +398,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                       matchesSearch={matchesSearch}
                       isAdmin={isAdmin}
                       useLevels={!!t.config.useLevels}
-                      showLevelsToggle={showLevelsToggle}
+                      showLevelsToggle={showLevelsEff}
                       players={t.players}
                     />
                   ) : (
@@ -401,7 +408,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                       matchesSearch={matchesSearch}
                       isAdmin={isAdmin}
                       useLevels={!!t.config.useLevels}
-                      showLevelsToggle={showLevelsToggle}
+                      showLevelsToggle={showLevelsEff}
                       players={t.players}
                     />
                   )
@@ -409,6 +416,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                   <CourtsAmericano
                     t={t}
                     isAdmin={isAdmin}
+                    canRename={canRename}
                     ls={ls}
                     setLs={setLs}
                     allSaved={allSaved}
@@ -420,7 +428,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                     persist={persist}
                     isFinished={isFinished}
                     isLastRound={isLastRound}
-                    showLevelsToggle={showLevelsToggle}
+                    showLevelsToggle={showLevelsEff}
                   />
                 )}
               </>
@@ -428,7 +436,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
           </>
         )}
         {tab === "standings" && (
-          <StandingsAmericano labels={standingsLabels(t.config)} rows={standings} rounds={t.rounds} podium={podium} finished={isFinished} roundNum={t.roundNum} useLevels={!!t.config.useLevels} isAdmin={isAdmin} showLevelsToggle={showLevelsToggle} setShowLevelsToggle={setShowLevelsToggle} />
+          <StandingsAmericano labels={standingsLabels(t.config)} rows={standings} rounds={t.rounds} podium={podium} finished={isFinished} roundNum={t.roundNum} useLevels={!!t.config.useLevels} isAdmin={seeLevels} showLevelsToggle={showLevelsEff} setShowLevelsToggle={setShowLevelsToggle} />
         )}
         {tab === "history" && (
           <>
@@ -693,7 +701,7 @@ function AllRoundsPlayerView({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSea
   );
 }
 
-function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onFinish, onEdit, matchesSearch, persist, isFinished, isLastRound, showLevelsToggle }) {
+function CourtsAmericano({ t, isAdmin, canRename, ls, setLs, allSaved, onSave, onNext, onFinish, onEdit, matchesSearch, persist, isFinished, isLastRound, showLevelsToggle }) {
   const [renameModal, setRenameModal] = useState(null);
   const [confirmAdvance, setConfirmAdvance] = useState(false);
   const [confirmFinishNow, setConfirmFinishNow] = useState(false);
@@ -784,8 +792,8 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onFi
           </span>
         )}
         <span
-          className={`text-sm font-bold text-gray-50${isAdmin ? " cursor-pointer" : ""}`}
-          onClick={() => isAdmin && setRenameModal({ type, id, field, value: getCurrentName(type, id, field) })}
+          className={`text-sm font-bold text-gray-50${canRename ? " cursor-pointer" : ""}`}
+          onClick={() => canRename && setRenameModal({ type, id, field, value: getCurrentName(type, id, field) })}
         >
           {displayName}
         </span>

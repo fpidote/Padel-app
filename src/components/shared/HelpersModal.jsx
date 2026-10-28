@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useHelpers } from "../../hooks/useHelpers";
 import { normalizeEmail, MAX_HELPERS } from "../../logic/helpers";
 
-export default function HelpersModal({ code, onClose }) {
+export default function HelpersModal({ code, t, persist, onClose }) {
   const { helpers, loading, add, remove } = useHelpers(code, true);
   const [email, setEmail] = useState("");
   const [error, setError] = useState(null);
@@ -23,6 +23,12 @@ export default function HelpersModal({ code, onClose }) {
     }
   }
 
+  // Permisos extra del ayudante (solo Americano): se guardan en el torneo y por defecto están desactivados
+  const perms = t?.helperPerms || {};
+  function togglePerm(key) {
+    persist({ ...t, helperPerms: { ...perms, [key]: !perms[key] } });
+  }
+
   return (
     <div className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
       <div
@@ -38,6 +44,19 @@ export default function HelpersModal({ code, onClose }) {
           Un ayudante puede cargar y corregir resultados, pasar de ronda y finalizar el torneo. Entra desde el mismo
           enlace iniciando sesión con Google. Debe ser el correo con el que esa persona inicia sesión.
         </p>
+
+        {t?.type === "americano" && (
+          <div className="mb-4 space-y-2">
+            <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+              <input type="checkbox" data-testid="perm-niveles" checked={!!perms.levels} onChange={() => togglePerm("levels")} />
+              Los ayudantes pueden ver los niveles de los jugadores
+            </label>
+            <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+              <input type="checkbox" data-testid="perm-renombrar" checked={!!perms.rename} onChange={() => togglePerm("rename")} />
+              Los ayudantes pueden renombrar jugadores
+            </label>
+          </div>
+        )}
 
         {loading ? (
           <div className="text-xs text-gray-500 mb-4">Cargando…</div>

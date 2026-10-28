@@ -22,3 +22,9 @@ export function validateNewHelper(raw, currentEmails) {
 export function tournamentOwnerUid(docOwnerUid, data) {
   return docOwnerUid || data?.ownerUid || null;
 }
+
+// Permisos opcionales del ayudante que decide el dueño (t.helperPerms.{levels, rename}); por defecto no.
+// Solo se aplican en pantalla, igual que "solo resultados".
+export function helperAllows(isHelper, t, key) {
+  return !isHelper || t?.helperPerms?.[key] === true;
+}
