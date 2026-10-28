@@ -11,6 +11,20 @@ export function validateSet(a, b) {
   return ok ? null : "Set inválido. Válidos: 6-0 a 6-4, 7-5 o 7-6";
 }
 
+// Marcador por games (un solo resultado, sin sets) tal como está en los inputs. Devuelve el motivo por el
+// que no se puede guardar, o null si es válido o todavía falta escribir un lado.
+export const MAX_GAMES_SCORE = 99;
+
+export function validateGamesScore(rawA, rawB) {
+  const a = String(rawA ?? "").trim();
+  const b = String(rawB ?? "").trim();
+  if (a === "" || b === "") return null;
+  if (!/^\d+$/.test(a) || !/^\d+$/.test(b)) return "Usa números enteros, sin decimales ni negativos";
+  if (Number(a) > MAX_GAMES_SCORE || Number(b) > MAX_GAMES_SCORE) return `El máximo es ${MAX_GAMES_SCORE}`;
+  if (Number(a) === Number(b)) return "Un partido no puede terminar empatado";
+  return null;
+}
+
 // rows: [{a: "6", b: "4"}, ...] tal como están en los inputs.
 // Recorre en orden y se detiene en el primer set incompleto, inválido o cuando alguien ya ganó.
 export function analyzeSets(rows, setsNeeded) {

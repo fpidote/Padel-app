@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateSet, analyzeSets } from "./sets";
+import { validateSet, analyzeSets, validateGamesScore } from "./sets";
 
 describe("validateSet", () => {
   it.each([[6, 0], [6, 4], [4, 6], [7, 5], [5, 7], [7, 6], [6, 7]])("acepta %i-%i", (a, b) => {
@@ -42,5 +42,35 @@ describe("analyzeSets", () => {
     const r = analyzeSets([row(6, 0), row(6, 0), row(1, 6)], 2);
     expect(r.sets).toHaveLength(2);
     expect(r.finished).toBe(true);
+  });
+});
+
+describe("validateGamesScore", () => {
+  it("sin nada escrito o con un solo lado no hay mensaje (todavía está escribiendo)", () => {
+    expect(validateGamesScore("", "")).toBeNull();
+    expect(validateGamesScore("6", "")).toBeNull();
+    expect(validateGamesScore("", "4")).toBeNull();
+  });
+
+  it("un marcador normal es válido", () => {
+    expect(validateGamesScore("6", "4")).toBeNull();
+    expect(validateGamesScore("0", "1")).toBeNull();
+    expect(validateGamesScore("99", "0")).toBeNull();
+  });
+
+  it("explica el empate, incluido 0-0", () => {
+    expect(validateGamesScore("6", "6")).toBe("Un partido no puede terminar empatado");
+    expect(validateGamesScore("0", "0")).toBe("Un partido no puede terminar empatado");
+  });
+
+  it("rechaza decimales y negativos, que parseInt dejaba pasar o recortaba", () => {
+    expect(validateGamesScore("2.5", "1")).toBe("Usa números enteros, sin decimales ni negativos");
+    expect(validateGamesScore("-1", "3")).toBe("Usa números enteros, sin decimales ni negativos");
+    expect(validateGamesScore("3", "1e2")).toBe("Usa números enteros, sin decimales ni negativos");
+  });
+
+  it("rechaza marcadores absurdos (más de 99)", () => {
+    expect(validateGamesScore("999", "2")).toBe("El máximo es 99");
+    expect(validateGamesScore("3", "100")).toBe("El máximo es 99");
   });
 });

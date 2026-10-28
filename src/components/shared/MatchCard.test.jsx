@@ -92,3 +92,23 @@ describe("MatchCard — etiqueta de fase", () => {
     expect(ko).not.toContain("CUADRO PRINCIPAL");
   });
 });
+
+describe("MatchCard — marcador por games inválido", () => {
+  const open = { ...match, saved: false, scoreA: "", scoreB: "", sets: null };
+  const games = (a, b) => render({ match: open, scoringFormat: "games", ls: { m1_A: a, m1_B: b } });
+
+  it("explica por qué no se puede guardar un empate", () => {
+    expect(games("6", "6")).toContain("Un partido no puede terminar empatado");
+  });
+
+  it("explica el máximo y los decimales", () => {
+    expect(games("999", "2")).toContain("El máximo es 99");
+    expect(games("2.5", "1")).toContain("Usa números enteros");
+  });
+
+  it("con un marcador válido no hay mensaje de error y se anuncia el ganador", () => {
+    const html = games("6", "4");
+    expect(html).not.toContain("data-testid=\"games-error\"");
+    expect(html).toContain("Gana");
+  });
+});

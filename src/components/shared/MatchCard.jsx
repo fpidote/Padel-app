@@ -1,5 +1,5 @@
 // src/components/shared/MatchCard.jsx
-import { analyzeSets } from "../../logic/sets";
+import { analyzeSets, validateGamesScore } from "../../logic/sets";
 
 export default function MatchCard({
   match,
@@ -33,8 +33,9 @@ export default function MatchCard({
   const gA = parseInt(sA_games);
   const gB = parseInt(sB_games);
 
+  const gamesError = isSetFormat ? null : validateGamesScore(sA_games, sB_games);
   const isGamesValid =
-    !isNaN(gA) && !isNaN(gB) && gA >= 0 && gB >= 0 && gA !== gB;
+    !gamesError && !isNaN(gA) && !isNaN(gB) && gA >= 0 && gB >= 0 && gA !== gB;
 
   const isValidFinal = isSetFormat ? live.finished : isGamesValid;
   const finalScoreA = isSetFormat ? live.setsA : gA;
@@ -222,6 +223,11 @@ export default function MatchCard({
       {/* Indicador de Ganador: el hueco se reserva siempre para que el botón no salte al escribir */}
       {isAdmin && !match.saved && match.pairA && match.pairB && (
         <div data-testid="winner-slot" className="min-h-[26px]">
+          {gamesError && (
+            <div data-testid="games-error" className="px-4 pb-2 text-center text-[12px] text-amber-400 font-bold">
+              ⚠️ {gamesError}
+            </div>
+          )}
           {isValidFinal && (
             <div className="flex items-center justify-center gap-1.5 px-4 pb-2 text-[12px] text-green-400 font-bold">
               <span
