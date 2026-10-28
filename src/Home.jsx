@@ -50,12 +50,13 @@ export default function Home() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  async function handleCreateClick() {
+  async function handleCreateClick(type) {
     try {
       if (!auth.currentUser) {
         await signInWithPopup(auth, googleProvider);
       }
-      setShowModal(true);
+      if (type) await onCreate(type);
+      else setShowModal(true);
     } catch (err) {
       if (err.code !== "auth/popup-closed-by-user") {
         console.error("Error al iniciar sesión:", err);
@@ -147,6 +148,7 @@ export default function Home() {
               {CREATABLE_TYPES.map((tt) => (
                 <button
                   key={tt.id}
+                  data-testid={`crear-${tt.id}`}
                   onClick={() => onCreate(tt.id)}
                   className="w-full flex items-center gap-3 p-4 rounded-xl border border-l-4 text-left transition-all duration-150 cursor-pointer active:scale-95"
                   style={{
@@ -260,7 +262,7 @@ export default function Home() {
           </p>
 
           <button
-            onClick={handleCreateClick}
+            onClick={() => handleCreateClick()}
             className="w-full bg-[#84cc16] hover:bg-lime-400 text-[#14532d] font-black py-4 rounded-2xl text-base transition-colors cursor-pointer anim-fade-up anim-d4 shadow-[0_0_0_1px_rgba(132,204,22,0.4),0_4px_20px_rgba(132,204,22,0.25),0_12px_40px_rgba(132,204,22,0.1)]"
           >
             + Crear torneo gratis
@@ -304,9 +306,12 @@ export default function Home() {
           </p>
           <div className="grid grid-cols-2 gap-3">
             {CREATABLE_TYPES.map((tt, i) => (
-              <div
+              <button
+                type="button"
                 key={tt.id}
-                className={`format-card rounded-2xl p-4 flex flex-col gap-2 border border-t-[3px] anim-fade-up anim-d${i + 5}`}
+                data-testid={`formato-${tt.id}`}
+                onClick={() => handleCreateClick(tt.id)}
+                className={`format-card rounded-2xl p-4 flex flex-col gap-2 border border-t-[3px] text-left cursor-pointer anim-fade-up anim-d${i + 5}`}
                 style={{
                   background: tt.color + "12",
                   borderColor: tt.color + "25",
@@ -333,7 +338,7 @@ export default function Home() {
                     </span>
                   ))}
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </section>

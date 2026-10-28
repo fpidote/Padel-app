@@ -24,7 +24,7 @@ test("crear, configurar, jugar grupos y fase final, finalizar y ver el podio", a
   await page.goto("/");
   await page.evaluate(async (t) => { await window.__e2eSignIn(t); }, await getTestToken());
   await page.getByRole("button", { name: /Crear torneo gratis/ }).first().click();
-  await page.getByRole("button", { name: /Torneo por grupos/ }).click();
+  await page.getByTestId("crear-mundialito").click();
   await expect(page).toHaveURL(/\/torneo\//);
   code = page.url().split("/torneo/")[1];
 
