@@ -629,6 +629,7 @@ function FilteredCurrentRound({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSe
                 <div className="pt-3">
                   <button
                     onClick={() => onSave(ci)}
+                    data-score-save=""
                     className="w-full py-2.5 rounded-xl text-sm font-bold bg-sky-600 hover:bg-sky-500 text-white cursor-pointer transition-colors"
                   >
                     Guardar resultado
@@ -939,6 +940,7 @@ function CourtsAmericano({ t, isAdmin, canRename, ls, setLs, allSaved, onSave, o
               <div className="px-4 pb-3">
                 <button
                   onClick={() => onSave(ci)}
+                  data-score-save=""
                   className="w-full py-2.5 rounded-xl text-sm font-bold bg-sky-600 hover:bg-sky-500 text-white cursor-pointer transition-colors"
                 >
                   Guardar resultado

@@ -11,10 +11,11 @@ export function blockNonIntegerKey(e) {
   showToast("Escribe solo números enteros, sin coma ni punto.");
 }
 
-// Enter (o "Siguiente" en el teclado del móvil) pasa a la casilla de marcador siguiente; en la última se
-// cierra el teclado para que se vea el botón de guardar.
+// Enter (o "Siguiente" en el teclado del móvil) pasa a la casilla de marcador siguiente o, si el resultado ya
+// es válido, al botón de guardar de ese partido (data-score-save, solo existe/está activo con marcador válido);
+// otro Enter lo pulsa. En la última casilla se cierra el teclado.
 export function goToNextScore(el) {
-  const all = [...el.ownerDocument.querySelectorAll("input[data-score]")].filter((i) => !i.disabled && i.offsetParent !== null);
+  const all = [...el.ownerDocument.querySelectorAll("input[data-score], button[data-score-save]")].filter((i) => !i.disabled && i.offsetParent !== null);
   const next = all[all.indexOf(el) + 1];
   if (next) {
     next.focus();

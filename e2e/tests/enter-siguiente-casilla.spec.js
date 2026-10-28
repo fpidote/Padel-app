@@ -3,7 +3,7 @@
  * en lugar de no hacer nada; en la última se cierra el teclado.
  */
 import { test, expect } from "@playwright/test";
-import { seedTournament, deleteTournament, getTestToken } from "../helpers/seed.js";
+import { seedTournament, deleteTournament, getTestToken, getTournamentData } from "../helpers/seed.js";
 
 const CODE = "ENTERSIG1";
 const pair = (id, p1, p2) => ({ id, p1, p2, pts: 0, gf: 0, gc: 0, gamesFor: 0, gamesAgainst: 0, played: 0, wins: 0 });
@@ -20,7 +20,7 @@ async function entrar(page) {
   await page.evaluate(async (t) => { await window.__e2eSignIn(t); }, await getTestToken());
 }
 
-test("Liga: Enter en la casilla A pasa a la B, y de la B al siguiente partido; la última cierra el teclado", async ({ page }) => {
+test("Liga: Enter pasa de A a B, de B al botón de guardar (y lo pulsa), y sin marcador válido sigue al siguiente partido", async ({ page }) => {
   await seedTournament(CODE, {
     type: "liga", status: "playing", phase: "fixture", scoringStarted: false,
     config: { name: "Enter", courts: 2, scoringFormat: "games", idaYVuelta: false, playoffEnabled: false },
@@ -37,13 +37,22 @@ test("Liga: Enter en la casilla A pasa a la B, y de la B al siguiente partido; l
   await expect(c.nth(1)).toBeFocused();
   await page.keyboard.type("2");
   await page.keyboard.press("Enter");
-  await expect(c.nth(2)).toBeFocused();
-  await c.nth(3).focus();
+  // Con el marcador válido, Enter lleva al botón de guardar de ese partido; otro Enter lo guarda
+  const guardar = page.getByRole("button", { name: "Guardar resultado" }).first();
+  await expect(guardar).toBeFocused();
   await page.keyboard.press("Enter");
-  await expect(c.nth(3)).not.toBeFocused();
+  await expect.poll(async () => (await getTournamentData(CODE)).matches.filter((m) => m.saved).length, { timeout: 8000 }).toBe(1);
+  // Sin marcador válido no hay botón al que ir: Enter pasa al siguiente partido y en la última casilla cierra el teclado
+  // (el partido guardado ya no tiene casillas: el segundo pasa a ser el primero)
+  await c.nth(0).focus();
+  await page.keyboard.type("6");
+  await page.keyboard.press("Enter");
+  await expect(c.nth(1)).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(c.nth(1)).not.toBeFocused();
 });
 
-test("Americano: Enter en la casilla A pasa a la B", async ({ page }) => {
+test("Americano: Enter pasa de A a B y, con marcador válido, al botón de guardar", async ({ page }) => {
   await seedTournament(CODE, {});
   await entrar(page);
   await page.getByTestId("btn-open-modal").click();
@@ -54,4 +63,7 @@ test("Americano: Enter en la casilla A pasa a la B", async ({ page }) => {
   await page.keyboard.type("9");
   await page.keyboard.press("Enter");
   await expect(c.nth(1)).toBeFocused();
+  await page.keyboard.type("5");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("button", { name: "Guardar resultado" }).first()).toBeFocused();
 });

@@ -283,6 +283,7 @@ export default function MatchCard({
               }
             }}
             disabled={!isValidFinal}
+            data-score-save=""
             className={`${isEditing ? "flex-1" : "w-full"} py-3 rounded-xl text-[13px] font-black text-white cursor-pointer transition-all`}
             style={{
               background: isValidFinal ? accentColor : 'rgba(255,255,255,0.04)',
