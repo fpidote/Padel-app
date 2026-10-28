@@ -5,6 +5,7 @@ import { onAuthStateChanged, signInWithPopup } from "firebase/auth";
 import { db, auth, googleProvider } from "../firebase";
 import { buildShareMessage } from "../logic/utils";
 import { showToast } from "../logic/toast";
+import { createSaveQueue } from "../logic/saveQueue";
 
 export function useTournament(code) {
   const [authUser, setAuthUser] = useState(null);
@@ -18,6 +19,25 @@ export function useTournament(code) {
 
   const verRef = useRef(null);
   const wasAdminRef = useRef(false);
+  const codeRef = useRef(code);
+  codeRef.current = code;
+
+  // Cola de guardado: escribe de uno en uno y sin descartar cambios (ver logic/saveQueue.js)
+  const queueRef = useRef(null);
+  if (!queueRef.current) {
+    queueRef.current = createSaveQueue({
+      write: (state) => setDoc(doc(db, "torneos", codeRef.current), { data: JSON.stringify(state) }, { merge: true }),
+      onFailure: (lastSaved, err) => {
+        console.error("Error al guardar:", err);
+        // Los cambios pendientes partían del estado que falló: se vuelve al último guardado
+        if (lastSaved) {
+          verRef.current = lastSaved.ver;
+          setT(lastSaved);
+        }
+        showToast("No se pudieron guardar los cambios. Revisa la conexión e inténtalo de nuevo.");
+      },
+    });
+  }
 
   useEffect(() => {
     return onAuthStateChanged(auth, (user) => setAuthUser(user));
@@ -50,6 +70,7 @@ export function useTournament(code) {
   useEffect(() => {
     if (!code) return;
     verRef.current = null;
+    queueRef.current.confirm(null);
     setT(null);
     setNotFound(false);
     setError(null);
@@ -70,6 +91,7 @@ export function useTournament(code) {
         }
         if (!data || data.ver <= verRef.current) return;
         verRef.current = data.ver;
+        queueRef.current.confirm(data);
         setT(data);
       },
       // Hallazgo 4: errores del listener expuestos como estado, no solo console.error
@@ -82,33 +104,20 @@ export function useTournament(code) {
   }, [code]);
 
   // ── persist ─────────────────────────────────────────────────
-  // Hallazgo 1: rollback completo si setDoc falla
-  // Hallazgo 3: guard anti-concurrencia para evitar race condition de doble-click
+  // La pantalla se actualiza al instante (estado optimista) y el guardado va por la cola: si se pide
+  // otro cambio mientras se guarda, no se descarta, se guarda después con el estado más reciente.
   async function persist(newT) {
-    if (saving) return;
     // Sin red, setDoc no responde y dejaría el guardado colgado: se avisa y no se intenta a ciegas
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       showToast("No se guardaron los cambios: sin conexión. Vuelve a intentarlo cuando se recupere.");
       return;
     }
-    const prevT = t;
-    const prevVer = verRef.current;
-    const updated = { ...newT, ver: (newT.ver || 0) + 1 };
+    const updated = { ...newT, ver: Math.max(newT.ver || 0, verRef.current ?? 0) + 1 };
+    verRef.current = updated.ver;
+    setT(updated);
     setSaving(true);
-    try {
-      verRef.current = updated.ver;
-      setT(updated);
-      await setDoc(doc(db, "torneos", code), {
-        data: JSON.stringify(updated),
-      }, { merge: true });
-    } catch (err) {
-      verRef.current = prevVer;
-      setT(prevT);
-      console.error("Error al guardar:", err);
-      showToast("No se pudieron guardar los cambios. Revisa la conexión e inténtalo de nuevo.");
-    } finally {
-      setSaving(false);
-    }
+    await queueRef.current.save(updated);
+    setSaving(queueRef.current.isSaving());
   }
 
   // ── copyCode ─────────────────────────────────────────────────

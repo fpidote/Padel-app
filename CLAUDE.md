@@ -130,6 +130,10 @@ await setDoc(doc(db, "torneos", code), {
 > Sin `{ merge: true }`, cada `persist` borra `ownerUid` y `createdAt` del documento.
 > Este bug ya ocurrió — no repetirlo.
 
+### Cola de guardado (no descartar cambios)
+
+`persist` actualiza la pantalla al instante y guarda por una cola (`src/logic/saveQueue.js`): escribe de uno en uno y, si se pide otro cambio mientras se guarda, lo junta en un único guardado posterior con el estado más reciente. **Nunca** descartar un `persist` por "ya hay uno en curso" (así se perdían parejas al añadirlas rápido o con red lenta). Si falla la escritura se vuelve al último estado guardado y se avisa con un toast.
+
 ### Versioning anti-race-condition
 
 El estado del torneo tiene un campo `ver` (integer). Cada `persist` incrementa `ver` en 1.
