@@ -1,12 +1,13 @@
 // src/components/play/PlayRelampago.jsx
 import { useState, Fragment } from "react";
 import { generateRules } from "../../logic/constants";
-import { advanceBracket, unadvanceBracket, canEditBracketMatch, countPlayed, bracketRoundName, relampagoPodium } from "../../logic/relampago";
+import { advanceBracket, unadvanceBracket, canEditBracketMatch, countPlayed, bracketRoundName, relampagoPodium, relampagoCanFinish } from "../../logic/relampago";
 import { analyzeSets } from "../../logic/sets";
 import { applyMatchToPairs } from "../../logic/standings";
-import { THeader, Tabs } from "../shared/Components";
+import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import PairStandings from "../shared/PairStandings";
 import PodiumCard from "../shared/PodiumCard";
+import { showToast } from "../../logic/toast";
 
 const SLOT_HEIGHT = 110;
 // Con sets la tarjeta abierta es más alta: más espacio por partido para que no tape a la vecina
@@ -328,6 +329,8 @@ function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, canEditMatch
 export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onEditTournament }) {
   const [tab, setTab] = useState("bracket");
   const [ls, setLs] = useState({});
+  const [confirmFinish, setConfirmFinish] = useState(false);
+  const finished = t.status === "finished";
 
   async function onSaveMatch(matchId, a, b, sets) {
     const match = t.bracket.find((m) => m.id === matchId);
@@ -353,13 +356,24 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
     const match = t.bracket.find((m) => m.id === matchId);
     if (!match) return;
     if (match.pairA?.id === "bye" || match.pairB?.id === "bye") return;
-    if (!canEditBracketMatch(t.bracket, matchId)) return;
+    if (finished || !canEditBracketMatch(t.bracket, matchId)) return;
 
     const a = parseInt(match.scoreA);
     const b = parseInt(match.scoreB);
     const pairs = applyMatchToPairs(t.pairs, match, a, b, match.sets, -1);
 
     await persist({ ...t, bracket: unadvanceBracket(t.bracket, matchId), pairs });
+  }
+
+  async function onFinishTournament() {
+    setConfirmFinish(false);
+    if (!relampagoCanFinish(t)) return;
+    try {
+      await persist({ ...t, status: "finished" });
+    } catch (err) {
+      console.error("Error al finalizar el torneo:", err);
+      showToast("No se pudo finalizar el torneo. Inténtalo de nuevo.");
+    }
   }
 
   const consolRounds = [
@@ -414,6 +428,24 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
                 </div>
               </div>
             )}
+            {isAdmin && relampagoCanFinish(t) && (
+              <button
+                onClick={() => setConfirmFinish(true)}
+                className="w-full bg-[#10b981] text-white font-bold rounded-xl py-4 text-base cursor-pointer border-0"
+              >
+                🏁 Finalizar torneo
+              </button>
+            )}
+            {isAdmin && champion && !finished && !relampagoCanFinish(t) && (
+              <div className="bg-[#1f2937] border border-[#374151] rounded-2xl px-4 py-3 text-xs text-gray-400 text-center">
+                Para finalizar el torneo falta jugar la revancha.
+              </div>
+            )}
+            {finished && (
+              <div className="bg-[#1f2937] border border-[#374151] rounded-2xl px-4 py-3 text-xs text-gray-400 text-center">
+                🏁 Torneo finalizado: los resultados están cerrados.
+              </div>
+            )}
             <BracketView
               matches={t.bracket.filter((m) => m.bracket === "winners")}
               isAdmin={isAdmin}
@@ -421,7 +453,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
               setLs={setLs}
               onSave={onSaveMatch}
               onEdit={onEditMatch}
-              canEditMatch={(id) => canEditBracketMatch(t.bracket, id)}
+              canEditMatch={(id) => !finished && canEditBracketMatch(t.bracket, id)}
               accentColor="#7c3aed"
               scoringFormat={t.config?.scoringFormat || "games"}
             />
@@ -453,7 +485,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
               setLs={setLs}
               onSave={onSaveMatch}
               onEdit={onEditMatch}
-              canEditMatch={(id) => canEditBracketMatch(t.bracket, id)}
+              canEditMatch={(id) => !finished && canEditBracketMatch(t.bracket, id)}
               accentColor="#0284c7"
               scoringFormat={t.config?.scoringFormat || "games"}
             />
@@ -466,6 +498,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
               podium={podium}
               hasThird={hasConsolation}
               thirdLabel="Ganador de la revancha"
+              finished={finished}
             />
             <PairStandings pairs={t.pairs.map((p) => ({ ...p, played: countPlayed(t.bracket, p.id) }))} title="Posiciones" scoringFormat={t.config?.scoringFormat} config={t.config} medals={false} />
           </>
@@ -484,6 +517,15 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
           </div>
         )}
       </div>
+      {confirmFinish && (
+        <SimpleModal
+          icon="🏁"
+          message="Al finalizar el torneo los resultados se cierran y ya no se podrán modificar. ¿Finalizar el torneo?"
+          confirmLabel="Finalizar"
+          onClose={() => setConfirmFinish(false)}
+          onConfirm={onFinishTournament}
+        />
+      )}
     </div>
   );
 }

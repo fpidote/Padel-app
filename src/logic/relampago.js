@@ -54,6 +54,11 @@ export function relampagoPodium(bracket) {
   return { champion, runnerUp, third };
 }
 
+// ¿Se puede cerrar el torneo? Con todo el cuadro jugado, revancha incluida, y solo una vez.
+export function relampagoCanFinish(t) {
+  return !!t && t.status !== "finished" && bracketComplete(t.bracket);
+}
+
 // ¿Se jugó todo el cuadro? Los pasa directo se resuelven solos, así que basta con que todo esté guardado
 // (incluido el partido por el 3.º puesto si existe).
 export function bracketComplete(bracket) {

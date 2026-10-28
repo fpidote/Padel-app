@@ -169,7 +169,7 @@ setT(data);
 ```
 status: "setup"   → usuario configura jugadores/parejas
 status: "playing" → torneo en curso, rondas activas
-status: "finished"→ torneo terminado: Pozo, Torneo por grupos y Liga lo marcan con un botón "Finalizar torneo" (con confirmación) que cierra los resultados
+status: "finished"→ torneo terminado: Pozo, Relámpago, Torneo por grupos y Liga lo marcan con un botón "Finalizar torneo" (con confirmación) que cierra los resultados
 ```
 
 ---

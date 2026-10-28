@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildBracket, advanceBracket, unadvanceBracket, countPlayed, firstRoundSeedPairs, canEditBracketMatch, hasPlayedRealMatch, bracketRoundName, bracketPodium, bracketComplete, bracketSemifinalLosers, relampagoPodium } from "./relampago.js";
+import { buildBracket, advanceBracket, unadvanceBracket, countPlayed, firstRoundSeedPairs, canEditBracketMatch, hasPlayedRealMatch, bracketRoundName, bracketPodium, bracketComplete, bracketSemifinalLosers, relampagoPodium, relampagoCanFinish } from "./relampago.js";
 import { generateRules, TOURNAMENT_TYPES } from "./constants.js";
 
 function makePairs(n) {
@@ -635,5 +635,25 @@ describe("reglas del Relámpago", () => {
     expect(reglas).toMatch(/primer partido/i);
     const desc = TOURNAMENT_TYPES.find((x) => x.id === "relampago").desc;
     expect(desc).toMatch(/primer partido/i);
+  });
+});
+
+describe("relampagoCanFinish — cuándo se puede finalizar el torneo", () => {
+  it("no se puede con el cuadro a medias ni sin cuadro", () => {
+    expect(relampagoCanFinish({ status: "playing", bracket: buildBracket(makePairs(8)) })).toBe(false);
+    expect(relampagoCanFinish({ status: "playing", bracket: [] })).toBe(false);
+    expect(relampagoCanFinish(null)).toBe(false);
+  });
+
+  it("con la final jugada pero la revancha pendiente tampoco", () => {
+    const base = buildBracket(makePairs(8));
+    const consolFinal = base.find((m) => m.bracket === "consolation" && !m.nextMatchId);
+    expect(relampagoCanFinish({ status: "playing", bracket: jugar(base, { salvo: [consolFinal.id] }) })).toBe(false);
+  });
+
+  it("se puede cuando todo el cuadro principal y la revancha están jugados, y una sola vez", () => {
+    const t = { status: "playing", bracket: jugar(buildBracket(makePairs(8))) };
+    expect(relampagoCanFinish(t)).toBe(true);
+    expect(relampagoCanFinish({ ...t, status: "finished" })).toBe(false);
   });
 });
