@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { buildFirstRoundAmericano, precomputeAllRounds } from "../../logic/americano";
+import { buildFirstRoundAmericano, precomputeAllRounds, isDuplicateName, duplicateNameKeys, normalizeName } from "../../logic/americano";
 import { calcularDescansos, isCourtComplete } from "../../logic/manualRounds";
 import ManualRoundBuilder from "./ManualRoundBuilder";
 import { buildShareMessage } from "../../logic/utils";
@@ -181,6 +181,8 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
     }
     setShowLaunchModal(true);
   }
+
+  const repeatedNames = duplicateNameKeys(t.playerInputs);
 
   function addPlayer() {
     if (!newName.trim()) return;
@@ -447,6 +449,9 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
                       ) : (
                         <span className="flex-1 text-sm font-medium cursor-pointer hover:underline hover:decoration-dotted" onClick={() => startEdit(i)}>{p.name}</span>
                       )}
+                      {repeatedNames.has(normalizeName(p.name)) && editingIdx !== i && (
+                        <span className="text-[11px] font-semibold text-amber-400 shrink-0">⚠️ repetido</span>
+                      )}
                       {useLevels && (() => {
                         const lvl = LEVELS[editingIdx === i ? editLvl : (p.level || 0)];
                         return (
@@ -487,6 +492,11 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
                   <input ref={nameInputRef} value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === "Enter" && addPlayer()} placeholder="Nombre del jugador..." className={addInputCls} />
                   <button onClick={addPlayer} className={`px-4 py-2.5 rounded-xl font-bold text-sm shrink-0 cursor-pointer transition-colors text-white ${newName.trim() ? "" : "bg-[#374151]"}`} style={newName.trim() ? { background: COLOR } : undefined}>Agregar</button>
                 </div>
+              )}
+              {!isPairs && isDuplicateName(newName, t.playerInputs) && (
+                <p data-testid="aviso-nombre-repetido" className="mt-2 text-xs font-semibold text-amber-400">
+                  ⚠️ Ya hay un jugador llamado «{newName.trim()}». Añádele una inicial o el apellido para distinguirlos; también puedes agregarlo así.
+                </p>
               )}
             </div>
 
