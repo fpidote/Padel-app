@@ -204,7 +204,7 @@ export default function PlayMundialito({
   }
 
   async function onEditKnockoutMatch(matchId) {
-    if (!canEditBracketMatch(t.knockoutBracket, matchId)) return;
+    if (t.status === "finished" || !canEditBracketMatch(t.knockoutBracket, matchId)) return;
     await persist({ ...t, knockoutBracket: unadvanceBracket(t.knockoutBracket, matchId) });
   }
 

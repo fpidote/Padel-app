@@ -6,7 +6,7 @@ import { test, expect } from "@playwright/test";
 import { seedTournament, deleteTournament, getTournamentData, getTestToken } from "../helpers/seed.js";
 import { buildGroups, buildKnockoutFromGroups } from "../../src/logic/mundialito.js";
 import { buildLigaKnockout } from "../../src/logic/liga.js";
-import { advanceBracket } from "../../src/logic/relampago.js";
+import { advanceBracket, buildBracket } from "../../src/logic/relampago.js";
 
 const CODE = "FINALIZARTORNEO";
 
@@ -126,6 +126,29 @@ test("Liga con eliminatoria: Posiciones muestra el podio de la fase final y la t
   await page.locator(".fixed.inset-0").getByRole("button", { name: "Finalizar", exact: true }).click();
   await expect.poll(async () => (await getTournamentData(CODE)).status).toBe("finished");
   await expect(page.getByRole("button", { name: "Editar" })).toHaveCount(0);
+});
+
+test("Liga con 3.º puesto: al finalizar también se cierra el partido por el 3.º y el podio no se puede cambiar", async ({ page }) => {
+  const pairs = [pair(0, "Ana", "Beto"), pair(1, "Caro", "Dario"), pair(2, "Eva", "Fede"), pair(3, "Gus", "Hugo")];
+  let bracket = buildBracket(pairs, { consolation: false, thirdPlace: true });
+  for (const m of bracket.filter((x) => x.bracket === "winners" && x.round === 1)) bracket = advanceBracket(bracket, m.id, 6, 2);
+  const final = bracket.find((m) => !m.nextMatchId && m.bracket !== "third");
+  bracket = advanceBracket(bracket, final.id, 6, 3);
+  bracket = advanceBracket(bracket, bracket.find((m) => m.bracket === "third").id, 6, 4);
+  await seedTournament(CODE, {
+    type: "liga", status: "playing", phase: "playoff", scoringStarted: true,
+    config: { name: "Liga 3.º", courts: 2, scoringFormat: "games", idaYVuelta: false, playoffEnabled: true, advanceQualifiers: 4, thirdPlace: true, seasonMode: "single" },
+    pairInputs: pairs, pairs, rounds: [], matches: [], knockoutBracket: bracket,
+  });
+  await entrarComoAdmin(page, /Eliminatoria/);
+  await page.getByRole("button", { name: /Finalizar torneo/ }).click();
+  await page.locator(".fixed.inset-0").getByRole("button", { name: "Finalizar", exact: true }).click();
+  await expect.poll(async () => (await getTournamentData(CODE)).status).toBe("finished");
+  await expect(page.getByText(/Torneo finalizado: los resultados están cerrados/)).toBeVisible();
+  // Ningún partido, tampoco el del 3.º puesto, se puede editar una vez finalizado
+  await expect(page.getByRole("button", { name: "Editar" })).toHaveCount(0);
+  const tercero = page.getByText("🥉 3.º Y 4.º PUESTO").locator("xpath=ancestor::div[.//text()[contains(.,'Cerrado')]][1]");
+  await expect(tercero).toContainText("Cerrado");
 });
 
 test("Liga con eliminatoria sin terminar: no hay podio ni botón de finalizar, y la tabla no lleva medallas", async ({ page }) => {

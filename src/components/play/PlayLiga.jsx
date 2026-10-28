@@ -135,7 +135,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
   }
 
   async function onEditKnockoutMatch(matchId) {
-    if (!canEditBracketMatch(t.knockoutBracket, matchId)) return;
+    if (t.status === "finished" || !canEditBracketMatch(t.knockoutBracket, matchId)) return;
     await persist({ ...t, knockoutBracket: unadvanceBracket(t.knockoutBracket, matchId) });
   }
 
@@ -366,12 +366,12 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                       setLs={setLs}
                       onSave={onSaveKnockoutMatch}
                       onEdit={
-                        canEditBracketMatch(t.knockoutBracket, thirdMatch.id)
+                        !finished && canEditBracketMatch(t.knockoutBracket, thirdMatch.id)
                           ? onEditKnockoutMatch
                           : undefined
                       }
                       locked={
-                        thirdMatch.saved && !canEditBracketMatch(t.knockoutBracket, thirdMatch.id)
+                        thirdMatch.saved && (finished || !canEditBracketMatch(t.knockoutBracket, thirdMatch.id))
                       }
                       accentColor="#db2777"
                       scoringFormat={t.config?.scoringFormat || "sets3"}
