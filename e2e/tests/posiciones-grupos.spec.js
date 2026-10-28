@@ -58,7 +58,8 @@ test("con 3.º puesto: podio completo, una tabla por grupo y la fase final", asy
   await page.goto(`/torneo/${CODE}`);
   await page.getByRole("button", { name: /Posiciones/ }).click();
 
-  await expect(page.getByText("Resultado final")).toBeVisible({ timeout: 8000 });
+  // El torneo está sembrado como finalizado: el podio lo indica en su título
+  await expect(page.getByText("🏁 Torneo finalizado")).toBeVisible({ timeout: 8000 });
   await expect(page.getByText("Campeón", { exact: true })).toBeVisible();
   await expect(page.getByText("Subcampeón", { exact: true })).toBeVisible();
   await expect(page.getByText("Tercer puesto", { exact: true })).toBeVisible();
@@ -84,6 +85,8 @@ test("sin partido por el 3.º puesto el podio solo tiene campeón y subcampeón"
   await page.getByRole("button", { name: /Posiciones/ }).click();
   await expect(page.getByText("Subcampeón", { exact: true })).toBeVisible({ timeout: 8000 });
   await expect(page.getByText("Tercer puesto", { exact: true })).toHaveCount(0);
+  // Sin partido por el 3.º no se inventa un tercero: se muestran los dos semifinalistas
+  await expect(page.getByText("Semifinalistas", { exact: true })).toBeVisible();
 });
 
 test("mientras la final no se juega no hay podio, pero sí las tablas de grupo", async ({ page }) => {
