@@ -76,3 +76,19 @@ describe("MatchCard — el botón Guardar no salta al escribir el marcador", () 
     expect(render({ match: pending, scoringFormat: "games", isAdmin: false })).not.toContain("winner-slot");
   });
 });
+
+describe("MatchCard — etiqueta de fase", () => {
+  it("sin stageLabel conserva las etiquetas de siempre (grupos y cuadro)", () => {
+    expect(render({})).toContain("FASE DE GRUPOS");
+    expect(render({ match: { ...match, bracket: "winners" } })).toContain("CUADRO PRINCIPAL");
+  });
+
+  it("con stageLabel la reemplaza, para formatos sin grupos ni revancha", () => {
+    const html = render({ stageLabel: "📅 LIGA" });
+    expect(html).toContain("📅 LIGA");
+    expect(html).not.toContain("FASE DE GRUPOS");
+    const ko = render({ match: { ...match, bracket: "winners" }, stageLabel: "🏆 FASE FINAL" });
+    expect(ko).toContain("🏆 FASE FINAL");
+    expect(ko).not.toContain("CUADRO PRINCIPAL");
+  });
+});

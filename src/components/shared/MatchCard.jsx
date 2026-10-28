@@ -12,6 +12,7 @@ export default function MatchCard({
   locked = false,
   accentColor = "#7c3aed",
   scoringFormat = "games",
+  stageLabel,
 }) {
   const isSetFormat = scoringFormat === "sets3" || scoringFormat === "sets5";
   const maxSets = scoringFormat === "sets5" ? 5 : 3;
@@ -48,13 +49,11 @@ export default function MatchCard({
       {/* Cabecera */}
       <div className="flex justify-between items-center px-4 py-2.5 border-b border-white/5 bg-black/15">
         <span className="text-xs font-bold text-gray-500 tracking-widest">
-          {match.bracket === "winners"
-            ? "⚡ CUADRO PRINCIPAL"
-            : match.bracket === "consolation"
-              ? "🥈 REVANCHA"
-              : match.bracket === "third"
-                ? "🥉 3.º Y 4.º PUESTO"
-                : "🏁 FASE DE GRUPOS"}
+          {match.bracket === "consolation"
+            ? "🥈 REVANCHA"
+            : match.bracket === "third"
+              ? "🥉 3.º Y 4.º PUESTO"
+              : (stageLabel ?? (match.bracket === "winners" ? "⚡ CUADRO PRINCIPAL" : "🏁 FASE DE GRUPOS"))}
           {isSetFormat && ` · 🎾 MEJOR DE ${maxSets}`}
         </span>
         {match.saved && (

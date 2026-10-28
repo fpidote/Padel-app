@@ -356,6 +356,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                           }
                           accentColor="#db2777"
                           scoringFormat={t.config?.scoringFormat || "sets3"}
+                          stageLabel="🏆 FASE FINAL"
                         />
                       ))}
                   </div>
@@ -492,6 +493,7 @@ function LigaRoundAccordion({ round, matches, allMatches, isAdmin, ls, setLs, on
               locked={locked}
               accentColor="#db2777"
               scoringFormat={scoringFormat}
+              stageLabel="📅 LIGA"
             />
           ))}
         </div>
