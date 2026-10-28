@@ -28,10 +28,8 @@ export function useTournament(code) {
   if (!queueRef.current) {
     queueRef.current = createSaveQueue({
       // Transacción que comprueba la versión: si otro organizador guardó antes, no se pisa nada (onConflict)
-      write: (state) =>
-        runTransaction(db, (tx) =>
-          applyVersionedWrite(tx, doc(db, "torneos", codeRef.current), state, queueRef.current.lastSaved()?.ver),
-        ),
+      write: (state, baseVer) =>
+        runTransaction(db, (tx) => applyVersionedWrite(tx, doc(db, "torneos", codeRef.current), state, baseVer)),
       onConflict: (serverState) => {
         verRef.current = serverState.ver ?? 0;
         setT(serverState);

@@ -162,3 +162,42 @@ describe("createSaveQueue — conflictos de versión", () => {
     expect(onConflict).not.toHaveBeenCalled();
   });
 });
+
+describe("createSaveQueue — versión base de cada guardado", () => {
+  it("T-SQ-30: write recibe la versión confirmada cuando se pidió el guardado", async () => {
+    const seen = [];
+    const q = createSaveQueue({ write: (state, baseVer) => { seen.push(baseVer); return Promise.resolve(); } });
+    q.confirm({ ver: 4 });
+    await q.save({ ver: 5 });
+    expect(seen).toEqual([4]);
+  });
+
+  it("T-SQ-31: una confirmación del servidor mientras se escribe no cambia la base de ese guardado", async () => {
+    const f = fakeWrite();
+    const bases = [];
+    const q = createSaveQueue({ write: (state, baseVer) => { bases.push(baseVer); return f.write(state); }, onConflict: () => {} });
+    q.confirm({ ver: 4 });
+    const p = q.save({ ver: 5 });
+    q.confirm({ ver: 9 }); // llega por el listener lo que guardó otro organizador
+    await tick();
+    expect(bases).toEqual([4]);
+    f.calls[0].resolve();
+    await p;
+  });
+
+  it("T-SQ-32: el guardado en espera parte de la versión del guardado en curso", async () => {
+    const f = fakeWrite();
+    const bases = [];
+    const q = createSaveQueue({ write: (state, baseVer) => { bases.push(baseVer); return f.write(state); } });
+    q.confirm({ ver: 4 });
+    const p1 = q.save({ ver: 5 });
+    const p2 = q.save({ ver: 6 });
+    const p3 = q.save({ ver: 7 });
+    await tick();
+    f.calls[0].resolve();
+    await tick();
+    f.calls[1].resolve();
+    await Promise.all([p1, p2, p3]);
+    expect(bases).toEqual([4, 5]);
+  });
+});

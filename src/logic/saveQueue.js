@@ -5,7 +5,7 @@
 // Antes un guardado pedido durante otro se descartaba en silencio y la pareja, el resultado o el ajuste
 // se perdían sin aviso.
 //
-// write(state)  → Promise que guarda ese estado (setDoc).
+// write(state, baseVer) → Promise que guarda ese estado; baseVer es la versión sobre la que se armó.
 // onFailure(lastSaved, err) → se llama una vez por fallo; lastSaved es el último estado confirmado, al
 //                que hay que volver porque los cambios pendientes partían del que falló.
 // onConflict(serverState) → write lanzó VersionConflictError: se descartan los cambios pendientes, se da
@@ -28,7 +28,7 @@ export function createSaveQueue({ write, onFailure = () => {}, onConflict = () =
     while (current) {
       const batch = current;
       try {
-        await write(batch.state);
+        await write(batch.state, batch.baseVer);
       } catch (err) {
         const dropped = [batch, next].filter(Boolean);
         current = null;
@@ -52,11 +52,13 @@ export function createSaveQueue({ write, onFailure = () => {}, onConflict = () =
   // Resuelve true cuando ese estado (o uno posterior que lo incluye) quedó guardado, false si falló.
   function save(state) {
     return new Promise((resolve) => {
+      // baseVer: versión sobre la que se armó el lote. Se fija al pedirlo, no al escribir: si mientras tanto
+      // llega por el listener lo que guardó otro organizador, este lote debe detectar el conflicto.
       if (!current) {
-        current = { state, resolvers: [resolve] };
+        current = { state, baseVer: confirmed?.ver, resolvers: [resolve] };
         run();
       } else if (!next) {
-        next = { state, resolvers: [resolve] };
+        next = { state, baseVer: current.state.ver, resolvers: [resolve] };
       } else {
         next.state = state;
         next.resolvers.push(resolve);

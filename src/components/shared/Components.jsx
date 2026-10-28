@@ -1,7 +1,10 @@
 // src/components/shared/Components.jsx
+import { useContext } from 'react';
 import { TOURNAMENT_TYPES } from '../../logic/constants';
+import { RoleContext } from './RoleContext';
 
 export function THeader({ t, code, isAdmin, copyCode, subtitle, onEdit }) {
+  const { isHelper, onHelpers } = useContext(RoleContext);
   const typeInfo = TOURNAMENT_TYPES.find((x) => x.id === t.type) || TOURNAMENT_TYPES[0];
   return (
     <div
@@ -41,12 +44,21 @@ export function THeader({ t, code, isAdmin, copyCode, subtitle, onEdit }) {
             ✏️ Editar torneo
           </button>
         )}
+        {onHelpers && (
+          <button
+            data-testid="btn-ayudantes"
+            onClick={onHelpers}
+            className="text-xs text-[#4a5568] hover:text-[#f1f5f9] bg-transparent border-0 cursor-pointer underline p-0 mt-1 ml-3 transition-colors"
+          >
+            👥 Ayudantes
+          </button>
+        )}
       </div>
 
       <div className="flex gap-1.5 items-center flex-shrink-0 ml-3 relative z-10 mt-0.5">
         {isAdmin && (
           <span className="bg-[#f59e0b]/10 text-[#fbbf24] border border-[#f59e0b]/25 rounded-full px-2 py-0.5 text-[10px] font-bold whitespace-nowrap">
-            👑 Admin
+            {isHelper ? "🤝 Ayudante" : "👑 Admin"}
           </span>
         )}
         <button
