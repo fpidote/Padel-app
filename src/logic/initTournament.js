@@ -33,7 +33,7 @@ export function buildInitialTournament(type, ownerUid) {
       ...base,
       config: {
         ...base.config,
-        courts: 3,
+        courts: 2,
         mode: "individual",
         matchmaking: "americano",
         maxRounds: null,

@@ -29,3 +29,9 @@ describe("formatos que se pueden crear", () => {
     expect(CREATABLE_TYPES.map((t) => t.id)).toEqual(["americano", "relampago", "mundialito", "liga"]);
   });
 });
+
+describe("pistas por defecto", () => {
+  it("T-INI-05: el Americano arranca con 2 pistas (8 jugadores), no con 3 (12 jugadores)", () => {
+    expect(buildInitialTournament("americano", "uid").config.courts).toBe(2);
+  });
+});
