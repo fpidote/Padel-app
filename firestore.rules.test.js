@@ -341,3 +341,98 @@ describe("matches — registro de partidos del Pozo", () => {
     await assertFails(getDoc(doc(other.firestore(), "torneos", "POZO5", "matches", ref.id)));
   });
 });
+
+// ─── AYUDANTES ─────────────────────────────────────────────────
+
+describe("ayudantes — permisos sobre un torneo", () => {
+  const EMAIL = "ana@gmail.com";
+  const googleCtx = (uid, claims = {}) =>
+    testEnv.authenticatedContext(uid, { email: EMAIL, email_verified: true, firebase: { sign_in_provider: "google.com" }, ...claims });
+
+  async function conAyudante(code, email = EMAIL) {
+    await crearTorneo(code, "owner1");
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "torneos", code, "helpers", email), { addedAt: new Date() });
+    });
+  }
+  const torneo = (ctx, code) => doc(ctx.firestore(), "torneos", code);
+  const ayudanteDoc = (ctx, code, email = EMAIL) => doc(ctx.firestore(), "torneos", code, "helpers", email);
+
+  test("el ayudante puede actualizar el campo data", async () => {
+    await conAyudante("AYU1");
+    await assertSucceeds(updateDoc(torneo(googleCtx("h1"), "AYU1"), { data: JSON.stringify({ ver: 2 }) }));
+  });
+
+  test("el ayudante no puede cambiar ownerUid ni createdAt, ni añadir campos", async () => {
+    await conAyudante("AYU2");
+    const t = torneo(googleCtx("h1"), "AYU2");
+    await assertFails(updateDoc(t, { ownerUid: "h1" }));
+    await assertFails(updateDoc(t, { createdAt: new Date(0) }));
+    await assertFails(updateDoc(t, { data: JSON.stringify({ ver: 2 }), extra: 1 }));
+  });
+
+  test("el ayudante no puede borrar el torneo ni gestionar ayudantes", async () => {
+    await conAyudante("AYU3");
+    const ctx = googleCtx("h1");
+    await assertFails(deleteDoc(torneo(ctx, "AYU3")));
+    await assertFails(setDoc(ayudanteDoc(ctx, "AYU3", "otro@gmail.com"), { addedAt: new Date() }));
+    await assertFails(deleteDoc(ayudanteDoc(ctx, "AYU3")));
+  });
+
+  test("un usuario con sesión que no es ayudante no puede actualizar", async () => {
+    await conAyudante("AYU4");
+    const ctx = googleCtx("x1", { email: "otra@gmail.com" });
+    await assertFails(updateDoc(torneo(ctx, "AYU4"), { data: JSON.stringify({ ver: 2 }) }));
+  });
+
+  test("un correo sin verificar no gana permisos de ayudante", async () => {
+    await conAyudante("AYU5");
+    const ctx = googleCtx("h1", { email_verified: false });
+    await assertFails(updateDoc(torneo(ctx, "AYU5"), { data: JSON.stringify({ ver: 2 }) }));
+  });
+
+  test("una cuenta anónima no puede actualizar aunque lleve el correo del ayudante", async () => {
+    await conAyudante("AYU6");
+    const ctx = googleCtx("h1", { firebase: { sign_in_provider: "anonymous" } });
+    await assertFails(updateDoc(torneo(ctx, "AYU6"), { data: JSON.stringify({ ver: 2 }) }));
+  });
+
+  test("el correo del token en mayúsculas coincide con el ayudante guardado en minúsculas", async () => {
+    await conAyudante("AYU7");
+    const ctx = googleCtx("h1", { email: "Ana@Gmail.COM" });
+    await assertSucceeds(updateDoc(torneo(ctx, "AYU7"), { data: JSON.stringify({ ver: 2 }) }));
+  });
+
+  test("el dueño crea, lee y borra ayudantes y lista la subcolección", async () => {
+    await crearTorneo("AYU8", "owner1");
+    const ctx = testEnv.authenticatedContext("owner1");
+    await assertSucceeds(setDoc(ayudanteDoc(ctx, "AYU8"), { addedAt: new Date() }));
+    await assertSucceeds(getDoc(ayudanteDoc(ctx, "AYU8")));
+    await assertSucceeds(getDocs(collection(ctx.firestore(), "torneos", "AYU8", "helpers")));
+    await assertSucceeds(deleteDoc(ayudanteDoc(ctx, "AYU8")));
+  });
+
+  test("el ayudante lee solo su propio documento: ni el de otro ni la lista", async () => {
+    await conAyudante("AYU9");
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(ayudanteDoc(ctx, "AYU9", "otro@gmail.com"), { addedAt: new Date() });
+    });
+    const ctx = googleCtx("h1");
+    await assertSucceeds(getDoc(ayudanteDoc(ctx, "AYU9")));
+    await assertFails(getDoc(ayudanteDoc(ctx, "AYU9", "otro@gmail.com")));
+    await assertFails(getDocs(collection(ctx.firestore(), "torneos", "AYU9", "helpers")));
+  });
+
+  test("espectadores y extraños no leen la subcolección de ayudantes", async () => {
+    await conAyudante("AYU10");
+    await assertFails(getDoc(ayudanteDoc(testEnv.unauthenticatedContext(), "AYU10")));
+    await assertFails(getDoc(ayudanteDoc(googleCtx("x1", { email: "otra@gmail.com" }), "AYU10")));
+  });
+
+  test("la lectura pública del torneo sigue funcionando y un torneo sin ayudantes se comporta como antes", async () => {
+    await crearTorneo("AYU11", "owner1");
+    await assertSucceeds(getDoc(torneo(testEnv.unauthenticatedContext(), "AYU11")));
+    await assertFails(updateDoc(torneo(googleCtx("h1"), "AYU11"), { data: JSON.stringify({ ver: 2 }) }));
+    await assertSucceeds(updateDoc(torneo(testEnv.authenticatedContext("owner1"), "AYU11"), { data: JSON.stringify({ ver: 2 }) }));
+  });
+});

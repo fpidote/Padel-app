@@ -3,6 +3,22 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /torneos/{code} {
 
+      // Dueño del torneo
+      function esDueno() {
+        return request.auth != null
+               && request.auth.uid == get(/databases/$(database)/documents/torneos/$(code)).data.ownerUid;
+      }
+
+      // Ayudante: sesión real (no anónima) con correo verificado que el dueño añadió en helpers/{correo}.
+      // Los ayudantes viven en una subcolección para que el documento del torneo (de lectura pública)
+      // no exponga sus correos; el id del documento es el correo en minúsculas.
+      function esAyudante() {
+        return request.auth != null
+               && request.auth.token.email_verified == true
+               && request.auth.token.firebase.sign_in_provider != 'anonymous'
+               && exists(/databases/$(database)/documents/torneos/$(code)/helpers/$(request.auth.token.email.lower()));
+      }
+
       // Lectura directa: cualquiera con el código (espectadores sin login)
       allow get: if true;
 
@@ -19,9 +35,10 @@ service cloud.firestore {
                  && request.resource.data.createdAt == request.time
                  && request.resource.data.data is string;
 
-      // Actualización: solo el dueño, ownerUid y createdAt inmutables, data string, sin campos extra
+      // Actualización: el dueño o un ayudante del torneo. En ambos casos solo cambia el campo data:
+      // ownerUid y createdAt inmutables, data string, sin campos extra
       allow update: if request.auth != null
-                 && request.auth.uid == resource.data.ownerUid
+                 && (request.auth.uid == resource.data.ownerUid || esAyudante())
                  && request.resource.data.keys().hasOnly(['data', 'ownerUid', 'createdAt'])
                  && request.resource.data.ownerUid == resource.data.ownerUid
                  && request.resource.data.createdAt == resource.data.createdAt
@@ -33,6 +50,18 @@ service cloud.firestore {
 
       // Registro de partidos del Pozo (PlayPozo.jsx): lo escribe y lo lee solo el dueño del torneo,
       // y un registro creado no se modifica ni se borra
+      // Ayudantes: solo el dueño los lista, crea o borra; cada ayudante puede leer únicamente su propio
+      // documento (para saber que tiene acceso). Nadie más.
+      match /helpers/{email} {
+        allow get: if esDueno()
+                   || (request.auth != null
+                       && request.auth.token.email_verified == true
+                       && request.auth.token.firebase.sign_in_provider != 'anonymous'
+                       && request.auth.token.email.lower() == email);
+        allow list: if esDueno();
+        allow create, update, delete: if esDueno();
+      }
+
       match /matches/{matchId} {
         allow read, create: if request.auth != null
                          && request.auth.uid == get(/databases/$(database)/documents/torneos/$(code)).data.ownerUid;
