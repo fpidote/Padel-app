@@ -80,8 +80,8 @@ export function generateRules(type, config, context = {}) {
 
   function goldenPointDesc() {
     return config.goldenPoint !== false
-      ? "En caso de empate se define con un Punto de Oro."
-      : "Los empates cuentan como 1 punto para cada participante.";
+      ? "En el 40-40 de un game se juega un único punto decisivo (punto de oro)."
+      : "En el 40-40 de un game se juega con ventaja.";
   }
 
   switch (type) {
@@ -109,8 +109,12 @@ export function generateRules(type, config, context = {}) {
         : config.maxRounds
           ? `El torneo tiene ${config.maxRounds} rondas en total.`
           : "Sin límite de rondas fijo; el organizador decide cuándo terminar.";
+      const timedTiebreak = !config.scoringFormat?.startsWith("sets") && (config.scoringSystem || "timed") === "timed"
+        ? ["Si al terminar el tiempo van igualados en el marcador, se decide cerrando el game en juego o con un punto de oro, según defina el organizador."]
+        : [];
       const rules = [
         scoringDesc(),
+        ...timedTiebreak,
         goldenPointDesc(),
         rotationDesc,
         roundsDesc,
