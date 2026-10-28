@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db, googleProvider, trackEvent } from "./firebase";
-import { TOURNAMENT_TYPES } from "./logic/constants.js";
+import { CREATABLE_TYPES } from "./logic/constants.js";
 import { genCode } from "./logic/utils.js";
 import { buildInitialTournament } from "./logic/initTournament.js";
 import { SimpleModal } from "./components/shared/Components";
@@ -144,7 +144,7 @@ export default function Home() {
 
             {/* Cards de formato */}
             <div className="flex flex-col gap-2">
-              {TOURNAMENT_TYPES.map((tt) => (
+              {CREATABLE_TYPES.map((tt) => (
                 <button
                   key={tt.id}
                   onClick={() => onCreate(tt.id)}
@@ -303,7 +303,7 @@ export default function Home() {
             Elige tu formato
           </p>
           <div className="grid grid-cols-2 gap-3">
-            {TOURNAMENT_TYPES.map((tt, i) => (
+            {CREATABLE_TYPES.map((tt, i) => (
               <div
                 key={tt.id}
                 className={`format-card rounded-2xl p-4 flex flex-col gap-2 border border-t-[3px] anim-fade-up anim-d${i + 5}`}

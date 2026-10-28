@@ -42,6 +42,9 @@ export const TOURNAMENT_TYPES = [
     landingDesc: "Ganadores suben de pista, perdedores bajan. La presión y la dificultad aumentan ronda a ronda.",
     tags: ["King of the Hill", "Sin eliminados"],
     color: "#d97706",
+    // Oculto al crear: sus parejas que descansan casi no rotan y la regla subir/bajar solo se cumple a medias.
+    // Los Pozos ya creados siguen abriéndose con normalidad.
+    hidden: true,
   },
   {
     id: "liga",
@@ -54,6 +57,9 @@ export const TOURNAMENT_TYPES = [
     color: "#db2777",
   },
 ];
+
+// Formatos que se ofrecen al crear un torneo (landing y modal de Home).
+export const CREATABLE_TYPES = TOURNAMENT_TYPES.filter((t) => !t.hidden);
 
 const THIRD_PLACE_RULE = "Los perdedores de las semifinales juegan el partido por el 3.º y 4.º puesto.";
 

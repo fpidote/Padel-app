@@ -162,7 +162,7 @@ setT(data);
 | `americano` | Americano | `SetupAmericano` + `PlayAmericano` | Rotativo por nivel, parejas cambian cada ronda |
 | `relampago` | Relámpago | `SetupPairs` + `PlayRelampago` | Double elimination (bracket principal + revancha) |
 | `mundialito` | Torneo por grupos (id interno `mundialito`) | `SetupPairs` + `PlayMundialito` | Fase de grupos + cuadro final |
-| `pozo` | El Pozo | `SetupPairs` + `PlayPozo` | King of the Hill con timer por ronda |
+| `pozo` | El Pozo (oculto al crear, `hidden` en constants.js; los ya creados siguen abriéndose) | `SetupPairs` + `PlayPozo` | King of the Hill con timer por ronda |
 
 ### Ciclo de vida de un torneo
 
