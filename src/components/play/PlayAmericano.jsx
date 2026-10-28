@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { generateRules } from "../../logic/constants";
 import { pk } from "../../logic/utils";
 import { standingsLabels } from "../../logic/standings";
-import { buildRoundAmericano, americanoStandings, americanoPodium, americanoMatchesPlayed } from "../../logic/americano";
+import { buildRoundAmericano, americanoStandings, americanoPodium, americanoMatchesPlayed, canFinishAnyRound } from "../../logic/americano";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import History from "../shared/History";
 import PodiumCard from "../shared/PodiumCard";
@@ -675,6 +675,7 @@ function AllRoundsPlayerView({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSea
 function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onFinish, onEdit, matchesSearch, persist, isFinished, isLastRound, showLevelsToggle }) {
   const [renameModal, setRenameModal] = useState(null);
   const [confirmAdvance, setConfirmAdvance] = useState(false);
+  const [confirmFinishNow, setConfirmFinishNow] = useState(false);
   const showLevel = t.config.useLevels && isAdmin && showLevelsToggle;
   const isPairs = t.config.mode === "pairs";
 
@@ -915,6 +916,29 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onFi
         >
           {isFinished ? "🏁 Torneo Finalizado" : isLastRound ? "Finalizar Torneo ✓" : "Siguiente Ronda ➔"}
         </button>
+      )}
+      {allSaved && isAdmin && !isFinished && !isLastRound && canFinishAnyRound(t) && (
+        <button
+          type="button"
+          data-testid="btn-finalizar-ahora"
+          onClick={() => setConfirmFinishNow(true)}
+          className="w-full py-3 rounded-2xl font-bold text-sm text-gray-300 bg-[#1f2937] border border-gray-700 cursor-pointer"
+        >
+          🏁 Finalizar torneo ahora
+        </button>
+      )}
+      {confirmFinishNow && (
+        <SimpleModal
+          icon="🏁"
+          message="Al finalizar el torneo los resultados de esta ronda se cierran y ya no se podrán modificar. ¿Finalizar el torneo?"
+          confirmLabel="Finalizar"
+          danger={false}
+          onClose={() => setConfirmFinishNow(false)}
+          onConfirm={() => {
+            setConfirmFinishNow(false);
+            onFinish();
+          }}
+        />
       )}
       {!isAdmin && !allSaved && (
         <div className="text-center text-gray-600 py-5 text-sm">

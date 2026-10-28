@@ -427,8 +427,8 @@ export function buildRoundAmericano(entities, n, ph, soh, mode = "individual") {
   const cnt = sorted.length - activeCourts * units;
   let active = sorted, sittingOut = [];
   if (cnt > 0) {
+    // Descansa quien menos veces lo ha hecho, sea cual sea su posición; a igualdad, el peor clasificado.
     const pool = sorted
-      .slice(-Math.max(cnt * 2, cnt + 2))
       .map((p) => ({ ...p, ss: soh[p.id] || 0 }))
       .sort((a, b) => a.ss !== b.ss ? a.ss - b.ss : a.pts - b.pts);
     const ids = new Set(pool.slice(0, cnt).map((p) => p.id));
@@ -515,6 +515,17 @@ export function duplicateNameKeys(players) {
 
 // Con una sola ronda cada jugador juega un único partido con una única pareja: no hay Americano.
 export const MIN_ROUNDS = 2;
+
+// Sin límite de rondas ("Ilimitadas" en Mexicano y parejas) nadie marca cuál es la última: el organizador
+// decide cuándo cerrar, a partir del mínimo de rondas.
+export function canFinishAnyRound(t) {
+  return (
+    t?.status !== "finished" &&
+    !t?.config?.maxRounds &&
+    !t?.precomputedRounds?.length &&
+    (t?.roundNum ?? 0) >= MIN_ROUNDS
+  );
+}
 
 // Mensaje de error si la cantidad de rondas no vale, o null si es válida.
 export function roundsCountError(n) {

@@ -9,6 +9,7 @@ import {
   americanoStandings,
   americanoPodium,
   americanoMatchesPlayed,
+  canFinishAnyRound,
   isDuplicateName,
   duplicateNameKeys,
   MIN_ROUNDS,
@@ -783,5 +784,77 @@ describe("mínimo de rondas de un Americano", () => {
 
   test("rechaza 0, 1, negativos y valores que no son un entero", () => {
     [1, 0, -3, 2.5, NaN, undefined].forEach((n) => expect(roundsCountError(n)).toBe("Mínimo 2 rondas"));
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// buildRoundAmericano — los descansos se reparten sin importar la posición
+// ═══════════════════════════════════════════════════════════════
+describe("buildRoundAmericano — reparto justo de descansos", () => {
+  // Juega `rounds` rondas con resultados al azar y devuelve cuántas veces descansó cada entidad.
+  function descansosTras(count, courts, rounds, mode) {
+    let entities = Array.from({ length: count }, (_, i) => ({ id: i + 1, name: `J${i + 1}`, pts: 0, gf: 0, gc: 0 }));
+    const soh = {};
+    for (let r = 0; r < rounds; r++) {
+      const { courts: cs, sittingOut } = buildRoundAmericano(entities, courts, {}, soh, mode);
+      sittingOut.forEach((e) => { soh[e.id] = (soh[e.id] || 0) + 1; });
+      const ids = (side) => (Array.isArray(side) ? side.map((x) => x.id) : [side.id]);
+      cs.forEach((c) => {
+        const a = 3 + Math.floor(Math.random() * 5);
+        const b = Math.floor(Math.random() * 3);
+        const aWins = Math.random() < 0.5;
+        const [sa, sb] = aWins ? [a, b] : [b, a];
+        entities = entities.map((e) => {
+          if (ids(c.pairA).includes(e.id)) return { ...e, pts: e.pts + (aWins ? 1 : 0), gf: e.gf + sa, gc: e.gc + sb };
+          if (ids(c.pairB).includes(e.id)) return { ...e, pts: e.pts + (aWins ? 0 : 1), gf: e.gf + sb, gc: e.gc + sa };
+          return e;
+        });
+      });
+    }
+    return Array.from({ length: count }, (_, i) => soh[i + 1] || 0);
+  }
+
+  test("T-DES-01: Mexicano 10 jugadores, 2 pistas, 4 rondas: nadie descansa más de una vez de más que otro", () => {
+    for (let i = 0; i < 200; i++) {
+      const d = descansosTras(10, 2, 4, "individual");
+      expect(Math.max(...d) - Math.min(...d)).toBeLessThanOrEqual(1);
+    }
+  });
+
+  test("T-DES-02: parejas, 6 parejas, 2 pistas, 3 rondas: cada pareja descansa exactamente una vez", () => {
+    for (let i = 0; i < 200; i++) {
+      expect(descansosTras(6, 2, 3, "pairs")).toEqual([1, 1, 1, 1, 1, 1]);
+    }
+  });
+
+  test("T-DES-03: quien va primero y nunca descansó se sienta si los demás ya descansaron", () => {
+    const players = [p(1, 0, 4), p(2, 0, 3), p(3, 0, 2), p(4, 0, 1), p(5, 0, 0)];
+    const { sittingOut } = buildRoundAmericano(players, 1, {}, { 2: 1, 3: 1, 4: 1, 5: 1 }, "individual");
+    expect(sittingOut.map((e) => e.id)).toEqual([1]);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// canFinishAnyRound — torneos sin límite de rondas
+// ═══════════════════════════════════════════════════════════════
+describe("canFinishAnyRound", () => {
+  const base = { status: "playing", roundNum: 2, config: { maxRounds: null }, precomputedRounds: null };
+
+  test("sin límite de rondas el organizador puede finalizar desde la ronda 2", () => {
+    expect(canFinishAnyRound(base)).toBe(true);
+    expect(canFinishAnyRound({ ...base, roundNum: 5 })).toBe(true);
+  });
+
+  test("en la ronda 1 no (el mínimo es 2 rondas)", () => {
+    expect(canFinishAnyRound({ ...base, roundNum: 1 })).toBe(false);
+  });
+
+  test("con rondas fijadas o precalculadas no aplica: ya hay un botón de Finalizar en la última", () => {
+    expect(canFinishAnyRound({ ...base, config: { maxRounds: 4 } })).toBe(false);
+    expect(canFinishAnyRound({ ...base, precomputedRounds: [{}, {}, {}] })).toBe(false);
+  });
+
+  test("un torneo ya finalizado no se vuelve a ofrecer", () => {
+    expect(canFinishAnyRound({ ...base, status: "finished" })).toBe(false);
   });
 });
