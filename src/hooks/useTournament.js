@@ -1,7 +1,7 @@
 // src/hooks/useTournament.js
 import { useState, useEffect, useRef } from "react";
 import { onSnapshot, doc, getDoc, runTransaction } from "firebase/firestore";
-import { onAuthStateChanged, signInWithPopup } from "firebase/auth";
+import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { db, auth, googleProvider } from "../firebase";
 import { buildShareMessage } from "../logic/utils";
 import { showToast } from "../logic/toast";
@@ -107,6 +107,20 @@ export function useTournament(code) {
     }
   }
 
+  // Para quien ya tiene sesión con otra cuenta de Google (p. ej. una personal) y debe entrar con la de ayudante
+  async function switchAccount() {
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      await signInWithPopup(auth, provider);
+    } catch (err) {
+      if (err.code !== "auth/popup-closed-by-user") {
+        console.error("Error al cambiar de cuenta:", err);
+        showToast("No se pudo cambiar de cuenta. Inténtalo de nuevo.");
+      }
+    }
+  }
+
   // ── Firebase Realtime Listener ──────────────────────────────
   useEffect(() => {
     if (!code) return;
@@ -178,5 +192,5 @@ export function useTournament(code) {
     }
   }
 
-  return { t, notFound, isOwner, isHelper, canScore, signedIn: !!authUser, error, saving, persist, copyCode, sessionExpired, reauthenticate };
+  return { t, notFound, isOwner, isHelper, canScore, signedIn: !!authUser, error, saving, persist, copyCode, sessionExpired, reauthenticate, switchAccount };
 }

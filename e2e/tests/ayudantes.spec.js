@@ -81,6 +81,7 @@ test("quien no tiene sesión ve el enlace para iniciarla; con sesión desaparece
   await seedTournament(CODE, liga());
   const espectador = await abrir(browser, { sesion: false });
   await expect(espectador.getByTestId("btn-iniciar-sesion")).toBeVisible({ timeout: 8000 });
+  await expect(espectador.getByTestId("btn-iniciar-sesion")).toBeInViewport();
   const dueno = await abrir(browser, {});
   await expect(dueno.getByText("Jornada 1")).toBeVisible({ timeout: 8000 });
   await expect(dueno.getByTestId("btn-iniciar-sesion")).toHaveCount(0);
@@ -173,4 +174,18 @@ test("en el Americano el ayudante no ve niveles ni renombra hasta que el dueño 
   await expect.poll(async () => (await getTournamentData(CODE)).helperPerms?.levels, { timeout: 8000 }).toBe(true);
 
   await expect(ayudante.getByText(/Ocultar niveles|Mostrar niveles/).first()).toBeVisible({ timeout: 8000 });
+});
+
+test("quien tiene sesión con otra cuenta que no es de ayudante ve cómo cambiar de cuenta", async ({ browser }) => {
+  await seedTournament(CODE, liga());
+  await addHelper(CODE, EMAIL);
+  const otro = await abrir(browser, { uid: "otro-1", email: "otra@gmail.com" });
+  await expect(otro.getByTestId("btn-cambiar-cuenta")).toBeVisible({ timeout: 8000 });
+  await expect(otro.getByTestId("btn-cambiar-cuenta")).toBeInViewport();
+  const ayudante = await abrir(browser, { uid: "ayudante-1", email: EMAIL });
+  await expect(ayudante.getByText("🤝 Ayudante")).toBeVisible({ timeout: 8000 });
+  await expect(ayudante.getByTestId("btn-cambiar-cuenta")).toHaveCount(0);
+  const dueno = await abrir(browser, {});
+  await expect(dueno.getByText("Jornada 1")).toBeVisible({ timeout: 8000 });
+  await expect(dueno.getByTestId("btn-cambiar-cuenta")).toHaveCount(0);
 });

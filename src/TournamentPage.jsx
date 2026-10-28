@@ -19,7 +19,7 @@ const PlayLiga = lazy(() => import('./components/play/PlayLiga'));
 export default function TournamentPage() {
   const { code } = useParams();
   const navigate = useNavigate();
-  const { t, notFound, isOwner, isHelper, canScore, signedIn, error, saving, persist, copyCode, sessionExpired, reauthenticate } = useTournament(code);
+  const { t, notFound, isOwner, isHelper, canScore, signedIn, error, saving, persist, copyCode, sessionExpired, reauthenticate, switchAccount } = useTournament(code);
   const online = useOnline();
   const [editMode, setEditMode] = useState(false);
   const [showHelpers, setShowHelpers] = useState(false);
@@ -88,6 +88,19 @@ export default function TournamentPage() {
             : "⚠️ Se perdió la conexión con el torneo en vivo. Recarga la página si no se actualiza."}
         </div>
       )}
+      {/* Un ayudante entra por el mismo enlace del torneo: arriba, a la vista, para iniciar sesión o cambiar de cuenta */}
+      {!canScore && (
+        <div className="text-center pt-2">
+          <button
+            type="button"
+            data-testid={signedIn ? "btn-cambiar-cuenta" : "btn-iniciar-sesion"}
+            onClick={signedIn ? switchAccount : reauthenticate}
+            className="text-xs text-[#94a3b8] hover:text-[#f1f5f9] underline bg-transparent border-0 cursor-pointer"
+          >
+            {signedIn ? "¿Eres ayudante? Cambiar de cuenta" : "¿Eres organizador o ayudante? Iniciar sesión"}
+          </button>
+        </div>
+      )}
       {sessionExpired && (
         <SimpleModal
           icon="🔒"
@@ -112,19 +125,6 @@ export default function TournamentPage() {
           </div>
         )}
       </Suspense>
-      {/* Quien no tiene sesión puede iniciarla aquí (un ayudante entra por el mismo enlace del torneo) */}
-      {!signedIn && (
-        <div className="text-center py-6">
-          <button
-            type="button"
-            data-testid="btn-iniciar-sesion"
-            onClick={reauthenticate}
-            className="text-xs text-[#64748b] hover:text-[#f1f5f9] underline bg-transparent border-0 cursor-pointer"
-          >
-            ¿Eres organizador o ayudante? Iniciar sesión
-          </button>
-        </div>
-      )}
       {showHelpers && isOwner && <HelpersModal code={code} t={t} persist={persist} onClose={() => setShowHelpers(false)} />}
     </RoleContext.Provider>
   );
