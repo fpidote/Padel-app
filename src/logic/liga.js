@@ -212,8 +212,24 @@ export function reopenLigaPatch() {
 // marcador para corregirlo).
 export function clearLigaMatch(matches, matchId) {
   return matches.map((m) =>
-    m.id === matchId ? { ...m, saved: false, scoreA: "", scoreB: "", sets: null } : m,
+    m.id === matchId ? { ...m, saved: false, editing: false, scoreA: "", scoreB: "", sets: null } : m,
   );
+}
+
+// Corregir un resultado: el partido sigue guardado (espectadores y tabla siguen viendo el resultado
+// anterior) y solo se marca como en edición hasta que el organizador guarde el nuevo o cancele.
+export function startEditLigaMatch(matches, matchId) {
+  return matches.map((m) => (m.id === matchId ? { ...m, editing: true } : m));
+}
+
+// Lo que ve el organizador: el partido en edición aparece con sus casillas abiertas.
+export function adminMatchView(match) {
+  return match.editing ? { ...match, saved: false } : match;
+}
+
+// Todos los partidos de la liga jugados y ninguno abierto para corregir.
+export function ligaMatchesDone(matches) {
+  return (matches || []).length > 0 && matches.every((m) => m.saved && !m.editing);
 }
 
 // ¿Se puede cerrar el torneo? Sin eliminatoria, con todos los partidos de liga jugados; con
@@ -221,7 +237,7 @@ export function clearLigaMatch(matches, matchId) {
 export function ligaCanFinish(t) {
   if (!t || t.status === "finished") return false;
   if (t.config?.playoffEnabled) return t.phase === "playoff" && bracketComplete(t.knockoutBracket);
-  return (t.matches || []).length > 0 && t.matches.every((m) => m.saved);
+  return ligaMatchesDone(t.matches);
 }
 
 // Al finalizar, los resultados se cierran (ligaResultsLocked).

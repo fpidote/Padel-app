@@ -10,6 +10,9 @@ import {
   canReopenLiga,
   reopenLigaPatch,
   clearLigaMatch,
+  startEditLigaMatch,
+  adminMatchView,
+  ligaMatchesDone,
   ligaThirdPlace,
   ligaCanFinish,
   finishPatch,
@@ -548,5 +551,55 @@ describe("ligaQualifiedPairs — quién pasa a la fase final", () => {
     const bracket = buildLigaKnockout(standings, 2);
     const inBracket = bracket.flatMap((m) => [m.pairA, m.pairB]).filter(Boolean).map((p) => p.id).sort();
     expect(ligaQualifiedPairs(standings, [], 2).map((p) => p.id).sort()).toEqual(inBracket);
+  });
+});
+
+describe("editar un resultado sin que el espectador lo pierda", () => {
+  const matches = [
+    { id: "a", saved: true, scoreA: "2", scoreB: "0", sets: [{ a: 6, b: 3 }, { a: 6, b: 4 }], pairA: { id: 1 }, pairB: { id: 2 } },
+    { id: "b", saved: true, scoreA: "2", scoreB: "1", sets: null, pairA: { id: 3 }, pairB: { id: 4 } },
+  ];
+
+  test("startEditLigaMatch marca el partido como en edición y lo deja guardado con su marcador", () => {
+    const out = startEditLigaMatch(matches, "a");
+    expect(out[0]).toMatchObject({ id: "a", saved: true, editing: true, scoreA: "2", scoreB: "0" });
+    expect(out[0].sets).toEqual(matches[0].sets);
+    expect(out[1]).toEqual(matches[1]);
+    expect(matches[0].editing).toBeUndefined();
+  });
+
+  test("mientras se edita, la tabla sigue contando el resultado anterior", () => {
+    const pairs = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }];
+    const antes = recomputeLigaStandings(pairs, matches);
+    const editando = recomputeLigaStandings(pairs, startEditLigaMatch(matches, "a"));
+    expect(editando).toEqual(antes);
+  });
+
+  test("adminMatchView muestra como sin guardar solo el partido en edición", () => {
+    const [editing] = startEditLigaMatch(matches, "a");
+    expect(adminMatchView(editing)).toMatchObject({ saved: false, scoreA: "2", scoreB: "0" });
+    expect(adminMatchView(matches[1])).toBe(matches[1]);
+  });
+
+  test("eliminar un partido en edición quita la marca", () => {
+    const out = clearLigaMatch(startEditLigaMatch(matches, "a"), "a");
+    expect(out[0].editing).toBe(false);
+    expect(out[0].saved).toBe(false);
+  });
+});
+
+describe("un partido en edición no cuenta como terminado", () => {
+  const done = { id: "a", saved: true, scoreA: "2", scoreB: "0", pairA: { id: 1 }, pairB: { id: 2 } };
+
+  test("ligaCanFinish: sin eliminatoria no se puede finalizar con un partido en edición", () => {
+    const t = { status: "playing", config: { playoffEnabled: false }, matches: [done] };
+    expect(ligaCanFinish(t)).toBe(true);
+    expect(ligaCanFinish({ ...t, matches: [{ ...done, editing: true }] })).toBe(false);
+  });
+
+  test("ligaMatchesDone: todos guardados y ninguno en edición", () => {
+    expect(ligaMatchesDone([done])).toBe(true);
+    expect(ligaMatchesDone([done, { ...done, id: "b", editing: true }])).toBe(false);
+    expect(ligaMatchesDone([])).toBe(false);
   });
 });

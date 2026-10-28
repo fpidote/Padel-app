@@ -18,11 +18,15 @@ export default function MatchCard({
   const maxSets = scoringFormat === "sets5" ? 5 : 3;
   const setsNeededToWin = maxSets === 5 ? 3 : 2;
 
+  // Al corregir un resultado ya guardado, las casillas arrancan con los sets que había (también tras recargar)
+  const hasPrevious = !match.saved && match.scoreA !== undefined && match.scoreA !== "";
+  const setValue = (i, side) => ls[`${match.id}_set${i}_${side}`] ?? (hasPrevious ? String(match.sets?.[i]?.[side.toLowerCase()] ?? "") : "");
+
   // Analiza en tiempo real los sets que el usuario va escribiendo
   const live = analyzeSets(
     Array.from({ length: maxSets }, (_, i) => ({
-      a: ls[`${match.id}_set${i}_A`] ?? "",
-      b: ls[`${match.id}_set${i}_B`] ?? "",
+      a: setValue(i, "A"),
+      b: setValue(i, "B"),
     })),
     setsNeededToWin,
   );
@@ -98,7 +102,7 @@ export default function MatchCard({
                 <input
                   type="number" min="0"
                   onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
-                  value={ls[`${match.id}_set${idx}_A`] ?? ""}
+                  value={setValue(idx, "A")}
                   onChange={(e) => setLs((p) => ({ ...p, [`${match.id}_set${idx}_A`]: e.target.value }))}
                   className={`font-data w-11 h-9 rounded-lg bg-white/[0.04] border-[1.5px] ${hasError ? "border-red-500/60" : "border-white/10"} text-center text-base font-bold text-[#f1f5f9] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all`}
                 />
@@ -106,7 +110,7 @@ export default function MatchCard({
                 <input
                   type="number" min="0"
                   onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
-                  value={ls[`${match.id}_set${idx}_B`] ?? ""}
+                  value={setValue(idx, "B")}
                   onChange={(e) => setLs((p) => ({ ...p, [`${match.id}_set${idx}_B`]: e.target.value }))}
                   className={`font-data w-11 h-9 rounded-lg bg-white/[0.04] border-[1.5px] ${hasError ? "border-red-500/60" : "border-white/10"} text-center text-base font-bold text-[#f1f5f9] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all`}
                 />

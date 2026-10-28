@@ -11,7 +11,10 @@ import {
   canReopenLiga,
   reopenLigaPatch,
   clearLigaMatch,
+  startEditLigaMatch,
+  adminMatchView,
   ligaCanFinish,
+  ligaMatchesDone,
   finishPatch,
   ligaQualifiedPairs,
 } from "../../logic/liga";
@@ -34,16 +37,16 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
   const bySets = ["sets3", "sets5"].includes(t.config?.scoringFormat || "sets3");
   const matches = t.matches || [];
   const rounds = t.rounds || [];
-  const allMatchesDone = matches.length > 0 && matches.every((m) => m.saved);
+  const allMatchesDone = ligaMatchesDone(matches);
 
   async function onSaveMatch(matchId, a, b, sets) {
     const match = matches.find((m) => m.id === matchId);
-    if (!match || match.saved) return;
+    if (!match || (match.saved && !match.editing)) return;
     if (isNaN(a) || isNaN(b) || a < 0 || b < 0 || a === b) return;
 
     const updatedMatches = matches.map((m) =>
       m.id === matchId
-        ? { ...m, scoreA: String(a), scoreB: String(b), saved: true, sets: sets || null }
+        ? { ...m, scoreA: String(a), scoreB: String(b), saved: true, editing: false, sets: sets || null }
         : m,
     );
     const standings = recomputeLigaStandings(t.pairs, updatedMatches);
@@ -59,11 +62,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
 
   async function onEditMatch(matchId) {
     if (locked) return;
-    const updatedMatches = matches.map((m) =>
-      m.id === matchId ? { ...m, saved: false } : m,
-    );
-    const standings = recomputeLigaStandings(t.pairs, updatedMatches);
-    await persist({ ...t, matches: updatedMatches, pairs: standings });
+    await persist({ ...t, matches: startEditLigaMatch(matches, matchId) });
   }
 
   async function onDeleteMatch(matchId) {
@@ -487,7 +486,7 @@ function LigaRoundAccordion({ round, matches, allMatches, isAdmin, ls, setLs, on
           {matches.map((match) => (
             <MatchCard
               key={match.id}
-              match={match}
+              match={isAdmin ? adminMatchView(match) : match}
               isAdmin={isAdmin}
               ls={ls}
               setLs={setLs}

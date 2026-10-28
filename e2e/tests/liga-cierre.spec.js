@@ -189,3 +189,35 @@ test("liga finalizada: Jornadas dice que el torneo terminó, no que la fase fina
   await expect(page.getByText("🏁 Torneo finalizado: los resultados están cerrados.")).toBeVisible({ timeout: 8000 });
   await expect(page.getByText(/ya está en marcha/)).toHaveCount(0);
 });
+
+test("mientras el organizador corrige un resultado, el espectador sigue viéndolo; al guardar se actualiza", async ({ page, browser }) => {
+  await seedTournament(CODE, ligaTerminada());
+  await entrarComoAdmin(page);
+
+  await page.getByRole("button", { name: "Editar" }).first().click();
+  await expect.poll(async () => (await getTournamentData(CODE)).matches.find((m) => m.id === "r1_m0").editing, { timeout: 8000 }).toBe(true);
+  // Sigue guardado y con su marcador: la tabla no cambia
+  const enEdicion = await getTournamentData(CODE);
+  expect(enEdicion.matches.find((m) => m.id === "r1_m0")).toMatchObject({ saved: true, scoreA: "2", scoreB: "0" });
+  expect(enEdicion.pairs.find((p) => p.id === 0).played).toBe(2);
+
+  // El espectador (sin sesión) sigue viendo el resultado de siempre
+  const espectador = await (await browser.newContext()).newPage();
+  await espectador.goto(`/torneo/${CODE}`);
+  await expect(espectador.getByText("Jornada 1")).toBeVisible({ timeout: 8000 });
+  if (!(await espectador.getByText("6-3").first().isVisible())) await espectador.getByText("Jornada 1").click();
+  await expect(espectador.getByText("6-3").first()).toBeVisible();
+  await expect(espectador.getByText("vs", { exact: true })).toHaveCount(0);
+
+  // Si el organizador recarga durante la edición, las casillas conservan los sets anteriores
+  await page.reload();
+  await expect(page.getByText("Jornada 1")).toBeVisible({ timeout: 8000 });
+  await expect(page.locator('input[type="number"]').first()).toHaveValue("6");
+
+  // Corrige un set y guarda: se actualiza y desaparece la marca de edición
+  await page.locator('input[type="number"]').nth(1).fill("4");
+  await page.getByRole("button", { name: "Guardar resultado" }).click();
+  await expect.poll(async () => (await getTournamentData(CODE)).matches.find((m) => m.id === "r1_m0").editing, { timeout: 8000 }).toBe(false);
+  const final = await getTournamentData(CODE);
+  expect(final.matches.find((m) => m.id === "r1_m0").sets[0]).toMatchObject({ a: 6, b: 4 });
+});
