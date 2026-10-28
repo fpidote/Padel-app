@@ -55,6 +55,8 @@ export function makeTournamentData(overrides = {}) {
 
 export async function seedTournament(code, overrides = {}) {
   const data = makeTournamentData(overrides);
+  // Sin restos de una prueba anterior (borrar el documento no borra sus subcolecciones, como helpers)
+  await db().recursiveDelete(db().collection("torneos").doc(code));
   await db().collection("torneos").doc(code).set({
     data: JSON.stringify(data),
     ownerUid: TEST_UID,
@@ -69,9 +71,30 @@ export async function getTournamentData(code) {
 }
 
 export async function deleteTournament(code) {
-  await db().collection("torneos").doc(code).delete();
+  await db().recursiveDelete(db().collection("torneos").doc(code));
 }
 
-export async function getTestToken(uid = TEST_UID) {
+// Con claims = { email, email_verified }, el usuario se crea (o actualiza) en el emulador con ese correo
+// verificado: el emulador no copia a los tokens personalizados un `email` puesto como claim, pero sí el
+// correo del usuario, y así llega a las reglas como request.auth.token.email (como con Google).
+export async function getTestToken(uid = TEST_UID, claims) {
+  if (claims?.email) {
+    const props = { email: claims.email, emailVerified: claims.email_verified !== false };
+    try {
+      await adminAuth().updateUser(uid, props);
+    } catch (err) {
+      if (err.code !== "auth/user-not-found") throw err;
+      await adminAuth().createUser({ uid, ...props });
+    }
+  }
   return adminAuth().createCustomToken(uid);
+}
+
+// Ayudantes: torneos/{code}/helpers/{correo en minúsculas}
+export async function addHelper(code, email) {
+  await db().collection("torneos").doc(code).collection("helpers").doc(email.toLowerCase()).set({ addedAt: Timestamp.now() });
+}
+
+export async function removeHelper(code, email) {
+  await db().collection("torneos").doc(code).collection("helpers").doc(email.toLowerCase()).delete();
 }
