@@ -13,11 +13,13 @@ import {
   clearLigaMatch,
   ligaCanFinish,
   finishPatch,
+  ligaQualifiedPairs,
 } from "../../logic/liga";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import MatchCard from "../shared/MatchCard";
 import PairStandings from "../shared/PairStandings";
 import PodiumCard from "../shared/PodiumCard";
+import RestingNote from "../shared/RestingNote";
 import { showToast } from "../../logic/toast";
 import { sortStandings, standingsLabels } from "../../logic/standings";
 
@@ -212,6 +214,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                   key={r.round}
                   round={r}
                   matches={matches.filter((m) => m.round === r.round)}
+                  allMatches={matches}
                   isAdmin={isAdmin}
                   ls={ls}
                   setLs={setLs}
@@ -407,7 +410,17 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
       {confirm?.kind === "start" && (
         <SimpleModal
           icon="⚡"
-          message="Al iniciar la fase final se cierran los resultados de la liga y ya no se podrán modificar. ¿Iniciar la fase final?"
+          message={
+            <>
+              <div className="mb-1">Pasan a la fase final (según la tabla actual):</div>
+              <ol className="list-none p-0 m-0 mb-3 text-[#38bdf8]" data-testid="clasificados">
+                {ligaQualifiedPairs(t.pairs, matches, ligaQualifiers(t.config, t.pairs.length)).map((p, i) => (
+                  <li key={p.id}>{`${i + 1}. ${p.p1} / ${p.p2}`}</li>
+                ))}
+              </ol>
+              Al iniciar la fase final se cierran los resultados de la liga y ya no se podrán modificar. ¿Iniciar la fase final?
+            </>
+          }
           confirmLabel="Iniciar"
           danger={false}
           onClose={() => setConfirm(null)}
@@ -436,7 +449,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
   );
 }
 
-function LigaRoundAccordion({ round, matches, isAdmin, ls, setLs, onSave, onEdit, onDelete, locked, onSetDate, scoringFormat }) {
+function LigaRoundAccordion({ round, matches, allMatches, isAdmin, ls, setLs, onSave, onEdit, onDelete, locked, onSetDate, scoringFormat }) {
   const hasUnsaved = matches.some((m) => !m.saved);
   const [isOpen, setIsOpen] = useState(hasUnsaved || round.round === 1);
 
@@ -452,6 +465,7 @@ function LigaRoundAccordion({ round, matches, isAdmin, ls, setLs, onSave, onEdit
         </div>
         <span className="text-gray-500 text-xs font-semibold">{isOpen ? "▲ OCULTAR" : "▼ VER PARTIDOS"}</span>
       </div>
+      <div className="px-4"><RestingNote matches={allMatches} round={round.round} /></div>
       {isOpen && (
         <div className="px-4 pb-4">
           {isAdmin && (

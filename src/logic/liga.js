@@ -150,6 +150,26 @@ export function buildLigaKnockout(pairs, advanceQualifiers, matches = [], { thir
   return buildBracket(sorted.slice(0, advanceQualifiers), { consolation: false, thirdPlace });
 }
 
+// Parejas que no juegan en una jornada (con cantidad impar descansa una por jornada). Se deduce del
+// propio fixture: las parejas que aparecen en otras jornadas pero no en esta.
+export function ligaRestingPairs(matches, roundNumber) {
+  const all = new Map();
+  const playing = new Set();
+  (matches || []).forEach((m) => {
+    [m.pairA, m.pairB].forEach((p) => {
+      if (!p) return;
+      if (!all.has(p.id)) all.set(p.id, p);
+      if (m.round === roundNumber) playing.add(p.id);
+    });
+  });
+  return [...all.values()].filter((p) => !playing.has(p.id));
+}
+
+// Las parejas que pasarían a la fase final con la tabla actual, en orden de clasificación.
+export function ligaQualifiedPairs(pairs, matches, advanceQualifiers) {
+  return sortStandings(pairs, matches).slice(0, advanceQualifiers);
+}
+
 // Cuántas parejas pueden pasar a la eliminatoria según cuántas juegan la liga: con menos de 5 solo
 // 2, con 5 o más hasta 4, y con 9 o más hasta 8.
 export function ligaQualifierOptions(pairCount) {

@@ -1,6 +1,7 @@
 // src/components/setup/DrawPreview.jsx
 // Contenido de la pestaña de sorteo en "Revisar y lanzar" para Mundialito, Liga y Relámpago.
 import { knockoutByesText, extraQualifiersText } from "../../logic/mundialito";
+import RestingNote from "../shared/RestingNote";
 
 const names = (p) => `${p.p1} / ${p.p2}`;
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
@@ -49,6 +50,7 @@ export function FixturePreview({ rounds, matches }) {
       {rounds.map((round) => (
         <div key={round.round}>
           <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Jornada {round.round}</div>
+          <RestingNote matches={matches} round={round.round} />
           <div className="space-y-2">
             {matches
               .filter((m) => m.round === round.round)

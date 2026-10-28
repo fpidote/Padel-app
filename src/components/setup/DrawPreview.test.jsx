@@ -67,6 +67,18 @@ describe("FixturePreview", () => {
     expect(html).toContain("Ana1 / Eva1");
     expect(html).toContain("vs");
   });
+
+  it("indica quién descansa en la jornada que no juega", () => {
+    const html = renderToStaticMarkup(<FixturePreview rounds={rounds} matches={matches} />);
+    const jornada2 = html.slice(html.indexOf("Jornada 2"));
+    expect(jornada2).toContain("Descansa: Ana1 / Eva1, Ana3 / Eva3");
+    expect(html.slice(0, html.indexOf("Jornada 2"))).not.toContain("Descansa");
+  });
+
+  it("sin descansos no muestra el aviso", () => {
+    const html = renderToStaticMarkup(<FixturePreview rounds={[rounds[0]]} matches={matches.slice(0, 2)} />);
+    expect(html).not.toContain("Descansa");
+  });
 });
 
 describe("BracketPreview", () => {

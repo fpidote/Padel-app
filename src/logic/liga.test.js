@@ -13,6 +13,8 @@ import {
   ligaThirdPlace,
   ligaCanFinish,
   finishPatch,
+  ligaRestingPairs,
+  ligaQualifiedPairs,
 } from "./liga.js";
 import { generateRules } from "./constants.js";
 
@@ -510,5 +512,41 @@ describe("Liga — finalizar el torneo", () => {
     expect(ligaResultsLocked({ ...base, status: "finished" })).toBe(true);
     expect(canReopenLiga({ status: "finished", phase: "playoff", knockoutBracket: [] })).toBe(false);
     expect(finishPatch()).toEqual({ status: "finished" });
+  });
+});
+
+describe("ligaRestingPairs — quién descansa cada jornada", () => {
+  test("con cantidad impar descansa exactamente una pareja por jornada y todas descansan una vez", () => {
+    const { rounds, matches } = buildLigaFixture(pairsOf(5));
+    const resting = rounds.map((r) => ligaRestingPairs(matches, r.round));
+    resting.forEach((r) => expect(r).toHaveLength(1));
+    const ids = resting.map(([p]) => p.id).sort();
+    expect(ids).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  test("con cantidad par nadie descansa", () => {
+    const { rounds, matches } = buildLigaFixture(pairsOf(4));
+    rounds.forEach((r) => expect(ligaRestingPairs(matches, r.round)).toEqual([]));
+  });
+
+  test("en ida y vuelta, descansa la misma pareja en la vuelta que en la ida", () => {
+    const { rounds, matches } = buildLigaFixture(pairsOf(5), true);
+    const ida = rounds.slice(0, 5).map((r) => ligaRestingPairs(matches, r.round)[0].id);
+    const vuelta = rounds.slice(5).map((r) => ligaRestingPairs(matches, r.round)[0].id);
+    expect(vuelta).toEqual(ida);
+  });
+});
+
+describe("ligaQualifiedPairs — quién pasa a la fase final", () => {
+  test("devuelve las N primeras de la tabla en el mismo orden que el cuadro", () => {
+    const standings = [pair(0, 1), pair(1, 3), pair(2, 2), pair(3, 0)];
+    expect(ligaQualifiedPairs(standings, [], 2).map((p) => p.id)).toEqual([1, 2]);
+  });
+
+  test("coincide con quienes entran al cuadro de buildLigaKnockout", () => {
+    const standings = [pair(0, 3), pair(1, 2), pair(2, 2, 1, 0, 0, 0), pair(3, 1)];
+    const bracket = buildLigaKnockout(standings, 2);
+    const inBracket = bracket.flatMap((m) => [m.pairA, m.pairB]).filter(Boolean).map((p) => p.id).sort();
+    expect(ligaQualifiedPairs(standings, [], 2).map((p) => p.id).sort()).toEqual(inBracket);
   });
 });
