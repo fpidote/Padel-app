@@ -14,6 +14,11 @@ import {
   fairRoundOptions,
   classicTotalRounds,
   restBalanceText,
+  startEditCourt,
+  adminCourtView,
+  roundAllSaved,
+  standingsTitle,
+  hasStandingsData,
   isDuplicateName,
   duplicateNameKeys,
   MIN_ROUNDS,
@@ -933,5 +938,47 @@ describe("restBalanceText", () => {
   test("igual: todos juegan lo mismo", () => {
     const b = restBalance({ count: 10, courts: 2, mode: "individual", rounds: 5 });
     expect(restBalanceText(b, false)).toBe("Todos juegan 4 partidos.");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Corregir un resultado de la ronda en curso sin que el espectador lo pierda
+// ═══════════════════════════════════════════════════════════════
+describe("editar una pista de la ronda en curso", () => {
+  const round = [
+    { pairA: [{ id: 1 }, { id: 2 }], pairB: [{ id: 3 }, { id: 4 }], scoreA: "7", scoreB: "2", saved: true },
+    { pairA: [{ id: 5 }, { id: 6 }], pairB: [{ id: 7 }, { id: 8 }], scoreA: "6", scoreB: "4", saved: true },
+  ];
+
+  test("startEditCourt marca solo esa pista y la deja guardada con su marcador", () => {
+    const out = startEditCourt(round, 0);
+    expect(out[0]).toMatchObject({ saved: true, editing: true, scoreA: "7", scoreB: "2" });
+    expect(out[1]).toEqual(round[1]);
+    expect(round[0].editing).toBeUndefined();
+  });
+
+  test("adminCourtView muestra como sin guardar solo la pista en edición", () => {
+    const [editing] = startEditCourt(round, 0);
+    expect(adminCourtView(editing)).toMatchObject({ saved: false, scoreA: "7", scoreB: "2" });
+    expect(adminCourtView(round[1])).toBe(round[1]);
+  });
+
+  test("roundAllSaved: una pista en edición no cuenta como cerrada", () => {
+    expect(roundAllSaved(round)).toBe(true);
+    expect(roundAllSaved(startEditCourt(round, 1))).toBe(false);
+    expect(roundAllSaved([{ ...round[0], saved: false }])).toBe(false);
+  });
+});
+
+describe("tabla de la ronda en curso", () => {
+  test("standingsTitle: el título dice hasta qué ronda cuenta la tabla", () => {
+    expect(standingsTitle(1, false)).toBe("🏆 Tabla (se actualiza al cerrar cada ronda)");
+    expect(standingsTitle(3, false)).toBe("🏆 Tabla tras la ronda 2");
+    expect(standingsTitle(4, true)).toBe("🏆 Tabla final");
+  });
+
+  test("hasStandingsData: sin ningún resultado cerrado no hay clasificación que premiar", () => {
+    expect(hasStandingsData([{ pts: 0, gf: 0, gc: 0 }, { pts: 0, gf: 0, gc: 0 }])).toBe(false);
+    expect(hasStandingsData([{ pts: 0, gf: 0, gc: 0 }, { pts: 1, gf: 7, gc: 2 }])).toBe(true);
   });
 });

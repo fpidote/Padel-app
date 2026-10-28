@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { generateRules } from "../../logic/constants";
 import { pk } from "../../logic/utils";
 import { standingsLabels } from "../../logic/standings";
-import { buildRoundAmericano, americanoStandings, americanoPodium, americanoMatchesPlayed, canFinishAnyRound } from "../../logic/americano";
+import { buildRoundAmericano, americanoStandings, americanoPodium, americanoMatchesPlayed, canFinishAnyRound, startEditCourt, adminCourtView, roundAllSaved, standingsTitle, hasStandingsData } from "../../logic/americano";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import History from "../shared/History";
 import PodiumCard from "../shared/PodiumCard";
@@ -36,6 +36,16 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
   const [modalMsg, setModalMsg] = useState(null);
   const [showLevelsToggle, setShowLevelsToggle] = useState(true);
 
+  // Tras recargar con una pista en edición, las casillas arrancan con el resultado que había
+  useEffect(() => {
+    if (!isAdmin) return;
+    (t.currentRound || []).forEach((c, ci) => {
+      if (c.editing) {
+        setLs((prev) => (prev[`${ci}_A`] !== undefined ? prev : { ...prev, [`${ci}_A`]: String(c.scoreA), [`${ci}_B`]: String(c.scoreB) }));
+      }
+    });
+  }, [t.currentRound, isAdmin]);
+
   async function onSave(ci, isCancel = false) {
     const court = t.currentRound[ci];
     const a = parseInt(
@@ -47,7 +57,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
     if (isNaN(a) || isNaN(b) || a < 0 || b < 0 || a === b) return;
     const cr = t.currentRound.map((c, i) =>
       i === ci
-        ? { ...c, scoreA: String(a), scoreB: String(b), saved: true }
+        ? { ...c, scoreA: String(a), scoreB: String(b), saved: true, editing: false }
         : c,
     );
     setLs((prev) => {
@@ -73,9 +83,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
       [`${ci}_A`]: court.scoreA,
       [`${ci}_B`]: court.scoreB,
     }));
-    const cr = t.currentRound.map((c, i) =>
-      i === ci ? { ...c, saved: false } : c,
-    );
+    const cr = startEditCourt(t.currentRound, ci);
     try {
       await persist({ ...t, currentRound: cr });
     } catch (err) {
@@ -92,7 +100,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
   }
 
   async function onNext() {
-    if (!t.currentRound.every((c) => c.saved)) return;
+    if (!roundAllSaved(t.currentRound)) return;
     const isPairs = t.config.mode === "pairs";
     const entityKey = isPairs ? "pairs" : "players";
     let np = t[entityKey].map((p) => ({ ...p }));
@@ -167,7 +175,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
   }
 
   async function onFinish() {
-    if (!t.currentRound.every((c) => c.saved)) return;
+    if (!roundAllSaved(t.currentRound)) return;
     const isPairsF = t.config.mode === "pairs";
     const entityKeyF = isPairsF ? "pairs" : "players";
     let np = t[entityKeyF].map((p) => ({ ...p }));
@@ -219,7 +227,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
   const isPairs = t.config.mode === "pairs";
   const entityKey = isPairs ? "pairs" : "players";
   const standings = americanoStandings(t[entityKey]);
-  const allSaved = t.currentRound?.every((c) => c.saved);
+  const allSaved = roundAllSaved(t.currentRound);
   const isLastRound = !!(
     (t.config.maxRounds && t.roundNum >= t.config.maxRounds)
     || (t.precomputedRounds?.length && t.roundNum >= t.precomputedRounds.length)
@@ -490,7 +498,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
 
 function FilteredCurrentRound({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSearch, highlightId, useLevels, showLevelsToggle }) {
   const courts = (t.currentRound || [])
-    .map((court, ci) => ({ court, ci }))
+    .map((court, ci) => ({ court: isAdmin ? adminCourtView(court) : court, ci }))
     .filter(({ court }) => matchesSearch(court));
 
   const isSittingOut = courts.length === 0 && (t.sittingOut || []).some(
@@ -593,6 +601,18 @@ function FilteredCurrentRound({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSe
                 </div>
                 <div className="flex flex-col items-start self-center">{renderName(court.pairB)}</div>
               </div>
+              {isAdmin && court.editing && (
+                <div className="pt-3">
+                  <button
+                    type="button"
+                    data-testid="btn-cancelar-edicion"
+                    onClick={() => onSave(ci, true)}
+                    className="w-full py-2.5 rounded-xl text-sm font-bold bg-red-700 hover:bg-red-600 text-white cursor-pointer transition-colors"
+                  >
+                    ✕ Cancelar
+                  </button>
+                </div>
+              )}
               {isAdmin && !court.saved && scoreError && (
                 <div data-testid="score-error" className="pt-3 text-center text-[12px] text-amber-400 font-bold">⚠️ {scoreError}</div>
               )}
@@ -789,7 +809,8 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onFi
         </div>
       )}
 
-      {(t.currentRound || []).map((court, ci) => {
+      {(t.currentRound || []).map((rawCourt, ci) => {
+        const court = isAdmin ? adminCourtView(rawCourt) : rawCourt;
         if (!matchesSearch(court)) return null;
         const scoreA = parseInt(court.scoreA);
         const scoreB = parseInt(court.scoreB);
@@ -888,6 +909,18 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onFi
             )}
 
             {/* Footer */}
+            {isAdmin && court.editing && (
+              <div className="px-4 pb-3">
+                <button
+                  type="button"
+                  data-testid="btn-cancelar-edicion"
+                  onClick={() => onSave(ci, true)}
+                  className="w-full py-2.5 rounded-xl text-sm font-bold bg-red-700 hover:bg-red-600 text-white cursor-pointer transition-colors"
+                >
+                  ✕ Cancelar
+                </button>
+              </div>
+            )}
             {isAdmin && !court.saved && validateGamesScore(ls[`${ci}_A`], ls[`${ci}_B`]) && (
               <div data-testid="score-error" className="px-4 pb-3 text-center text-[12px] text-amber-400 font-bold">
                 ⚠️ {validateGamesScore(ls[`${ci}_A`], ls[`${ci}_B`])}
@@ -1254,7 +1287,7 @@ function StandingsAmericano({ rows, rounds, podium, finished, roundNum, useLevel
     {podium?.champion && <PodiumCard podium={podium} hasThird={!!podium.third} finished />}
     <div className="bg-[#0f172a] rounded-xl overflow-hidden mb-4">
       <div className="pt-3.5 px-4 pb-1 flex items-center justify-between">
-        <div className="font-extrabold text-[15px] text-[#f1f5f9]">{finished ? "🏆 Tabla final" : `🏆 Tabla - Ronda ${roundNum}`}</div>
+        <div className="font-extrabold text-[15px] text-[#f1f5f9]">{standingsTitle(roundNum, finished)}</div>
         {isAdmin && useLevels && (
           <button
             onClick={() => setShowLevelsToggle(v => !v)}
@@ -1283,7 +1316,7 @@ function StandingsAmericano({ rows, rounds, podium, finished, roundNum, useLevel
         <tbody>
           {rows.map((p, i) => {
             const d = p.gf - p.gc;
-            const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
+            const medal = !hasStandingsData(rows) ? null : i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
             return (
               <tr key={p.id} className={`${i % 2 === 0 ? "bg-[#1e293b]" : "bg-[#172033]"} border-b border-[#1e293b]`}>
                 <td className="py-2.5 px-2.5 text-center">{medal || <span className="text-[#64748b] text-[13px]">{i + 1}</span>}</td>

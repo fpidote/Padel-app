@@ -560,6 +560,34 @@ export function fairRoundOptions({ count, courts, mode }) {
   return options;
 }
 
+// Corregir una pista: sigue guardada (la tabla y el espectador ven el resultado anterior) y solo se marca
+// como en edición hasta que el organizador guarde el nuevo o cancele.
+export function startEditCourt(currentRound, ci) {
+  return (currentRound || []).map((c, i) => (i === ci ? { ...c, editing: true } : c));
+}
+
+// Lo que ve el organizador: la pista en edición aparece con sus casillas abiertas.
+export function adminCourtView(court) {
+  return court?.editing ? { ...court, saved: false } : court;
+}
+
+// Todas las pistas de la ronda cerradas y ninguna abierta para corregir.
+export function roundAllSaved(currentRound) {
+  return (currentRound || []).every((c) => c.saved && !c.editing);
+}
+
+// Los puntos se suman al cerrar cada ronda: el título dice hasta cuál cuenta la tabla.
+export function standingsTitle(roundNum, finished) {
+  if (finished) return "🏆 Tabla final";
+  if (roundNum <= 1) return "🏆 Tabla (se actualiza al cerrar cada ronda)";
+  return `🏆 Tabla tras la ronda ${roundNum - 1}`;
+}
+
+// ¿Hay algún resultado cerrado? Sin él todos están a cero y no hay a quién premiar.
+export function hasStandingsData(rows) {
+  return (rows || []).some((r) => r.pts > 0 || r.gf > 0 || r.gc > 0);
+}
+
 // Sin límite de rondas ("Ilimitadas" en Mexicano y parejas) nadie marca cuál es la última: el organizador
 // decide cuándo cerrar, a partir del mínimo de rondas.
 export function canFinishAnyRound(t) {
