@@ -76,3 +76,13 @@ test("Americano: al teclear una coma en el marcador se avisa en vez de descartar
   await page.keyboard.type("6,5");
   await expect(page.getByText("Escribe solo números enteros, sin coma ni punto.")).toBeVisible();
 });
+
+test("Relámpago y Torneo por grupos no piden pistas, que la app no asigna", async ({ page }) => {
+  const pairInputs = Array.from({ length: 6 }, (_, i) => ({ id: i, p1: `A${i}`, p2: `B${i}`, pts: 0, gf: 0, gc: 0 }));
+  for (const type of ["relampago", "mundialito"]) {
+    await seedTournament(CODE, { type, status: "setup", phase: "setup", config: { name: type, courts: 2 }, pairInputs, playerInputs: [] });
+    await entrarComoAdmin(page);
+    await expect(page.getByText("6 parejas", { exact: false }).first()).toBeVisible({ timeout: 8000 });
+    await expect(page.getByText("Pistas", { exact: true })).toHaveCount(0);
+  }
+});

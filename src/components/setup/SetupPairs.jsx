@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { isDuplicatePair, duplicatePairKeys, pairKey } from "../../logic/pairNames";
 import { useNavigate } from "react-router-dom";
 import { buildShareMessage } from "../../logic/utils";
 import { validateMundialitoConfig, knockoutInfo, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail, describeFormat, positionName, availableStages, optionsForStage, stageChoiceLabel, MIN_PAIRS, classicCrossingApplicable, crossingMode } from "../../logic/mundialito";
@@ -58,6 +59,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
 
   const isMixer   = t.type === "pozo" && t.config.pozoMode === "mixer";
   const pairs     = t.pairInputs || [];
+  const duplicatePairs = duplicatePairKeys(pairs);
   const players   = t.playerInputs || [];
   const isLigaType = t.type === "liga";
   const isGroups  = t.type === "mundialito";
@@ -244,7 +246,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
         {!isAdmin && (
           <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 mb-4">
             <div className="font-bold">{t.config.name}</div>
-            <div className="text-xs text-gray-500 mt-1">{t.type !== "liga" && `${t.config.courts} pistas · `}Esperando al organizador...</div>
+            <div className="text-xs text-gray-500 mt-1">{t.type === "pozo" && `${t.config.courts} pistas · `}Esperando al organizador...</div>
           </div>
         )}
 
@@ -310,7 +312,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
             {/* ── Configuración ── */}
             <SectionHeader>🏓 Configuración</SectionHeader>
             <div className="space-y-4">
-              {t.type !== "liga" && <div>
+              {t.type === "pozo" && <div>
                 <label className="text-xs text-gray-400 font-semibold block mb-2">Pistas</label>
                 <div className="flex gap-2">
                   {(t.type === "pozo" ? [2,3,4,5,6] : [1,2,3,4,5,6]).map(n => (
@@ -706,6 +708,9 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
                   <span className="font-medium">{p.p1}</span>
                   <span className="text-gray-600 mx-1.5">/</span>
                   <span className="font-medium">{p.p2}</span>
+                  {duplicatePairs.has(pairKey(p.p1, p.p2)) && (
+                    <span className="ml-2 text-[10px] font-bold text-amber-400">⚠️ repetida</span>
+                  )}
                 </span>
               )}
               {isAdmin && (
@@ -740,6 +745,11 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
                 className={addInputCls}
               />
             </div>
+            {isDuplicatePair(newP1, newP2, pairs) && (
+              <p data-testid="aviso-pareja-repetida" className="text-xs font-semibold text-amber-400">
+                ⚠️ Ya hay una pareja «{newP1.trim()} / {newP2.trim()}». Puedes agregarla igualmente, pero revisa que no sea un doble toque.
+              </p>
+            )}
             <button
               onClick={addPair}
               className={`w-full py-2.5 rounded-xl font-bold text-sm cursor-pointer transition-colors ${newP1.trim() && newP2.trim() ? "text-white" : "bg-[#374151] text-white"}`}
@@ -878,7 +888,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
               </SummaryCard>
               <SummaryCard title="Participantes">
                 <SummaryRow label="Total" value={`${tot} ${isMixer ? "jugadores" : "parejas"}`} />
-                {t.type !== "liga" && <SummaryRow label="Pistas" value={t.config.courts} />}
+                {t.type === "pozo" && <SummaryRow label="Pistas" value={t.config.courts} />}
                 {t.type === "mundialito" && <SummaryRow label="Grupos" value={t.config.groupCount || 2} />}
                 {t.type === "mundialito" && <SummaryRow label="Avanzan por grupo" value={t.config.advancePerGroup ?? 2} />}
                 {t.type === "mundialito" && t.config.extraQualifiers > 0 && <SummaryRow label={`Mejores ${positionName(t.config.advancePerGroup ?? 2, 2)} extra`} value={t.config.extraQualifiers} />}

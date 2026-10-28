@@ -64,6 +64,17 @@ export function relampagoSetupStatus(pairCount, missing = 0) {
   return `${pairCount} parejas` + (byes > 0 ? ` · ${byes} ${byes === 1 ? "pasa" : "pasan"} directo en la 1.ª ronda` : " · ✓ listo");
 }
 
+// Orden de las parejas para la tabla de estadísticas: primero las del podio (campeón, subcampeón y ganador
+// de la revancha), después por partidos jugados (quien llegó más lejos). A igualdad se respeta el orden
+// recibido, que es el de la tabla habitual.
+export function relampagoRankingOrder(bracket, sortedPairs) {
+  const podium = relampagoPodium(bracket);
+  const top = new Map([podium.champion, podium.runnerUp, podium.third].filter(Boolean).map((p, i) => [p.id, i]));
+  return [...(sortedPairs || [])].sort(
+    (a, b) => (top.get(a.id) ?? 99) - (top.get(b.id) ?? 99) || countPlayed(bracket, b.id) - countPlayed(bracket, a.id),
+  );
+}
+
 // ¿Se puede cerrar el torneo? Con todo el cuadro jugado, revancha incluida, y solo una vez.
 export function relampagoCanFinish(t) {
   return !!t && t.status !== "finished" && bracketComplete(t.bracket);

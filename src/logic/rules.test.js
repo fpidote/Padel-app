@@ -80,3 +80,30 @@ describe("reglas escritas: Mexicano", () => {
     expect(americano({ matchmaking: "americano" })).not.toContain("pueden repetirse");
   });
 });
+
+describe("reglas escritas: Relámpago", () => {
+  const rel = (config) => generateRules("relampago", { courts: 2, ...config }).join(" ");
+
+  it("T-RUL-13: por tiempo explica cómo se decide un empate al terminar el tiempo", () => {
+    const text = rel({ scoringSystem: "timed", matchMinutes: 10 });
+    expect(text).toContain("igualados");
+    expect(text).toContain("cerrando el game");
+  });
+
+  it("T-RUL-14: dice que el tercero es el ganador de la revancha y cómo funcionan los pases directos", () => {
+    const text = rel({});
+    expect(text).toContain("ganador de la revancha");
+    expect(text).toContain("pasan directo");
+  });
+
+  it("T-RUL-15: al mejor de 3 sets explica el tie-break y no repite la línea de empate por tiempo", () => {
+    const text = rel({ scoringFormat: "sets3" });
+    expect(text).toContain("tie-break");
+    expect(text).toContain("7-6");
+    expect(text).not.toContain("igualados");
+  });
+
+  it("T-RUL-16: ya no promete pistas que la app no asigna", () => {
+    expect(rel({ courts: 3 })).not.toContain("pistas en juego");
+  });
+});

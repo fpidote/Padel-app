@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildBracket, advanceBracket, unadvanceBracket, countPlayed, firstRoundSeedPairs, canEditBracketMatch, hasPlayedRealMatch, bracketRoundName, bracketPodium, bracketComplete, bracketSemifinalLosers, relampagoPodium, relampagoCanFinish, relampagoSetupStatus, startEditBracketMatch, cancelEditBracketMatch, correctBracketMatch, adminBracketMatchView } from "./relampago.js";
+import { buildBracket, advanceBracket, unadvanceBracket, countPlayed, firstRoundSeedPairs, canEditBracketMatch, hasPlayedRealMatch, bracketRoundName, bracketPodium, bracketComplete, bracketSemifinalLosers, relampagoPodium, relampagoCanFinish, relampagoSetupStatus, startEditBracketMatch, cancelEditBracketMatch, correctBracketMatch, adminBracketMatchView, relampagoRankingOrder } from "./relampago.js";
 import { generateRules, TOURNAMENT_TYPES } from "./constants.js";
 
 function makePairs(n) {
@@ -745,5 +745,41 @@ describe("corregir un resultado sin perder el anterior (editing)", () => {
     const base = { status: "playing", bracket: [{ id: "a", saved: true }, { id: "b", saved: true, editing: true }] };
     expect(relampagoCanFinish(base)).toBe(false);
     expect(relampagoCanFinish({ ...base, bracket: [{ id: "a", saved: true }] })).toBe(true);
+  });
+});
+
+describe("relampagoRankingOrder", () => {
+  // 4 parejas jugadas por completo: final, 3.º por revancha
+  function torneoCompleto() {
+    let b = buildBracket(makePairs(4));
+    for (let g = 0; g < 50; g++) {
+      const m = b.find((x) => !x.saved && x.pairA && x.pairB && x.pairA.id !== "bye" && x.pairB.id !== "bye");
+      if (!m) break;
+      b = advanceBracket(b, m.id, 6, 2);
+    }
+    return b;
+  }
+
+  it("T-REL-37: campeón, subcampeón y ganador de la revancha van primero, en ese orden", () => {
+    const b = torneoCompleto();
+    const podium = relampagoPodium(b);
+    // Tabla "de liga" que pondría a otros por delante
+    const sorted = makePairs(4).slice().reverse();
+    const out = relampagoRankingOrder(b, sorted);
+    expect(out[0].id).toBe(podium.champion.id);
+    expect(out[1].id).toBe(podium.runnerUp.id);
+    expect(out[2].id).toBe(podium.third.id);
+    expect(out).toHaveLength(4);
+  });
+
+  it("T-REL-38: sin final jugada ordena por partidos jugados y respeta el orden recibido a igualdad", () => {
+    let b = buildBracket(makePairs(4));
+    const r1 = b.filter((m) => m.bracket === "winners" && m.round === 1);
+    b = advanceBracket(b, r1[0].id, 6, 2);
+    const out = relampagoRankingOrder(b, makePairs(4));
+    const ids = out.map((p) => p.id);
+    const jugaron = [r1[0].pairA.id, r1[0].pairB.id];
+    expect(jugaron).toContain(ids[0]);
+    expect(jugaron).toContain(ids[1]);
   });
 });

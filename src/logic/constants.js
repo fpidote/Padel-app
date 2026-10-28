@@ -78,6 +78,17 @@ export function generateRules(type, config, context = {}) {
     return `Partidos de ${config.matchMinutes ?? 10} minutos. El resultado se anota en ${metric}.`;
   }
 
+  // Por tiempo puede terminar igualado: se dice cómo se decide. Con sets, el tie-break se anota 7-6.
+  function tiebreakRules() {
+    if (config.scoringFormat === "sets3" || config.scoringFormat === "sets5") {
+      return ["Si un set llega a 6-6 se juega tie-break y el set se anota 7-6 para quien lo gana."];
+    }
+    if ((config.scoringSystem || "timed") === "timed") {
+      return ["Si al terminar el tiempo van igualados en el marcador, se decide cerrando el game en juego o con un punto de oro, según defina el organizador."];
+    }
+    return [];
+  }
+
   function goldenPointDesc() {
     return config.goldenPoint !== false
       ? "En el 40-40 de un game se juega un único punto decisivo (punto de oro)."
@@ -107,9 +118,7 @@ export function generateRules(type, config, context = {}) {
         : config.maxRounds
           ? `El torneo tiene ${config.maxRounds} rondas en total.`
           : "Sin límite de rondas fijo; el organizador decide cuándo terminar.";
-      const timedTiebreak = !config.scoringFormat?.startsWith("sets") && (config.scoringSystem || "timed") === "timed"
-        ? ["Si al terminar el tiempo van igualados en el marcador, se decide cerrando el game en juego o con un punto de oro, según defina el organizador."]
-        : [];
+      const timedTiebreak = tiebreakRules();
       const rankMetric = (config.scoringSystem || "timed") === "games" || ((config.scoringSystem || "timed") === "timed" && (config.timedMetric ?? "games") === "games") ? "juegos" : "puntos";
       const rules = [
         scoringDesc(),
@@ -125,9 +134,11 @@ export function generateRules(type, config, context = {}) {
     case "relampago":
       return [
         "Eliminación directa. Quien pierde su primer partido pasa al cuadro de revancha y sigue jugando; quien pierde después queda eliminado.",
+        "Si el número de parejas no completa el cuadro, las que sobran pasan directo a la siguiente ronda sin jugar.",
         scoringDesc(),
+        ...tiebreakRules(),
         goldenPointDesc(),
-        `${config.courts ?? 2} ${(config.courts ?? 2) === 1 ? "pista" : "pistas"} en juego. El cuadro se genera automáticamente.`,
+        "Campeón y subcampeón salen de la final del cuadro principal; el tercer puesto es para el ganador de la revancha.",
       ];
     case "mundialito":
       return [

@@ -1,12 +1,13 @@
 // src/components/play/PlayRelampago.jsx
 import { useState, useRef, useEffect, Fragment } from "react";
 import { generateRules } from "../../logic/constants";
-import { advanceBracket, canEditBracketMatch, countPlayed, bracketRoundName, relampagoPodium, relampagoCanFinish, startEditBracketMatch, cancelEditBracketMatch, correctBracketMatch, adminBracketMatchView } from "../../logic/relampago";
+import { advanceBracket, canEditBracketMatch, countPlayed, bracketRoundName, relampagoPodium, relampagoCanFinish, relampagoRankingOrder, startEditBracketMatch, cancelEditBracketMatch, correctBracketMatch, adminBracketMatchView } from "../../logic/relampago";
 import { analyzeSets, validateGamesScore } from "../../logic/sets";
 import { blockNonIntegerKey } from "../../logic/scoreInput";
 import { applyMatchToPairs } from "../../logic/standings";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import PairStandings from "../shared/PairStandings";
+import { sortStandings } from "../../logic/standings";
 import PodiumCard from "../shared/PodiumCard";
 import { showToast } from "../../logic/toast";
 
@@ -267,7 +268,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
   );
 }
 
-function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, onCancel, finished, canEditMatch = () => true, accentColor, scoringFormat }) {
+function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, onCancel, finished, isRematch = false, canEditMatch = () => true, accentColor, scoringFormat }) {
   // La tarjeta abierta se eleva: con sets es más alta que su slot y se solaparía con la siguiente
   const [openId, setOpenId] = useState(null);
   const scrollRef = useRef(null);
@@ -313,7 +314,7 @@ function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, onCancel, fi
     <div ref={scrollRef} className="flex flex-row overflow-x-auto items-start p-[16px_8px] min-h-[300px]">
       {rounds.map((round, ri) => {
         const roundMatches = matchesByRound[round];
-        const label = bracketRoundName(round, maxRound);
+        const label = isRematch && round >= maxRound - 1 ? `${bracketRoundName(round, maxRound)} de la revancha` : bracketRoundName(round, maxRound);
         const nextRound = ri < rounds.length - 1 ? rounds[ri + 1] : null;
         const nextRoundMatches = nextRound ? matchesByRound[nextRound] : null;
 
@@ -494,7 +495,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
         <Tabs
           tabs={[
             ["bracket", "⚡ Cuadro"],
-            ["consolation", "🥈 Cuadro Revancha"],
+            ["consolation", "🥉 Revancha"],
             ["standings", "🏆 Posiciones"],
             ["rules", "📖 Reglas"],
           ]}
@@ -506,16 +507,8 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
       <div className="px-4">
         {tab === "bracket" && (
           <div className="flex flex-col gap-4">
-            {champion && (
-              <div className="bg-[#1e293b] p-4 rounded-xl text-center border-2 border-amber-500">
-                <div className="text-2xl">🏆</div>
-                <div className="text-amber-500 font-bold uppercase text-xs mb-1">
-                  Campeón
-                </div>
-                <div className="text-slate-100 font-extrabold text-lg">
-                  {champion.p1} / {champion.p2}
-                </div>
-              </div>
+            {podium.champion && (
+              <PodiumCard podium={podium} hasThird={hasConsolation} thirdLabel="Ganador de la revancha" finished={finished} />
             )}
             {isAdmin && relampagoCanFinish(t) && (
               <button
@@ -555,13 +548,18 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
           <div className="flex flex-col gap-4">
             {consolChampion && (
               <div className="bg-[#1e293b] p-4 rounded-xl text-center border-2 border-slate-400">
-                <div className="text-2xl">🥈</div>
+                <div className="text-2xl">🥉</div>
                 <div className="text-slate-400 font-bold uppercase text-xs mb-1">
-                  Campeón Revancha
+                  Ganador de la revancha
                 </div>
                 <div className="text-slate-100 font-extrabold text-lg">
                   {consolChampion.p1} / {consolChampion.p2}
                 </div>
+              </div>
+            )}
+            {isAdmin && relampagoCanFinish(t) && (
+              <div data-testid="aviso-puedes-finalizar" className="bg-[#1f2937] border border-[#374151] rounded-2xl px-4 py-3 text-xs text-gray-300 text-center">
+                ✅ Ya se jugó todo: puedes finalizar el torneo desde la pestaña Cuadro.
               </div>
             )}
             {consolRounds.length === 0 && (
@@ -580,6 +578,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
               finished={finished}
               canEditMatch={(id) => !finished && canEditBracketMatch(t.bracket, id)}
               accentColor="#0284c7"
+              isRematch
               scoringFormat={t.config?.scoringFormat || "games"}
             />
           </div>
@@ -593,7 +592,15 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
               thirdLabel="Ganador de la revancha"
               finished={finished}
             />
-            <PairStandings pairs={t.pairs.map((p) => ({ ...p, played: countPlayed(t.bracket, p.id) }))} title="Posiciones" scoringFormat={t.config?.scoringFormat} config={t.config} medals={false} />
+            <PairStandings
+              pairs={relampagoRankingOrder(t.bracket, sortStandings(t.pairs.map((p) => ({ ...p, played: countPlayed(t.bracket, p.id) })), []))}
+              title="Estadísticas de las parejas"
+              scoringFormat={t.config?.scoringFormat}
+              config={t.config}
+              medals={false}
+              numbered={false}
+              presorted
+            />
           </>
         )}
 

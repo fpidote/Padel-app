@@ -6,10 +6,10 @@ const diffColor = (d) => (d > 0 ? "#4ade80" : d < 0 ? "#f87171" : "#64748b");
 const fmtDiff = (d) => (d > 0 ? `+${d}` : d);
 
 // medals=false para tablas de grupo (ahí un puesto no es un podio); qualified = ids que pasaron a la fase final.
-export default function PairStandings({ pairs, title, extra, scoringFormat = "games", config, matches = [], medals = true, qualified = null }) {
+export default function PairStandings({ pairs, title, extra, scoringFormat = "games", config, matches = [], medals = true, qualified = null, numbered = true, presorted = false }) {
   const isSetFormat = scoringFormat === "sets3" || scoringFormat === "sets5";
   const labels = standingsLabels({ ...(config || {}), scoringFormat });
-  const sorted = sortStandings(pairs || [], matches);
+  const sorted = presorted ? (pairs || []) : sortStandings(pairs || [], matches);
 
   return (
     <div className="bg-[#0f172a] rounded-xl overflow-hidden mb-4">
@@ -20,7 +20,7 @@ export default function PairStandings({ pairs, title, extra, scoringFormat = "ga
       <table className="w-full border-collapse">
         <thead>
           <tr className="bg-[#0a1120]">
-            <th className={`${TH} text-center`}>#</th>
+            {numbered && <th className={`${TH} text-center`}>#</th>}
             <th className={`${TH} text-left`}>Pareja</th>
             <th className={`${TH} text-center`}>PJ</th>
             <th className={`${TH} text-center`}>PG</th>
@@ -41,9 +41,11 @@ export default function PairStandings({ pairs, title, extra, scoringFormat = "ga
                 className="border-b border-[#1e293b]"
                 style={{ background: i % 2 === 0 ? "#1e293b" : "#172033" }}
               >
-                <td className="px-2.5 py-2.5 text-center">
-                  {medal || <span className="text-[#64748b] text-sm">{i + 1}</span>}
-                </td>
+                {numbered && (
+                  <td className="px-2.5 py-2.5 text-center">
+                    {medal || <span className="text-[#64748b] text-sm">{i + 1}</span>}
+                  </td>
+                )}
                 <td className="px-3 py-2.5 text-sm font-semibold text-[#f1f5f9]">
                   {qualified?.has(p.id) && <span title="Pasó a la fase final">⚡ </span>}
                   {p.name || `${p.p1} / ${p.p2}`}

@@ -79,7 +79,7 @@ export function BracketPreview({ bracket, seeded = false }) {
       <p className="text-xs text-gray-500">
         {seeded
           ? "Cabezas de serie: se respeta el orden de carga y las primeras parejas pasan directo cuando sobran lugares."
-          : "Quien pierde pasa al cuadro de revancha."}
+          : "Quien pierde su primer partido pasa al cuadro de revancha."}
       </p>
       <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Primera ronda</div>
       <div className="space-y-2">
