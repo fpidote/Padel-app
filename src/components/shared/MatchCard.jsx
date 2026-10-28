@@ -220,18 +220,22 @@ export default function MatchCard({
         </div>
       )}
 
-      {/* Indicador de Ganador */}
-      {isValidFinal && !match.saved && (
-        <div className="flex items-center justify-center gap-1.5 px-4 pb-2 text-[12px] text-green-400 font-bold">
-          <span
-            className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0"
-            style={{ animation: 'pulse-dot 1.8s ease-in-out infinite' }}
-          />
-          ✓ Gana{" "}
-          {finalScoreA > finalScoreB
-            ? `${match.pairA?.p1} / ${match.pairA?.p2}`
-            : `${match.pairB?.p1} / ${match.pairB?.p2}`}
-          {isSetFormat && ` (${finalScoreA} sets a ${finalScoreB})`}
+      {/* Indicador de Ganador: el hueco se reserva siempre para que el botón no salte al escribir */}
+      {isAdmin && !match.saved && match.pairA && match.pairB && (
+        <div data-testid="winner-slot" className="min-h-[26px]">
+          {isValidFinal && (
+            <div className="flex items-center justify-center gap-1.5 px-4 pb-2 text-[12px] text-green-400 font-bold">
+              <span
+                className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0"
+                style={{ animation: 'pulse-dot 1.8s ease-in-out infinite' }}
+              />
+              ✓ Gana{" "}
+              {finalScoreA > finalScoreB
+                ? `${match.pairA?.p1} / ${match.pairA?.p2}`
+                : `${match.pairB?.p1} / ${match.pairB?.p2}`}
+              {isSetFormat && ` (${finalScoreA} sets a ${finalScoreB})`}
+            </div>
+          )}
         </div>
       )}
 

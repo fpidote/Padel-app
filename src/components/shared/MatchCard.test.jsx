@@ -48,3 +48,31 @@ describe("MatchCard — editar y eliminar un resultado guardado", () => {
     expect(html).not.toContain("Eliminar");
   });
 });
+
+describe("MatchCard — el botón Guardar no salta al escribir el marcador", () => {
+  const pending = { ...match, saved: false, scoreA: "", scoreB: "", sets: null };
+  const typed = { ls: { m1_A: "6", m1_B: "2" } };
+
+  it("T-MC-01: reserva el hueco del ganador también antes de escribir, para que el botón no se mueva", () => {
+    const antes = render({ match: pending, scoringFormat: "games" });
+    const despues = render({ match: pending, scoringFormat: "games", ...typed });
+    expect(antes).toContain('data-testid="winner-slot"');
+    expect(despues).toContain('data-testid="winner-slot"');
+  });
+
+  it("T-MC-02: antes de escribir el hueco está vacío y después muestra quién gana", () => {
+    const antes = render({ match: pending, scoringFormat: "games" });
+    const despues = render({ match: pending, scoringFormat: "games", ...typed });
+    expect(antes).not.toContain("Gana");
+    expect(despues).toContain("Gana");
+    expect(despues).toContain("Ana / Luis");
+  });
+
+  it("T-MC-03: un partido guardado no lleva ese hueco (no cambia su aspecto)", () => {
+    expect(render({})).not.toContain("winner-slot");
+  });
+
+  it("T-MC-04: al espectador no se le reserva hueco", () => {
+    expect(render({ match: pending, scoringFormat: "games", isAdmin: false })).not.toContain("winner-slot");
+  });
+});
