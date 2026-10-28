@@ -23,3 +23,30 @@ export function duplicatePairKeys(pairs) {
   });
   return dup;
 }
+
+// Jugadores de una pareja nueva que ya están en otra pareja distinta (la misma persona en dos equipos).
+// Sirve para avisar al cargarla, sin bloquear. Si la pareja entera se repite, ese caso ya tiene su aviso.
+export function repeatedPlayersInNewPair(p1, p2, pairs) {
+  if (isDuplicatePair(p1, p2, pairs)) return [];
+  const found = [];
+  const seen = new Set();
+  [p1, p2].forEach((name) => {
+    const key = normalizeName(name);
+    if (key === "" || seen.has(key)) return;
+    seen.add(key);
+    const other = (pairs || []).find((p) => normalizeName(p.p1) === key || normalizeName(p.p2) === key);
+    if (other) found.push({ name: String(name).trim(), pair: `${other.p1} / ${other.p2}` });
+  });
+  return found;
+}
+
+// Nombres (normalizados) que están en más de una pareja de la lista, para marcarlos.
+export function duplicatePlayerKeys(pairs) {
+  const count = new Map();
+  (pairs || []).forEach((p) => {
+    new Set([normalizeName(p.p1), normalizeName(p.p2)]).forEach((key) => {
+      if (key) count.set(key, (count.get(key) || 0) + 1);
+    });
+  });
+  return new Set([...count].filter(([, n]) => n > 1).map(([key]) => key));
+}

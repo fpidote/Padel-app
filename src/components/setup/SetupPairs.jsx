@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
-import { isDuplicatePair, duplicatePairKeys, pairKey } from "../../logic/pairNames";
+import { isDuplicatePair, duplicatePairKeys, pairKey, repeatedPlayersInNewPair, duplicatePlayerKeys } from "../../logic/pairNames";
+import { normalizeName } from "../../logic/americano";
 import { useNavigate } from "react-router-dom";
 import { buildShareMessage } from "../../logic/utils";
 import { validateMundialitoConfig, knockoutInfo, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail, describeFormat, positionName, availableStages, optionsForStage, stageChoiceLabel, MIN_PAIRS, classicCrossingApplicable, crossingMode } from "../../logic/mundialito";
@@ -61,6 +62,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
   const isMixer   = t.type === "pozo" && t.config.pozoMode === "mixer";
   const pairs     = t.pairInputs || [];
   const duplicatePairs = duplicatePairKeys(pairs);
+  const duplicatePlayers = duplicatePlayerKeys(pairs);
   const players   = t.playerInputs || [];
   const isLigaType = t.type === "liga";
   const isGroups  = t.type === "mundialito";
@@ -133,6 +135,12 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
     setLocalDatetime(val);
     clearTimeout(debDatetime.current);
     debDatetime.current = setTimeout(() => persist({ ...t, config: { ...t.config, datetime: val } }), 600);
+  }
+
+  // «⚠️ repetido» junto al jugador que está en otra pareja; si la pareja entera se repite ya lo dice «repetida»
+  function repeatedPlayerMark(p, name) {
+    if (duplicatePairs.has(pairKey(p.p1, p.p2)) || !duplicatePlayers.has(normalizeName(name))) return null;
+    return <span className="ml-1 text-[10px] font-bold text-amber-400">⚠️ repetido</span>;
   }
 
   function addPair() {
@@ -710,8 +718,10 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
                   onClick={() => isAdmin && startEdit(i)}
                 >
                   <span className="font-medium">{p.p1}</span>
+                  {repeatedPlayerMark(p, p.p1)}
                   <span className="text-gray-600 mx-1.5">/</span>
                   <span className="font-medium">{p.p2}</span>
+                  {repeatedPlayerMark(p, p.p2)}
                   {duplicatePairs.has(pairKey(p.p1, p.p2)) && (
                     <span className="ml-2 text-[10px] font-bold text-amber-400">⚠️ repetida</span>
                   )}
@@ -749,6 +759,11 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
                 className={addInputCls}
               />
             </div>
+            {repeatedPlayersInNewPair(newP1, newP2, pairs).map((r) => (
+              <p key={r.name} data-testid="aviso-jugador-repetido" className="text-xs font-semibold text-amber-400">
+                ⚠️ {r.name} ya está en otra pareja («{r.pair}»). Puedes agregarla igualmente, pero revisa que no sea un error.
+              </p>
+            ))}
             {isDuplicatePair(newP1, newP2, pairs) && (
               <p data-testid="aviso-pareja-repetida" className="text-xs font-semibold text-amber-400">
                 ⚠️ Ya hay una pareja «{newP1.trim()} / {newP2.trim()}». Puedes agregarla igualmente, pero revisa que no sea un doble toque.
