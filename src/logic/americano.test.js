@@ -11,6 +11,8 @@ import {
   americanoMatchesPlayed,
   isDuplicateName,
   duplicateNameKeys,
+  MIN_ROUNDS,
+  roundsCountError,
 } from "./americano.js";
 
 // shuffle es no-determinista — la mockeamos para que devuelva el array intacto
@@ -767,5 +769,19 @@ describe("nombres repetidos al cargar jugadores", () => {
     expect(keys.has("alice")).toBe(true);
     expect(keys.has("bob")).toBe(false);
     expect(keys.size).toBe(1);
+  });
+});
+
+describe("mínimo de rondas de un Americano", () => {
+  test("el mínimo es 2: con una sola ronda nadie rota de pareja", () => {
+    expect(MIN_ROUNDS).toBe(2);
+  });
+
+  test("acepta 2 o más rondas", () => {
+    [2, 3, 4, 12, 30].forEach((n) => expect(roundsCountError(n)).toBeNull());
+  });
+
+  test("rechaza 0, 1, negativos y valores que no son un entero", () => {
+    [1, 0, -3, 2.5, NaN, undefined].forEach((n) => expect(roundsCountError(n)).toBe("Mínimo 2 rondas"));
   });
 });

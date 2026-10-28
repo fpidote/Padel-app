@@ -510,3 +510,13 @@ export function duplicateNameKeys(players) {
   });
   return dup;
 }
+
+// ── Cantidad de rondas ───────────────────────────────────────────────────
+
+// Con una sola ronda cada jugador juega un único partido con una única pareja: no hay Americano.
+export const MIN_ROUNDS = 2;
+
+// Mensaje de error si la cantidad de rondas no vale, o null si es válida.
+export function roundsCountError(n) {
+  return Number.isInteger(n) && n >= MIN_ROUNDS ? null : `Mínimo ${MIN_ROUNDS} rondas`;
+}

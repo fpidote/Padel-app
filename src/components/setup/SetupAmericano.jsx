@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { buildFirstRoundAmericano, precomputeAllRounds, isDuplicateName, duplicateNameKeys, normalizeName } from "../../logic/americano";
+import { buildFirstRoundAmericano, precomputeAllRounds, isDuplicateName, duplicateNameKeys, normalizeName, MIN_ROUNDS, roundsCountError } from "../../logic/americano";
 import { calcularDescansos, isCourtComplete } from "../../logic/manualRounds";
 import ManualRoundBuilder from "./ManualRoundBuilder";
 import { buildShareMessage } from "../../logic/utils";
@@ -33,6 +33,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
   const [localLocation, setLocalLocation] = useState(t.config.location    || "");
   const [localDatetime, setLocalDatetime] = useState(t.config.datetime    || "");
   const [newName,       setNewName]       = useState("");
+  const [roundsError,    setRoundsError]   = useState(null);
   const [newLvl,        setNewLvl]        = useState(0);
   const [newP1,         setNewP1]         = useState("");
   const [newP2,         setNewP2]         = useState("");
@@ -78,7 +79,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
   const isManual = !isPairs && (t.config.matchmaking || "americano") === "manual";
 
   const manualReady = !isManual || (
-    localManualRounds.length >= 1 &&
+    localManualRounds.length >= MIN_ROUNDS &&
     localManualRounds.every((r) => r.courts.every(isCourtComplete))
   );
 
@@ -120,7 +121,8 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
     setRoundsCustom(val);
     clearTimeout(debRounds.current);
     const num = parseInt(val);
-    if (!isNaN(num) && num >= 1) debRounds.current = setTimeout(() => { setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); persist({ ...t, config: { ...t.config, maxRounds: num } }); }, 600);
+    setRoundsError(val.trim() === "" ? null : roundsCountError(num));
+    if (!roundsCountError(num)) debRounds.current = setTimeout(() => { setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); persist({ ...t, config: { ...t.config, maxRounds: num } }); }, 600);
   }
 
   function handleMatchmakingChange(val) {
@@ -551,8 +553,9 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
                       style={(t.config.maxRounds ?? null) === n ? { background: COLOR } : undefined}
                     >{n === null ? "Ilimitadas" : n}</button>
                   ))}
-                  <input type="number" value={roundsCustom} onChange={e => handleRoundsCustom(e.target.value)} placeholder="Otro" min={1} max={30} className="w-16 py-2 rounded-lg text-sm text-center font-bold outline-none bg-[#374151] text-gray-300 placeholder:text-gray-600 shrink-0" />
+                  <input type="number" value={roundsCustom} onChange={e => handleRoundsCustom(e.target.value)} placeholder="Otro" min={MIN_ROUNDS} max={30} className="w-16 py-2 rounded-lg text-sm text-center font-bold outline-none bg-[#374151] text-gray-300 placeholder:text-gray-600 shrink-0" />
                 </div>
+                {roundsError && <p data-testid="error-rondas" className="mt-2 text-xs font-semibold text-amber-400">⚠️ {roundsError}</p>}
               </>
             )}
 
@@ -577,6 +580,10 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
 
                 {localManualRounds.length === 0 ? (
                   <p className="text-xs text-gray-600 text-center">Sin rondas armadas todavía</p>
+                ) : localManualRounds.length < MIN_ROUNDS ? (
+                  <p data-testid="error-rondas-manual" className="text-xs text-amber-400 font-semibold text-center">
+                    ⚠️ Mínimo {MIN_ROUNDS} rondas: arma al menos otra
+                  </p>
                 ) : manualReady ? (
                   <p className="text-xs text-green-400 font-bold text-center">
                     ✓ {localManualRounds.length} {localManualRounds.length === 1 ? "ronda lista" : "rondas listas"}

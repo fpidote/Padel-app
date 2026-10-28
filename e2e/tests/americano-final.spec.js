@@ -11,7 +11,7 @@ const NOMBRES = ["Alice", "Bob", "Carol", "Dave", "Erin", "Frank", "Heidi", "Iva
 
 const base = (players) => ({
   type: "americano", status: "setup",
-  config: { name: "Americano final", courts: 2, matchmaking: "americano", mode: "individual", scoringSystem: "timed", matchMinutes: 10, maxRounds: 1, useLevels: false, goldenPoint: true },
+  config: { name: "Americano final", courts: 2, matchmaking: "americano", mode: "individual", scoringSystem: "timed", matchMinutes: 10, maxRounds: 2, useLevels: false, goldenPoint: true },
   playerInputs: players.map((name) => ({ name, level: 0 })),
 });
 
@@ -31,12 +31,19 @@ async function jugarYFinalizar(page) {
   await page.getByTestId("btn-iniciar").click();
   const casillas = page.locator('input[type="number"]');
   await expect(casillas.first()).toBeVisible({ timeout: 8000 });
-  for (const [a, b] of [[9, 5], [4, 11]]) {
-    await casillas.nth(0).fill(String(a));
-    await casillas.nth(1).fill(String(b));
-    await page.getByRole("button", { name: "Guardar resultado" }).first().click();
-    await page.waitForTimeout(400);
-  }
+  const jugarRonda = async (resultados) => {
+    for (const [a, b] of resultados) {
+      await casillas.nth(0).fill(String(a));
+      await casillas.nth(1).fill(String(b));
+      await page.getByRole("button", { name: "Guardar resultado" }).first().click();
+      await page.waitForTimeout(400);
+    }
+  };
+  await jugarRonda([[9, 5], [4, 11]]);
+  await page.getByRole("button", { name: /Siguiente Ronda/ }).click();
+  await page.locator(".fixed.inset-0").getByRole("button", { name: "Siguiente ronda", exact: true }).click();
+  await expect(page.getByText("Ronda 2 de 2")).toBeVisible({ timeout: 8000 });
+  await jugarRonda([[10, 6], [8, 12]]);
   await page.getByRole("button", { name: /Finalizar Torneo/ }).click();
   await page.locator(".fixed.inset-0").getByRole("button", { name: "Finalizar", exact: true }).click();
   await expect.poll(async () => (await getTournamentData(CODE)).status).toBe("finished");
@@ -65,10 +72,10 @@ test("al finalizar el torneo queda finalizado, con podio y tabla final que ve cu
   await espectador.getByRole("button", { name: /Posiciones/ }).click();
   await expect(espectador.getByText("🏆 Tabla final")).toBeVisible();
   await expect(espectador.getByRole("columnheader", { name: "PJ" })).toBeVisible();
-  // Cada jugador jugó un partido
+  // Con 8 jugadores y 2 pistas nadie descansa: cada uno jugó las 2 rondas
   const pj = await espectador.locator("tbody tr td:nth-child(3)").allTextContents();
   expect(pj).toHaveLength(8);
-  pj.forEach((v) => expect(v.trim()).toBe("1"));
+  pj.forEach((v) => expect(v.trim()).toBe("2"));
   await espectador.screenshot({ path: "test-results/americano-final-tabla-390.png", fullPage: true });
 });
 
