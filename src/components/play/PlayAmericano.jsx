@@ -6,6 +6,7 @@ import { buildRoundAmericano, americanoStandings, americanoPodium, americanoMatc
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import History from "../shared/History";
 import PodiumCard from "../shared/PodiumCard";
+import { validateGamesScore } from "../../logic/sets";
 
 const LEVELS = [
   { id: 0, label: "Sin definir",  short: "-", color: "#64748b" },
@@ -545,10 +546,10 @@ function FilteredCurrentRound({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSe
           const scoreB = parseInt(court.scoreB);
           const wonA = !isNaN(scoreA) && !isNaN(scoreB) && scoreA > scoreB;
           const wonB = !isNaN(scoreA) && !isNaN(scoreB) && scoreB > scoreA;
+          const scoreError = validateGamesScore(ls[`${ci}_A`], ls[`${ci}_B`]);
           const hasValid =
             ls[`${ci}_A`] !== undefined && ls[`${ci}_B`] !== undefined &&
-            ls[`${ci}_A`] !== "" && ls[`${ci}_B`] !== "" &&
-            Number(ls[`${ci}_A`]) !== Number(ls[`${ci}_B`]);
+            ls[`${ci}_A`] !== "" && ls[`${ci}_B`] !== "" && !scoreError;
 
           return (
             <div key={ci} className="px-4 py-4">
@@ -592,6 +593,9 @@ function FilteredCurrentRound({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSe
                 </div>
                 <div className="flex flex-col items-start self-center">{renderName(court.pairB)}</div>
               </div>
+              {isAdmin && !court.saved && scoreError && (
+                <div data-testid="score-error" className="pt-3 text-center text-[12px] text-amber-400 font-bold">⚠️ {scoreError}</div>
+              )}
               {isAdmin && !court.saved && hasValid && (
                 <div className="pt-3">
                   <button
@@ -688,7 +692,7 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onFi
   function hasValidScore(ci) {
     const a = ls[`${ci}_A`];
     const b = ls[`${ci}_B`];
-    return a !== undefined && b !== undefined && a !== "" && b !== "" && Number(a) !== Number(b);
+    return a !== undefined && b !== undefined && a !== "" && b !== "" && !validateGamesScore(a, b);
   }
 
   function getCurrentName(type, id, field) {
@@ -883,6 +887,11 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onFi
             )}
 
             {/* Footer */}
+            {isAdmin && !court.saved && validateGamesScore(ls[`${ci}_A`], ls[`${ci}_B`]) && (
+              <div data-testid="score-error" className="px-4 pb-3 text-center text-[12px] text-amber-400 font-bold">
+                ⚠️ {validateGamesScore(ls[`${ci}_A`], ls[`${ci}_B`])}
+              </div>
+            )}
             {isAdmin && !court.saved && hasValidScore(ci) && (
               <div className="px-4 pb-3">
                 <button

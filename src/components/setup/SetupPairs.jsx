@@ -60,9 +60,10 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
   const pairs     = t.pairInputs || [];
   const players   = t.playerInputs || [];
   const isLigaType = t.type === "liga";
-  const act       = isLigaType ? 2 : isMixer ? t.config.courts * 4 : t.config.courts * 2;
+  const isGroups  = t.type === "mundialito";
+  const act       = isLigaType ? 2 : isGroups ? MIN_PAIRS : isMixer ? t.config.courts * 4 : t.config.courts * 2;
   const tot       = isMixer ? players.length : pairs.length;
-  const sit       = isLigaType ? tot % 2 : t.type === "relampago" ? 0 : Math.max(0, tot - act);
+  const sit       = isLigaType ? tot % 2 : t.type === "relampago" || isGroups ? 0 : Math.max(0, tot - act);
   const need      = Math.max(0, act - tot);
 
   const statusBg  = need > 0 ? "bg-red-400/10 border-red-400/20"    : sit > 0 ? "bg-yellow-400/10 border-yellow-400/20"    : "bg-green-400/10 border-green-400/20";
@@ -81,8 +82,10 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
         : `⏳ Descansan ${sit} ${isMixer ? "jugadores" : "parejas"} por ronda`
     : t.type === "relampago"
     ? relampagoSetupStatus(tot, need)
+    : isGroups
+    ? `${tot} parejas` + (need > 0 ? ` · ⚠️ faltan ${need} (mínimo ${MIN_PAIRS})` : " · ✓ listo")
     : `${tot} parejas · ${t.config.courts} pistas · ${Math.min(tot, act)} juegan` +
-      (sit > 0 ? ` · ⏳ ${sit} descansan` : need > 0 ? ` · ⚠️ faltan ${need}` : " · ✓ listo");
+      (sit > 0 ? ` · ⏳ ${sit === 1 ? "1 descansa" : `${sit} descansan`}` : need > 0 ? ` · ⚠️ faltan ${need}` : " · ✓ listo");
 
   const mundialitoCheck = t.type === "mundialito"
     ? validateMundialitoConfig(tot, t.config.groupCount || 2, t.config.advancePerGroup ?? 2, t.config.extraQualifiers || 0)

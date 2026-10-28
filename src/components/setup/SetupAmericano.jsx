@@ -74,7 +74,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
   const statusBg  = need > 0 ? "bg-red-400/10 border-red-400/20" : sit > 0 ? "bg-yellow-400/10 border-yellow-400/20" : "bg-green-400/10 border-green-400/20";
   const statusTxt = need > 0 ? "text-red-400" : sit > 0 ? "text-yellow-400" : "text-green-400";
   const statusMsg = `${tot} ${isPairs ? "parejas" : "jugadores"} · ${t.config.courts} pistas · ${Math.min(tot, act)} juegan` +
-    (sit > 0 ? ` · ⏳ ${sit} descansan` : need > 0 ? ` · ⚠️ faltan ${need}` : " · ✓ listo");
+    (sit > 0 ? ` · ⏳ ${sit === 1 ? "1 descansa" : `${sit} descansan`}` : need > 0 ? ` · ⚠️ faltan ${need}` : " · ✓ listo");
 
   const isManual = !isPairs && (t.config.matchmaking || "americano") === "manual";
 
