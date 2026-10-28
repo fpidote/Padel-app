@@ -1,6 +1,6 @@
 // src/components/shared/PodiumCard.jsx
-// Podio de un torneo con fase final (Torneo por grupos y Liga con eliminatoria).
-const name = (p) => `${p.p1} / ${p.p2}`;
+// Podio de un torneo: parejas (p1 / p2) o jugadores individuales (name).
+const name = (p) => p.name ?? `${p.p1} / ${p.p2}`;
 
 function Row({ icon, label, children }) {
   return (

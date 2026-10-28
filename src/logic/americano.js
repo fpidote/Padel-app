@@ -460,3 +460,53 @@ export function buildRoundAmericano(entities, n, ph, soh, mode = "individual") {
   }
   return { courts: cs, sittingOut };
 }
+
+// ── Posiciones y podio ───────────────────────────────────────────────────
+
+// Orden de la tabla: puntos, luego diferencia de games y, si siguen igualados, games a favor. Así el
+// podio no depende de en qué orden se cargaron los jugadores.
+export function americanoStandings(entities) {
+  return [...(entities || [])].sort(
+    (a, b) => b.pts - a.pts || b.gf - b.gc - (a.gf - a.gc) || b.gf - a.gf,
+  );
+}
+
+// Campeón, subcampeón y tercero (si hay al menos tres) según la tabla ya ordenada.
+export function americanoPodium(standings) {
+  const [champion = null, runnerUp = null, third = null] = standings || [];
+  return { champion, runnerUp, third };
+}
+
+// Partidos jugados en las rondas cerradas. En individual cada lado de una pista es una lista de
+// jugadores; con parejas fijas es la propia pareja.
+export function americanoMatchesPlayed(id, rounds) {
+  const inSide = (side) => (Array.isArray(side) ? side.some((p) => p?.id === id) : side?.id === id);
+  return (rounds || []).reduce(
+    (n, r) => n + (r.courts || []).filter((c) => inSide(c.pairA) || inSide(c.pairB)).length,
+    0,
+  );
+}
+
+// ── Nombres repetidos ────────────────────────────────────────────────────
+
+// Clave para comparar nombres: sin mayúsculas ni espacios de más.
+export const normalizeName = (s) => String(s ?? "").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+
+// ¿Ya hay un jugador con ese nombre? Sirve para avisar al cargarlo, sin bloquear.
+export function isDuplicateName(name, players) {
+  const key = normalizeName(name);
+  return key !== "" && (players || []).some((p) => normalizeName(p.name) === key);
+}
+
+// Nombres (normalizados) que aparecen más de una vez en la lista, para marcarlos.
+export function duplicateNameKeys(players) {
+  const seen = new Set();
+  const dup = new Set();
+  (players || []).forEach((p) => {
+    const key = normalizeName(p.name);
+    if (!key) return;
+    if (seen.has(key)) dup.add(key);
+    seen.add(key);
+  });
+  return dup;
+}

@@ -6,6 +6,11 @@ import {
   optimalCourtsAssignment,
   PENALTY,
   RELAX_THRESHOLDS,
+  americanoStandings,
+  americanoPodium,
+  americanoMatchesPlayed,
+  isDuplicateName,
+  duplicateNameKeys,
 } from "./americano.js";
 
 // shuffle es no-determinista — la mockeamos para que devuelva el array intacto
@@ -663,5 +668,104 @@ describe("precomputeAllRounds — distribución de canchas", () => {
     });
 
     expect(maxRepeat).toBeLessThanOrEqual(2);
+  });
+});
+
+// ── Posiciones, podio, partidos jugados y nombres repetidos ──────────────
+const jug = (id, name, pts, gf, gc) => ({ id, name, pts, gf, gc });
+
+describe("americanoStandings — orden de la tabla", () => {
+  test("ordena por puntos, luego diferencia y luego games a favor", () => {
+    const rows = americanoStandings([
+      jug(1, "A", 2, 20, 20),
+      jug(2, "B", 3, 10, 12),
+      jug(3, "C", 2, 30, 20),   // +10
+      jug(4, "D", 2, 25, 15),   // +10, menos games a favor que C
+    ]);
+    expect(rows.map((r) => r.name)).toEqual(["B", "C", "D", "A"]);
+  });
+
+  test("con todo igual no depende del orden de entrada para quien tiene más games a favor", () => {
+    const x = jug(1, "X", 3, 33, 18), y = jug(2, "Y", 3, 30, 15);
+    expect(americanoStandings([y, x]).map((r) => r.name)).toEqual(["X", "Y"]);
+    expect(americanoStandings([x, y]).map((r) => r.name)).toEqual(["X", "Y"]);
+  });
+
+  test("no muta la lista original", () => {
+    const orig = [jug(1, "A", 1, 1, 1), jug(2, "B", 2, 1, 1)];
+    const snap = JSON.stringify(orig);
+    americanoStandings(orig);
+    expect(JSON.stringify(orig)).toBe(snap);
+  });
+});
+
+describe("americanoPodium — campeón, subcampeón y tercero si aplica", () => {
+  const rows = [jug(1, "A", 3, 0, 0), jug(2, "B", 2, 0, 0), jug(3, "C", 1, 0, 0), jug(4, "D", 0, 0, 0)];
+
+  test("los tres primeros de la tabla", () => {
+    const p = americanoPodium(rows);
+    expect([p.champion.name, p.runnerUp.name, p.third.name]).toEqual(["A", "B", "C"]);
+  });
+
+  test("con solo dos participantes no hay tercero", () => {
+    const p = americanoPodium(rows.slice(0, 2));
+    expect(p.runnerUp.name).toBe("B");
+    expect(p.third).toBeNull();
+  });
+
+  test("con uno solo no hay subcampeón y sin nadie no hay podio", () => {
+    expect(americanoPodium(rows.slice(0, 1)).runnerUp).toBeNull();
+    expect(americanoPodium([]).champion).toBeNull();
+  });
+});
+
+describe("americanoMatchesPlayed — partidos jugados por participante", () => {
+  const a = { id: 1 }, b = { id: 2 }, c = { id: 3 }, d = { id: 4 }, e = { id: 5 };
+
+  test("individual: cuenta cada partido de las rondas cerradas y no el descanso", () => {
+    const rounds = [
+      { num: 1, courts: [{ pairA: [a, b], pairB: [c, d] }], sittingOut: [e] },
+      { num: 2, courts: [{ pairA: [a, e], pairB: [b, c] }], sittingOut: [d] },
+    ];
+    expect(americanoMatchesPlayed(1, rounds)).toBe(2);
+    expect(americanoMatchesPlayed(4, rounds)).toBe(1);   // descansó la ronda 2
+    expect(americanoMatchesPlayed(5, rounds)).toBe(1);   // descansó la ronda 1
+  });
+
+  test("parejas fijas: cada pareja juega un partido por ronda en que no descansa", () => {
+    const rounds = [
+      { num: 1, courts: [{ pairA: { id: 10 }, pairB: { id: 11 } }], sittingOut: [{ id: 12 }] },
+      { num: 2, courts: [{ pairA: { id: 10 }, pairB: { id: 12 } }], sittingOut: [{ id: 11 }] },
+    ];
+    expect(americanoMatchesPlayed(10, rounds)).toBe(2);
+    expect(americanoMatchesPlayed(11, rounds)).toBe(1);
+  });
+
+  test("sin rondas o con datos incompletos devuelve 0", () => {
+    expect(americanoMatchesPlayed(1, undefined)).toBe(0);
+    expect(americanoMatchesPlayed(1, [{ num: 1 }])).toBe(0);
+  });
+});
+
+describe("nombres repetidos al cargar jugadores", () => {
+  const players = [{ name: "Alice" }, { name: "Bob" }];
+
+  test("detecta un nombre ya cargado sin distinguir mayúsculas, tildes sobrantes ni espacios", () => {
+    expect(isDuplicateName("alice", players)).toBe(true);
+    expect(isDuplicateName("  Alice  ", players)).toBe(true);
+    expect(isDuplicateName("ALICE  ", players)).toBe(true);
+  });
+
+  test("un nombre distinto o vacío no es repetido", () => {
+    expect(isDuplicateName("Alicia", players)).toBe(false);
+    expect(isDuplicateName("", players)).toBe(false);
+    expect(isDuplicateName("   ", players)).toBe(false);
+  });
+
+  test("duplicateNameKeys marca los nombres que aparecen más de una vez en la lista", () => {
+    const keys = duplicateNameKeys([{ name: "Alice" }, { name: "bob" }, { name: "alice " }, { name: "Carol" }]);
+    expect(keys.has("alice")).toBe(true);
+    expect(keys.has("bob")).toBe(false);
+    expect(keys.size).toBe(1);
   });
 });

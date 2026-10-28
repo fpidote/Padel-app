@@ -27,6 +27,16 @@ describe("PodiumCard", () => {
     expect(html).not.toContain("Tercer puesto");
   });
 
+  it("T-POD-UI-5: acepta jugadores individuales (Americano) con nombre propio", () => {
+    const solo = { champion: { id: 1, name: "Frank" }, runnerUp: { id: 2, name: "Ivan" }, third: { id: 3, name: "Heidi" } };
+    const html = renderToStaticMarkup(<PodiumCard podium={solo} hasThird finished />);
+    expect(html).toContain("Frank");
+    expect(html).toContain("Ivan");
+    expect(html).toContain("Heidi");
+    expect(html).not.toContain("undefined");
+    expect(html).toContain("Torneo finalizado");
+  });
+
   it("T-POD-UI-3: sin partido por el 3.º muestra a los semifinalistas, sin inventar un tercero", () => {
     const html = renderToStaticMarkup(<PodiumCard podium={{ ...podium, third: null }} hasThird={false} semifinalists={[pair(3), pair(4)]} />);
     expect(html).not.toContain("Tercer puesto");

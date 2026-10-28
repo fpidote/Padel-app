@@ -2,9 +2,10 @@ import { useState, useMemo } from "react";
 import { generateRules } from "../../logic/constants";
 import { pk } from "../../logic/utils";
 import { standingsLabels } from "../../logic/standings";
-import { buildRoundAmericano } from "../../logic/americano";
+import { buildRoundAmericano, americanoStandings, americanoPodium, americanoMatchesPlayed } from "../../logic/americano";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import History from "../shared/History";
+import PodiumCard from "../shared/PodiumCard";
 
 const LEVELS = [
   { id: 0, label: "Sin definir",  short: "-", color: "#64748b" },
@@ -206,6 +207,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
         partnerHistory: nh,
         sitOutHistory: nso,
         roundNum: t.roundNum + 1,
+        status: "finished",
       });
     } catch (err) {
       console.error("Error al finalizar torneo:", err);
@@ -215,18 +217,21 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
 
   const isPairs = t.config.mode === "pairs";
   const entityKey = isPairs ? "pairs" : "players";
-  const standings = [...(t[entityKey] || [])].sort((a, b) =>
-    b.pts !== a.pts ? b.pts - a.pts : b.gf - b.gc - (a.gf - a.gc),
-  );
+  const standings = americanoStandings(t[entityKey]);
   const allSaved = t.currentRound?.every((c) => c.saved);
   const isLastRound = !!(
     (t.config.maxRounds && t.roundNum >= t.config.maxRounds)
     || (t.precomputedRounds?.length && t.roundNum >= t.precomputedRounds.length)
   );
+  // Los torneos ya terminados antes de existir el estado "finished" se reconocen por el contador de ronda
   const isFinished = !!(
-    (t.config.maxRounds && t.roundNum > t.config.maxRounds)
+    t.status === "finished"
+    || (t.config.maxRounds && t.roundNum > t.config.maxRounds)
     || (t.precomputedRounds?.length && t.roundNum > t.precomputedRounds.length)
   );
+  const podium = isFinished ? americanoPodium(standings) : null;
+  // Terminado: se enseña la última ronda jugada en lugar de una ronda actual que ya no existe
+  const shownRound = viewingRound ?? (isFinished && t.rounds?.length ? t.rounds.length : null);
 
   const allPlayers = isPairs
     ? [...(t.pairs || [])].sort((a, b) => `${a.p1} ${a.p2}`.localeCompare(`${b.p1} ${b.p2}`))
@@ -249,7 +254,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
         code={code}
         isAdmin={isAdmin}
         copyCode={copyCode}
-        subtitle={`Ronda ${t.roundNum} de ${t.precomputedRounds ? t.precomputedRounds.length : (t.config.maxRounds || "∞")}`}
+        subtitle={isFinished ? "🏁 Torneo finalizado" : `Ronda ${t.roundNum} de ${t.precomputedRounds ? t.precomputedRounds.length : (t.config.maxRounds || "∞")}`}
         onEdit={isAdmin ? onEditTournament : undefined}
       />
       <div className="p-4">
@@ -271,6 +276,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
       <div className="px-4">
         {tab === "courts" && (
           <>
+            {podium?.champion && <PodiumCard podium={podium} hasThird={!!podium.third} finished />}
             {/* ── Filtro por jugador ── */}
             <div className="w-full sm:max-w-xs mb-4">
               <label className="text-xs text-gray-500 font-semibold block mb-1.5">🔍 Filtrar por jugador</label>
@@ -323,7 +329,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                           const rNum = i + 1;
                           const isCurrent = rNum === t.roundNum;
                           const isFuture = rNum > t.roundNum;
-                          const isActive = isCurrent ? viewingRound === null : viewingRound === rNum;
+                          const isActive = isCurrent ? shownRound === null : shownRound === rNum;
                           return (
                             <button
                               key={i}
@@ -345,14 +351,14 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                               onClick={() => setViewingRound(i + 1)}
                               className="shrink-0 p-[6px_12px] rounded-lg text-[13px] font-bold border-0 cursor-pointer"
                               style={{
-                                background: viewingRound === i + 1 ? "#0284c7" : "#1f2937",
-                                color: viewingRound === i + 1 ? "#fff" : "#64748b",
+                                background: shownRound === i + 1 ? "#0284c7" : "#1f2937",
+                                color: shownRound === i + 1 ? "#fff" : "#64748b",
                               }}
                             >
                               R{r.num || i + 1}
                             </button>
                           ))}
-                          <button
+                          {!isFinished && <button
                             onClick={() => setViewingRound(null)}
                             className="shrink-0 p-[6px_12px] rounded-lg text-[13px] font-bold border-0 cursor-pointer"
                             style={{
@@ -361,17 +367,17 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                             }}
                           >
                             R{t.roundNum} ●
-                          </button>
+                          </button>}
                         </>
                     }
                   </div>
                 )}
 
-                {viewingRound !== null ? (
-                  (t.precomputedRounds && viewingRound > t.roundNum) ? (
+                {shownRound !== null ? (
+                  (t.precomputedRounds && shownRound > t.roundNum) ? (
                     <FutureRound
-                      round={t.precomputedRounds[viewingRound - 1]}
-                      roundNum={viewingRound}
+                      round={t.precomputedRounds[shownRound - 1]}
+                      roundNum={shownRound}
                       matchesSearch={matchesSearch}
                       isAdmin={isAdmin}
                       useLevels={!!t.config.useLevels}
@@ -380,8 +386,8 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                     />
                   ) : (
                     <HistoryRound
-                      round={t.rounds[viewingRound - 1]}
-                      roundNum={viewingRound}
+                      round={t.rounds[shownRound - 1]}
+                      roundNum={shownRound}
                       matchesSearch={matchesSearch}
                       isAdmin={isAdmin}
                       useLevels={!!t.config.useLevels}
@@ -412,7 +418,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
           </>
         )}
         {tab === "standings" && (
-          <StandingsAmericano labels={standingsLabels(t.config)} rows={standings} roundNum={t.roundNum} useLevels={!!t.config.useLevels} isAdmin={isAdmin} showLevelsToggle={showLevelsToggle} setShowLevelsToggle={setShowLevelsToggle} />
+          <StandingsAmericano labels={standingsLabels(t.config)} rows={standings} rounds={t.rounds} podium={podium} finished={isFinished} roundNum={t.roundNum} useLevels={!!t.config.useLevels} isAdmin={isAdmin} showLevelsToggle={showLevelsToggle} setShowLevelsToggle={setShowLevelsToggle} />
         )}
         {tab === "history" && (
           <>
@@ -1209,11 +1215,13 @@ function WarningsBanner({ warnings }) {
   );
 }
 
-function StandingsAmericano({ rows, roundNum, useLevels, isAdmin, showLevelsToggle, setShowLevelsToggle, labels }) {
+function StandingsAmericano({ rows, rounds, podium, finished, roundNum, useLevels, isAdmin, showLevelsToggle, setShowLevelsToggle, labels }) {
   return (
+    <>
+    {podium?.champion && <PodiumCard podium={podium} hasThird={!!podium.third} finished />}
     <div className="bg-[#0f172a] rounded-xl overflow-hidden mb-4">
       <div className="pt-3.5 px-4 pb-1 flex items-center justify-between">
-        <div className="font-extrabold text-[15px] text-[#f1f5f9]">🏆 Tabla - Ronda {roundNum}</div>
+        <div className="font-extrabold text-[15px] text-[#f1f5f9]">{finished ? "🏆 Tabla final" : `🏆 Tabla - Ronda ${roundNum}`}</div>
         {isAdmin && useLevels && (
           <button
             onClick={() => setShowLevelsToggle(v => !v)}
@@ -1225,13 +1233,14 @@ function StandingsAmericano({ rows, roundNum, useLevels, isAdmin, showLevelsTogg
         )}
       </div>
       <div className="text-[11px] text-[#475569] px-4 pb-2.5">
-        1º Puntos · 2º Diferencia ({labels.diff}) · {labels.plus} a favor · {labels.minus} en contra
+        1º Puntos · 2º Diferencia ({labels.diff}) · 3º {labels.plus} a favor · {labels.minus} en contra · PJ partidos jugados
       </div>
       <table className="w-full border-collapse">
         <thead>
           <tr className="bg-[#0a1120]">
             <th className="py-2 px-2.5 text-[11px] font-bold text-[#475569] uppercase tracking-[0.05em] text-center">#</th>
             <th className="py-2 px-2.5 text-[11px] font-bold text-[#475569] uppercase tracking-[0.05em] text-left">Jugador</th>
+            <th className="py-2 px-2.5 text-[11px] font-bold text-[#475569] uppercase tracking-[0.05em] text-center">PJ</th>
             <th className="py-2 px-2.5 text-[11px] font-bold text-[#475569] uppercase tracking-[0.05em] text-center">PTS</th>
             <th className="py-2 px-2.5 text-[11px] font-bold text-[#475569] uppercase tracking-[0.05em] text-center">{labels.plus}</th>
             <th className="py-2 px-2.5 text-[11px] font-bold text-[#475569] uppercase tracking-[0.05em] text-center">{labels.minus}</th>
@@ -1249,6 +1258,7 @@ function StandingsAmericano({ rows, roundNum, useLevels, isAdmin, showLevelsTogg
                   {p.name || `${p.p1} / ${p.p2}`}
                   {p.name && useLevels && isAdmin && showLevelsToggle && <PTag p={p} />}
                 </td>
+                <td className="py-2.5 px-2.5 text-center text-[#94a3b8] text-[13px]">{americanoMatchesPlayed(p.id, rounds)}</td>
                 <td className="py-2.5 px-2.5 text-center text-[#38bdf8] font-extrabold text-[14px]">{p.pts}</td>
                 <td className="py-2.5 px-2.5 text-center text-[#94a3b8] text-[13px]">{p.gf}</td>
                 <td className="py-2.5 px-2.5 text-center text-[#94a3b8] text-[13px]">{p.gc}</td>
@@ -1261,5 +1271,6 @@ function StandingsAmericano({ rows, roundNum, useLevels, isAdmin, showLevelsTogg
         </tbody>
       </table>
     </div>
+    </>
   );
 }

@@ -87,11 +87,12 @@ test("en la última ronda el botón dice Finalizar Torneo y al pulsarlo termina 
   await expect(modal.getByText(/ya no se podrán modificar/)).toBeVisible();
   await modal.getByRole("button", { name: "Finalizar", exact: true }).click();
 
-  // Al finalizar queda "Torneo Finalizado" (deshabilitado) y el historial tiene solo las 2 rondas jugadas
-  await expect(page.getByRole("button", { name: /Torneo Finalizado/i })).toBeVisible({ timeout: 8000 });
+  // Al finalizar el torneo queda finalizado (sin botón de ronda ni pestaña vacía) y el historial tiene solo las 2 rondas jugadas
+  await expect(page.getByText("🏁 Torneo finalizado").first()).toBeVisible({ timeout: 8000 });
+  await expect(page.getByRole("button", { name: /Finalizar Torneo|Siguiente Ronda/i })).toHaveCount(0);
   // La escritura a Firestore es asíncrona: esperar a que llegue en vez de leer una sola vez
   await expect.poll(async () => (await getTournamentData(CODE)).rounds.length, { timeout: 8000 }).toBe(2);
   const data = await getTournamentData(CODE);
   expect(data.currentRound).toEqual([]);
-  expect(data.status).toBe("playing");
+  expect(data.status).toBe("finished");
 });
