@@ -5,7 +5,7 @@ import { knockoutByesText, extraQualifiersText } from "../../logic/mundialito";
 const names = (p) => `${p.p1} / ${p.p2}`;
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-export function GroupsPreview({ groups, advancePerGroup, extraQualifiers = 0, knockout }) {
+export function GroupsPreview({ groups, advancePerGroup, extraQualifiers = 0, knockout, crossing }) {
   const byesText = knockout ? knockoutByesText(knockout) : null;
   const extraText = extraQualifiersText(advancePerGroup, extraQualifiers);
   return (
@@ -15,6 +15,14 @@ export function GroupsPreview({ groups, advancePerGroup, extraQualifiers = 0, kn
         {extraText && ` Además pasan ${extraText} de todos los grupos.`}
         {byesText && ` ${byesText}`}
       </p>
+      {crossing && (
+        <p className="text-xs text-gray-500">
+          Cruces de la fase final:{" "}
+          {crossing === "classic"
+            ? "el 1º de un grupo contra el 2º de otro (1º A vs 2º B, 1º B vs 2º A…)."
+            : "se enfrenta al mejor clasificado contra el peor, según los resultados de los grupos."}
+        </p>
+      )}
       {groups.map((group) => (
         <div key={group.id} className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-800">

@@ -114,3 +114,26 @@ describe("PozoPreview", () => {
     expect(html).not.toContain("Descansan");
   });
 });
+
+describe("GroupsPreview — cruce de la fase final", () => {
+  const groups = [
+    { id: 0, name: "Grupo A", pairs: [pair(0), pair(1), pair(2)], matches: [{}, {}, {}] },
+    { id: 1, name: "Grupo B", pairs: [pair(3), pair(4), pair(5)], matches: [{}, {}, {}] },
+  ];
+
+  it("T-GP-01: indica el cruce clásico cuando es el elegido", () => {
+    const html = renderToStaticMarkup(<GroupsPreview groups={groups} advancePerGroup={2} crossing="classic" />);
+    expect(html).toContain("Cruces de la fase final");
+    expect(html).toContain("1º de un grupo contra el 2º de otro");
+  });
+
+  it("T-GP-02: indica el cruce por rendimiento cuando es el elegido", () => {
+    const html = renderToStaticMarkup(<GroupsPreview groups={groups} advancePerGroup={2} crossing="performance" />);
+    expect(html).toContain("mejor clasificado contra el peor");
+    expect(html).not.toContain("1º de un grupo contra el 2º de otro");
+  });
+
+  it("T-GP-03: sin indicar el cruce no añade nada (comportamiento anterior)", () => {
+    expect(renderToStaticMarkup(<GroupsPreview groups={groups} advancePerGroup={2} />)).not.toContain("Cruces de la fase final");
+  });
+});

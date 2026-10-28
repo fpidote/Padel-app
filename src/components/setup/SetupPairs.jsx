@@ -845,7 +845,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
         saving={saving}
       >
         {launchTab === "sorteo" && t.type === "mundialito" && (
-          <GroupsPreview groups={activeDraw.groups} advancePerGroup={t.config.advancePerGroup ?? 2} extraQualifiers={t.config.extraQualifiers || 0} knockout={knockoutInfo(t.config.groupCount || 2, t.config.advancePerGroup ?? 2, t.config.extraQualifiers || 0)} />
+          <GroupsPreview groups={activeDraw.groups} advancePerGroup={t.config.advancePerGroup ?? 2} extraQualifiers={t.config.extraQualifiers || 0} crossing={crossingMode(t.config)} knockout={knockoutInfo(t.config.groupCount || 2, t.config.advancePerGroup ?? 2, t.config.extraQualifiers || 0)} />
         )}
         {launchTab === "sorteo" && t.type === "liga" && (
           <FixturePreview rounds={activeDraw.rounds} matches={activeDraw.matches} />

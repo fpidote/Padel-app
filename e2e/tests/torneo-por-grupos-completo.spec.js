@@ -50,6 +50,7 @@ test("crear, configurar, jugar grupos y fase final, finalizar y ver el podio", a
 
   // 4. Revisar y lanzar
   await page.getByTestId("btn-open-modal").click();
+  await expect(page.getByText(/Cruces de la fase final: el 1º de un grupo contra el 2º de otro/)).toBeVisible();
   await page.getByRole("button", { name: /Resumen/ }).click();
   await expect(page.getByText("Clásico por grupos (1º A vs 2º B)")).toBeVisible();
   await page.getByTestId("btn-iniciar").click();
