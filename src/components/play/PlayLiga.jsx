@@ -19,6 +19,7 @@ import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import MatchCard from "../shared/MatchCard";
 import PairStandings from "../shared/PairStandings";
 import PodiumCard from "../shared/PodiumCard";
+import { clearScoreInputs } from "../../logic/sets";
 import RestingNote from "../shared/RestingNote";
 import { showToast } from "../../logic/toast";
 import { sortStandings, standingsLabels } from "../../logic/standings";
@@ -69,6 +70,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
     if (locked) return;
     const updatedMatches = clearLigaMatch(matches, matchId);
     const standings = recomputeLigaStandings(t.pairs, updatedMatches);
+    setLs((prev) => clearScoreInputs(prev, matchId));
     setConfirm(null);
     try {
       await persist({ ...t, matches: updatedMatches, pairs: standings });
@@ -183,7 +185,9 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
           <div className="flex flex-col gap-3 mt-4">
             {locked && t.phase === "playoff" && (
               <div className="bg-[#1f2937] border border-[#374151] rounded-2xl px-4 py-3 text-xs text-gray-400 text-center">
-                🔒 Resultados de la liga cerrados: la fase final ya está en marcha con esta tabla.
+                {finished
+                  ? "🏁 Torneo finalizado: los resultados están cerrados."
+                  : "🔒 Resultados de la liga cerrados: la fase final ya está en marcha con esta tabla."}
               </div>
             )}
             {champion && !playoffEnabled && (

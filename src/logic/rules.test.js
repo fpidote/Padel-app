@@ -31,3 +31,21 @@ describe("reglas escritas: empate al terminar el tiempo (Americano)", () => {
     expect(americano({ scoringFormat: "sets3" })).not.toContain("igualados");
   });
 });
+
+describe("reglas escritas de la Liga", () => {
+  const liga = (config) => generateRules("liga", { courts: 2, ...config }, { pairCount: 8 }).join(" ");
+
+  it("T-RUL-05: declara punto de oro o ventaja", () => {
+    expect(liga({ goldenPoint: true })).toContain("punto de oro");
+    expect(liga({ goldenPoint: false })).toContain("ventaja");
+  });
+
+  it("T-RUL-06: al mejor de 3 sets explica cómo se anota el tie-break", () => {
+    expect(liga({ scoringFormat: "sets3" })).toContain("tie-break");
+    expect(liga({ scoringFormat: "sets3" })).toContain("7-6");
+  });
+
+  it("T-RUL-07: por games no habla de tie-break", () => {
+    expect(liga({ scoringFormat: "games", scoringSystem: "games" })).not.toContain("tie-break");
+  });
+});

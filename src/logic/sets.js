@@ -25,6 +25,13 @@ export function validateGamesScore(rawA, rawB) {
   return null;
 }
 
+// Quita de `ls` (los inputs en pantalla) todo lo escrito para un partido: games y casillas de sets.
+export function clearScoreInputs(ls, matchId) {
+  const prefix = `${matchId}_`;
+  const isOwn = (key) => key.startsWith(prefix) && /^(A|B|set\d+_[AB])$/.test(key.slice(prefix.length));
+  return Object.fromEntries(Object.entries(ls).filter(([key]) => !isOwn(key)));
+}
+
 // rows: [{a: "6", b: "4"}, ...] tal como están en los inputs.
 // Recorre en orden y se detiene en el primer set incompleto, inválido o cuando alguien ya ganó.
 export function analyzeSets(rows, setsNeeded) {

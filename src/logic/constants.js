@@ -168,6 +168,8 @@ export function generateRules(type, config, context = {}) {
           : "Todas las parejas juegan entre sí una vez (ida).",
         "Victoria = 1 punto · Derrota = 0 puntos (no hay empates).",
         scoringDescFor(ligaConfig),
+        ...(bySets ? ["Si un set llega a 6-6 se juega tie-break y el set se anota 7-6 para quien lo gana."] : []),
+        goldenPointDesc(),
         bySets
           ? "Desempate: 1º el resultado del partido entre las parejas igualadas, 2º diferencia de sets, 3º diferencia de games."
           : "Desempate: 1º el resultado del partido entre las parejas igualadas, 2º diferencia entre lo anotado a favor y en contra.",

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateSet, analyzeSets, validateGamesScore } from "./sets";
+import { validateSet, analyzeSets, validateGamesScore, clearScoreInputs } from "./sets";
 
 describe("validateSet", () => {
   it.each([[6, 0], [6, 4], [4, 6], [7, 5], [5, 7], [7, 6], [6, 7]])("acepta %i-%i", (a, b) => {
@@ -72,5 +72,22 @@ describe("validateGamesScore", () => {
   it("rechaza marcadores absurdos (más de 99)", () => {
     expect(validateGamesScore("999", "2")).toBe("El máximo es 99");
     expect(validateGamesScore("3", "100")).toBe("El máximo es 99");
+  });
+});
+
+describe("clearScoreInputs", () => {
+  it("quita los inputs de games y de todos los sets de ese partido y deja los demás", () => {
+    const ls = {
+      m1_A: "6", m1_B: "2",
+      m1_set0_A: "6", m1_set0_B: "2", m1_set1_A: "6", m1_set1_B: "2", m1_set4_A: "1", m1_set4_B: "6",
+      m2_A: "3", m2_set0_A: "7",
+    };
+    expect(clearScoreInputs(ls, "m1")).toEqual({ m2_A: "3", m2_set0_A: "7" });
+  });
+
+  it("no modifica el objeto original", () => {
+    const ls = { m1_A: "6" };
+    clearScoreInputs(ls, "m1");
+    expect(ls).toEqual({ m1_A: "6" });
   });
 });

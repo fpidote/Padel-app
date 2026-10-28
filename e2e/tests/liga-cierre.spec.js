@@ -156,3 +156,36 @@ test("el espectador no ve Editar ni Eliminar", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Editar" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Eliminar" })).toHaveCount(0);
 });
+
+test("tras eliminar un resultado recién guardado la tarjeta queda limpia, sin Guardar activo", async ({ page }) => {
+  const t = ligaTerminada();
+  t.matches[2] = { ...t.matches[2], scoreA: "", scoreB: "", saved: false, sets: null };
+  await seedTournament(CODE, t);
+  await entrarComoAdmin(page);
+
+  const casillas = page.locator('input[type="number"]');
+  await expect(casillas.first()).toBeVisible();
+  const rellenar = async (a, b) => {
+    const n = await casillas.count();
+    await casillas.nth(n - 2).fill(String(a));
+    await casillas.nth(n - 1).fill(String(b));
+  };
+  await rellenar(6, 2);
+  await rellenar(6, 2);
+  await page.getByRole("button", { name: "Guardar resultado" }).click();
+  await expect.poll(async () => (await getTournamentData(CODE)).matches.find((m) => m.id === "r3_m0").saved, { timeout: 8000 }).toBe(true);
+
+  await page.getByRole("button", { name: "Eliminar" }).last().click();
+  await page.locator(".fixed.inset-0").getByRole("button", { name: "Eliminar" }).click();
+  await expect.poll(async () => (await getTournamentData(CODE)).matches.find((m) => m.id === "r3_m0").saved, { timeout: 8000 }).toBe(false);
+
+  await expect(page.getByRole("button", { name: "Guardar resultado" })).toBeDisabled();
+  await expect(page.getByText(/Gana /)).toHaveCount(0);
+});
+
+test("liga finalizada: Jornadas dice que el torneo terminó, no que la fase final está en marcha", async ({ page }) => {
+  await seedTournament(CODE, ligaTerminada({ phase: "playoff", status: "finished" }));
+  await page.goto(`/torneo/${CODE}`);
+  await expect(page.getByText("🏁 Torneo finalizado: los resultados están cerrados.")).toBeVisible({ timeout: 8000 });
+  await expect(page.getByText(/ya está en marcha/)).toHaveCount(0);
+});
