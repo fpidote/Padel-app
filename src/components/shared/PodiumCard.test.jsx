@@ -21,6 +21,12 @@ describe("PodiumCard", () => {
     expect(html).toContain("Por definir");
   });
 
+  it("T-POD-UI-4: thirdLabel cambia el rótulo del tercero (Relámpago: ganador de la revancha)", () => {
+    const html = renderToStaticMarkup(<PodiumCard podium={podium} hasThird thirdLabel="Ganador de la revancha" semifinalists={[]} />);
+    expect(html).toContain("Ganador de la revancha");
+    expect(html).not.toContain("Tercer puesto");
+  });
+
   it("T-POD-UI-3: sin partido por el 3.º muestra a los semifinalistas, sin inventar un tercero", () => {
     const html = renderToStaticMarkup(<PodiumCard podium={{ ...podium, third: null }} hasThird={false} semifinalists={[pair(3), pair(4)]} />);
     expect(html).not.toContain("Tercer puesto");

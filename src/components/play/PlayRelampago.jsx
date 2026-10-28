@@ -1,11 +1,12 @@
 // src/components/play/PlayRelampago.jsx
 import { useState, Fragment } from "react";
 import { generateRules } from "../../logic/constants";
-import { advanceBracket, unadvanceBracket, canEditBracketMatch, countPlayed, bracketRoundName } from "../../logic/relampago";
+import { advanceBracket, unadvanceBracket, canEditBracketMatch, countPlayed, bracketRoundName, relampagoPodium } from "../../logic/relampago";
 import { analyzeSets } from "../../logic/sets";
 import { applyMatchToPairs } from "../../logic/standings";
 import { THeader, Tabs } from "../shared/Components";
 import PairStandings from "../shared/PairStandings";
+import PodiumCard from "../shared/PodiumCard";
 
 const SLOT_HEIGHT = 110;
 // Con sets la tarjeta abierta es más alta: más espacio por partido para que no tape a la vecina
@@ -369,6 +370,9 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
     (m) => m.bracket === "winners" && !m.nextMatchId && m.saved,
   )?.winner;
 
+  const podium = relampagoPodium(t.bracket);
+  const hasConsolation = t.bracket.some((m) => m.bracket === "consolation");
+
   const consolChampion = t.bracket.find(
     (m) => m.bracket === "consolation" && !m.nextMatchId && m.saved,
   )?.winner;
@@ -457,7 +461,14 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
         )}
 
         {tab === "standings" && (
-          <PairStandings pairs={t.pairs.map((p) => ({ ...p, played: countPlayed(t.bracket, p.id) }))} title="Posiciones" scoringFormat={t.config?.scoringFormat} config={t.config} />
+          <>
+            <PodiumCard
+              podium={podium}
+              hasThird={hasConsolation}
+              thirdLabel="Ganador de la revancha"
+            />
+            <PairStandings pairs={t.pairs.map((p) => ({ ...p, played: countPlayed(t.bracket, p.id) }))} title="Posiciones" scoringFormat={t.config?.scoringFormat} config={t.config} medals={false} />
+          </>
         )}
 
         {tab === "rules" && (

@@ -17,7 +17,7 @@ export const TOURNAMENT_TYPES = [
     id: "relampago",
     name: "Relámpago",
     icon: "⚡",
-    desc: "Eliminación directa con cuadro de revancha. El que pierde sigue jugando.",
+    desc: "Eliminación directa con cuadro de revancha. Quien pierde su primer partido sigue jugando.",
     tagline: "Acción rápida y revancha",
     landingDesc: "Eliminación directa con cuadro de consolación. Perdés una vez y seguís jugando.",
     tags: ["Bracket", "Con consolación"],
@@ -114,7 +114,7 @@ export function generateRules(type, config, context = {}) {
     }
     case "relampago":
       return [
-        "Eliminación directa. El que pierde pasa al cuadro de revancha y sigue jugando.",
+        "Eliminación directa. Quien pierde su primer partido pasa al cuadro de revancha y sigue jugando; quien pierde después queda eliminado.",
         scoringDesc(),
         goldenPointDesc(),
         `${config.courts ?? 2} ${(config.courts ?? 2) === 1 ? "pista" : "pistas"} en juego. El cuadro se genera automáticamente.`,

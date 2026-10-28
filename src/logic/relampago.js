@@ -45,6 +45,15 @@ export function bracketPodium(bracket) {
   };
 }
 
+// Podio del Relámpago: campeón y subcampeón salen de la final del cuadro principal (no de la tabla de
+// victorias) y el tercero es el ganador de la final de la revancha, que es quien "sigue jugando".
+export function relampagoPodium(bracket) {
+  const { champion, runnerUp } = bracketPodium(bracket);
+  const consolFinal = (bracket || []).find((m) => m.bracket === "consolation" && !m.nextMatchId);
+  const third = consolFinal?.saved && consolFinal.winner?.id !== "bye" ? consolFinal.winner : null;
+  return { champion, runnerUp, third };
+}
+
 // ¿Se jugó todo el cuadro? Los pasa directo se resuelven solos, así que basta con que todo esté guardado
 // (incluido el partido por el 3.º puesto si existe).
 export function bracketComplete(bracket) {

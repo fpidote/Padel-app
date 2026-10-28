@@ -16,7 +16,7 @@ function Row({ icon, label, children }) {
 
 // hasThird: el torneo tiene partido por el 3.º puesto. Sin él los dos perdedores de semifinales
 // quedan empatados, así que se muestran juntos como semifinalistas en lugar de inventar un tercero.
-export default function PodiumCard({ podium, hasThird, semifinalists = [], finished = false }) {
+export default function PodiumCard({ podium, hasThird, thirdLabel = "Tercer puesto", semifinalists = [], finished = false }) {
   if (!podium?.champion) return null;
   return (
     <div className="mb-4 rounded-xl border-2 border-[#f59e0b] bg-[#1e293b] p-4">
@@ -26,7 +26,7 @@ export default function PodiumCard({ podium, hasThird, semifinalists = [], finis
       <div className="flex flex-col gap-2">
         <Row icon="🏆" label="Campeón">{name(podium.champion)}</Row>
         <Row icon="🥈" label="Subcampeón">{podium.runnerUp ? name(podium.runnerUp) : "Por definir"}</Row>
-        {hasThird && <Row icon="🥉" label="Tercer puesto">{podium.third ? name(podium.third) : "Por definir"}</Row>}
+        {hasThird && <Row icon="🥉" label={thirdLabel}>{podium.third ? name(podium.third) : "Por definir"}</Row>}
         {!hasThird && semifinalists.length > 0 && (
           <Row icon="🥉" label="Semifinalistas">
             {semifinalists.map((p) => (

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { buildBracket, advanceBracket, unadvanceBracket, countPlayed, firstRoundSeedPairs, canEditBracketMatch, hasPlayedRealMatch, bracketRoundName, bracketPodium, bracketComplete, bracketSemifinalLosers } from "./relampago.js";
+import { buildBracket, advanceBracket, unadvanceBracket, countPlayed, firstRoundSeedPairs, canEditBracketMatch, hasPlayedRealMatch, bracketRoundName, bracketPodium, bracketComplete, bracketSemifinalLosers, relampagoPodium } from "./relampago.js";
+import { generateRules, TOURNAMENT_TYPES } from "./constants.js";
 
 function makePairs(n) {
   return Array.from({ length: n }, (_, i) => ({
@@ -571,5 +572,68 @@ describe("bracketComplete y bracketSemifinalLosers", () => {
 
   it("T-FIN-05: con 2 parejas no hay semifinales", () => {
     expect(bracketSemifinalLosers(buildBracket(makePairs(2), { consolation: false }))).toEqual([]);
+  });
+});
+
+// Juega todo lo jugable; `ganaA` decide quién gana cada partido y `hasta` corta antes de que se juegue ese id
+function jugar(bracket, { ganaA = true, salvo = [] } = {}) {
+  let b = bracket;
+  for (let g = 0; g < 100; g++) {
+    const m = b.find((x) => !x.saved && x.pairA && x.pairB && x.pairA.id !== "bye" && x.pairB.id !== "bye" && !salvo.includes(x.id));
+    if (!m) break;
+    b = advanceBracket(b, m.id, ganaA ? 6 : 2, ganaA ? 2 : 6);
+  }
+  return b;
+}
+
+describe("relampagoPodium — podio del Relámpago según el cuadro", () => {
+  it("sin la final jugada no hay podio", () => {
+    const b = buildBracket(makePairs(6));
+    expect(relampagoPodium(b)).toEqual({ champion: null, runnerUp: null, third: null });
+  });
+
+  it("el campeón es quien gana la final, el subcampeón quien la pierde (no el mejor por victorias)", () => {
+    const b = jugar(buildBracket(makePairs(6)));
+    const final = b.find((m) => m.bracket === "winners" && !m.nextMatchId);
+    const podio = relampagoPodium(b);
+    expect(podio.champion.id).toBe(final.winner.id);
+    expect(podio.runnerUp.id).toBe(final.loser.id);
+  });
+
+  it("el tercero es el ganador de la final de la revancha", () => {
+    const b = jugar(buildBracket(makePairs(8)));
+    const consolFinal = b.find((m) => m.bracket === "consolation" && !m.nextMatchId);
+    expect(consolFinal.saved).toBe(true);
+    expect(relampagoPodium(b).third.id).toBe(consolFinal.winner.id);
+  });
+
+  it("con la final jugada y la revancha sin terminar, el tercero queda sin definir", () => {
+    const base = buildBracket(makePairs(8));
+    const consolFinal = base.find((m) => m.bracket === "consolation" && !m.nextMatchId);
+    const b = jugar(base, { salvo: [consolFinal.id] });
+    const podio = relampagoPodium(b);
+    expect(podio.champion).not.toBeNull();
+    expect(podio.third).toBeNull();
+  });
+
+  it("el subcampeón no es nunca el tercero ni el campeón (simulación 4–17 parejas)", () => {
+    for (let n = 4; n <= 17; n++) {
+      for (const ganaA of [true, false]) {
+        const podio = relampagoPodium(jugar(buildBracket(makePairs(n)), { ganaA }));
+        const ids = [podio.champion?.id, podio.runnerUp?.id, podio.third?.id].filter(Boolean);
+        expect(new Set(ids).size).toBe(ids.length);
+        expect(podio.champion).not.toBeNull();
+        expect(podio.runnerUp).not.toBeNull();
+      }
+    }
+  });
+});
+
+describe("reglas del Relámpago", () => {
+  it("aclara que a la revancha pasa quien pierde su primer partido", () => {
+    const reglas = generateRules("relampago", { courts: 2, scoringFormat: "games" }).join(" ");
+    expect(reglas).toMatch(/primer partido/i);
+    const desc = TOURNAMENT_TYPES.find((x) => x.id === "relampago").desc;
+    expect(desc).toMatch(/primer partido/i);
   });
 });
