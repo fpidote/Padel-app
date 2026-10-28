@@ -1,5 +1,6 @@
 // src/components/shared/MatchCard.jsx
 import { analyzeSets, validateGamesScore } from "../../logic/sets";
+import { blockNonIntegerKey } from "../../logic/scoreInput";
 
 export default function MatchCard({
   match,
@@ -101,7 +102,7 @@ export default function MatchCard({
               <div key={idx} className="flex items-center justify-between bg-black/20 px-3 py-1.5 rounded-lg border border-white/[0.04]">
                 <input
                   type="number" min="0"
-                  onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
+                  onKeyDown={blockNonIntegerKey}
                   value={setValue(idx, "A")}
                   onChange={(e) => setLs((p) => ({ ...p, [`${match.id}_set${idx}_A`]: e.target.value }))}
                   className={`font-data w-11 h-9 rounded-lg bg-white/[0.04] border-[1.5px] ${hasError ? "border-red-500/60" : "border-white/10"} text-center text-base font-bold text-[#f1f5f9] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all`}
@@ -109,7 +110,7 @@ export default function MatchCard({
                 <span className="text-xs font-bold text-gray-500">SET {idx + 1}</span>
                 <input
                   type="number" min="0"
-                  onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
+                  onKeyDown={blockNonIntegerKey}
                   value={setValue(idx, "B")}
                   onChange={(e) => setLs((p) => ({ ...p, [`${match.id}_set${idx}_B`]: e.target.value }))}
                   className={`font-data w-11 h-9 rounded-lg bg-white/[0.04] border-[1.5px] ${hasError ? "border-red-500/60" : "border-white/10"} text-center text-base font-bold text-[#f1f5f9] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all`}
@@ -139,7 +140,7 @@ export default function MatchCard({
               <>
                 <input
                   type="number" min="0"
-                  onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
+                  onKeyDown={blockNonIntegerKey}
                   value={sA_games}
                   onChange={(e) => setLs((p) => ({ ...p, [`${match.id}_A`]: e.target.value }))}
                   className="font-data w-11 h-11 rounded-xl bg-white/[0.04] border-[1.5px] border-white/10 text-center text-[22px] font-bold text-[#f1f5f9] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all"
@@ -154,7 +155,7 @@ export default function MatchCard({
                 <span className="text-gray-600 font-black text-lg">–</span>
                 <input
                   type="number" min="0"
-                  onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
+                  onKeyDown={blockNonIntegerKey}
                   value={sB_games}
                   onChange={(e) => setLs((p) => ({ ...p, [`${match.id}_B`]: e.target.value }))}
                   className="font-data w-11 h-11 rounded-xl bg-white/[0.04] border-[1.5px] border-white/10 text-center text-[22px] font-bold text-[#f1f5f9] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all"

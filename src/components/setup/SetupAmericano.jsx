@@ -630,8 +630,8 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
                 <div className="mt-4 bg-[#1f2937] border border-gray-700 rounded-xl p-4 space-y-5">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <div className="text-sm font-semibold text-gray-200">Punto de oro en empate</div>
-                      <div className="text-xs text-gray-500 mt-0.5">El punto decide el partido igualado</div>
+                      <div className="text-sm font-semibold text-gray-200">Punto de oro en el 40-40</div>
+                      <div className="text-xs text-gray-500 mt-0.5">ON: un único punto decide el 40-40. OFF: se juega con ventaja.</div>
                     </div>
                     <button onClick={() => persist({ ...t, config: { ...t.config, goldenPoint: !(t.config.goldenPoint !== false) } })} className={`px-4 py-1.5 rounded-lg text-sm font-bold cursor-pointer shrink-0 border ${t.config.goldenPoint !== false ? "bg-[#16a34a30] text-[#4ade80] border-[#4ade8040]" : "bg-[#374151] text-[#94a3b8] border-transparent"}`}>
                       {t.config.goldenPoint !== false ? "ON" : "OFF"}
@@ -755,8 +755,8 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
                     <SummaryRow label="Modalidad" value={isPairs ? "Parejas Fijas" : "Individual"} />
                     <SummaryRow label="Total" value={`${tot} ${isPairs ? "parejas" : "jugadores"}`} />
                     <SummaryRow label="Pistas" value={t.config.courts} />
-                    <SummaryRow label="Juegan por ronda" value={Math.min(tot, act)} />
-                    {sit > 0 && <SummaryRow label="Descansan por ronda" value={`${sit} ${sit === 1 ? "jugador" : "jugadores"}`} yellow />}
+                    <SummaryRow label="Juegan por ronda" value={`${Math.min(tot, act)} ${isPairs ? "parejas" : "jugadores"}`} />
+                    {sit > 0 && <SummaryRow label="Descansan por ronda" value={`${sit} ${isPairs ? (sit === 1 ? "pareja" : "parejas") : (sit === 1 ? "jugador" : "jugadores")}`} yellow />}
                     {!isPairs && <SummaryRow label="Niveles" value={useLevels ? "Activados" : "Desactivados"} />}
                   </SummaryCard>
 

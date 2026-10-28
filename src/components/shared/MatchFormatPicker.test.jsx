@@ -59,6 +59,13 @@ describe("MatchFormatPicker", () => {
     expect(html).toContain("Puntos acumulados");
   });
 
+  it("por tiempo explica cómo se decide un empate sin afirmar que siempre es punto de oro", () => {
+    const html = render({ scoringSystem: "timed" });
+    expect(html).toContain("igualados");
+    expect(html).toContain("cerrando el game");
+    expect(html).not.toContain("En caso de empate, punto de oro");
+  });
+
   it("en sets no hay ajustes de tiempo, puntos ni games y avisa que se carga set por set", () => {
     const html = render({ scoringFormat: "sets3", scoringSystem: "rally" });
     expect(html).not.toContain("Minutos por partido");

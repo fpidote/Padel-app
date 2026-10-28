@@ -7,6 +7,7 @@ import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import History from "../shared/History";
 import PodiumCard from "../shared/PodiumCard";
 import { validateGamesScore } from "../../logic/sets";
+import { blockNonIntegerKey } from "../../logic/scoreInput";
 
 const LEVELS = [
   { id: 0, label: "Sin definir",  short: "-", color: "#64748b" },
@@ -583,7 +584,7 @@ function FilteredCurrentRound({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSe
                         type="number" min="0"
                         value={ls[`${ci}_A`] ?? ""}
                         onChange={(e) => setLs((p) => ({ ...p, [`${ci}_A`]: e.target.value }))}
-                        onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
+                        onKeyDown={blockNonIntegerKey}
                         className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-700 text-center text-xl font-black text-sky-400 outline-none focus:border-sky-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                       <span className="text-gray-600 font-black text-lg">-</span>
@@ -591,7 +592,7 @@ function FilteredCurrentRound({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSe
                         type="number" min="0"
                         value={ls[`${ci}_B`] ?? ""}
                         onChange={(e) => setLs((p) => ({ ...p, [`${ci}_B`]: e.target.value }))}
-                        onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
+                        onKeyDown={blockNonIntegerKey}
                         className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-700 text-center text-xl font-black text-sky-400 outline-none focus:border-sky-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                     </>
@@ -874,7 +875,7 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onFi
                       type="number" min="0"
                       value={ls[`${ci}_A`] ?? ""}
                       onChange={(e) => setLs((prev) => ({ ...prev, [`${ci}_A`]: e.target.value }))}
-                      onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
+                      onKeyDown={blockNonIntegerKey}
                       className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-700 text-center text-xl font-black text-sky-400 outline-none focus:border-sky-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                     <span className="text-gray-600 font-black text-lg">-</span>
@@ -882,7 +883,7 @@ function CourtsAmericano({ t, isAdmin, ls, setLs, allSaved, onSave, onNext, onFi
                       type="number" min="0"
                       value={ls[`${ci}_B`] ?? ""}
                       onChange={(e) => setLs((prev) => ({ ...prev, [`${ci}_B`]: e.target.value }))}
-                      onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
+                      onKeyDown={blockNonIntegerKey}
                       className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-700 text-center text-xl font-black text-sky-400 outline-none focus:border-sky-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </>

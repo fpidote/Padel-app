@@ -786,8 +786,8 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
               <div className="mt-4 bg-[#1f2937] border border-gray-700 rounded-xl p-4">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <div className="text-sm font-semibold text-gray-200">Punto de oro en empate</div>
-                    <div className="text-xs text-gray-500 mt-0.5">El punto decide el partido igualado</div>
+                    <div className="text-sm font-semibold text-gray-200">Punto de oro en el 40-40</div>
+                    <div className="text-xs text-gray-500 mt-0.5">ON: un único punto decide el 40-40. OFF: se juega con ventaja.</div>
                   </div>
                   <button
                     onClick={() => persist({ ...t, config: { ...t.config, goldenPoint: !(t.config.goldenPoint !== false) } })}

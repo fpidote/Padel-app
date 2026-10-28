@@ -81,7 +81,7 @@ export default function MatchFormatPicker({ config, color, allowSets = false, in
       return (
         <div className={panel}>
           <p className="text-xs text-gray-500">
-            Al terminar el tiempo se anota el resultado. En caso de empate, punto de oro.
+            Al terminar el tiempo se anota el resultado. Si van igualados, se decide cerrando el game en juego o con un punto de oro, según defina el organizador.
           </p>
           <NumberChoice
             label="Minutos por partido"
