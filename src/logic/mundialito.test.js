@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildKnockoutFromGroups, validateMundialitoConfig, seedQualifiers, knockoutInfo, knockoutByesText, mundialitoGroupsLocked, canReopenMundialito, reopenMundialitoPatch, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail, describeFormat, availableStages, optionsForStage, stageLabel, stageChoiceLabel, mundialitoCanFinish } from "./mundialito";
+import { buildKnockoutFromGroups, validateMundialitoConfig, seedQualifiers, knockoutInfo, knockoutByesText, mundialitoGroupsLocked, canReopenMundialito, reopenMundialitoPatch, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail, describeFormat, availableStages, optionsForStage, stageLabel, stageChoiceLabel, mundialitoCanFinish, classicCrossingApplicable, crossingMode, classicFirstRound, projectedFirstRound } from "./mundialito";
 import { firstRoundSeedPairs } from "./relampago";
 import { generateRules } from "./constants";
 
@@ -544,5 +544,112 @@ describe("Torneo por grupos — finalizar el torneo", () => {
   it("T-FIN-M3: finalizado, los resultados de grupo y de eliminatoria quedan cerrados y no se reabre", () => {
     expect(mundialitoGroupsLocked({ status: "finished", phase: "knockout" })).toBe(true);
     expect(canReopenMundialito({ status: "finished", phase: "knockout", knockoutBracket: [] })).toBe(false);
+  });
+});
+
+describe("cruce clásico por grupos (1º A vs 2º B)", () => {
+  // grupos de 3 con pares de rendimiento distinto: el grupo B es más fuerte que A, D más que C...
+  const st = (id, wins, played, gf, gc) => ({ id, p1: id, p2: "x", pts: wins, wins, played, gf, gc });
+  const mkGroup = (g, strength) => ({
+    standings: [st(`${g}1`, 2, 2, 12, 12 - strength), st(`${g}2`, 1, 2, 6, 8), st(`${g}3`, 0, 2, 1, 11)],
+    matches: [],
+  });
+  const groupsOf = (n) => "ABCDEFGH".slice(0, n).split("").map((g, i) => mkGroup(g, i * 2));
+  const firstRound = (b) => b.filter((m) => m.bracket === "winners" && m.round === 1).sort((x, y) => x.matchIndex - y.matchIndex);
+  const label = (m) => `${m.pairA.id}-${m.pairB.id}`;
+
+  it("T-CLS-01: aplica con 2, 4 u 8 grupos pasando 2 y sin extras", () => {
+    for (const g of [2, 4, 8]) expect(classicCrossingApplicable(g, 2, 0)).toBe(true);
+  });
+
+  it("T-CLS-02: no aplica con grupos impares, pasa directo, otros avances ni mejores terceros", () => {
+    expect(classicCrossingApplicable(3, 2, 0)).toBe(false);
+    expect(classicCrossingApplicable(6, 2, 0)).toBe(false); // 12 clasificados: pasa directo
+    expect(classicCrossingApplicable(4, 1, 0)).toBe(false);
+    expect(classicCrossingApplicable(2, 3, 0)).toBe(false);
+    expect(classicCrossingApplicable(4, 2, 1)).toBe(false);
+    expect(classicCrossingApplicable(1, 2, 0)).toBe(false);
+  });
+
+  it("T-CLS-03: crossingMode es clásico por defecto cuando aplica y respeta la elección del organizador", () => {
+    const base = { groupCount: 4, advancePerGroup: 2 };
+    expect(crossingMode(base)).toBe("classic");
+    expect(crossingMode({ ...base, crossing: "classic" })).toBe("classic");
+    expect(crossingMode({ ...base, crossing: "performance" })).toBe("performance");
+  });
+
+  it("T-CLS-04: donde el clásico no aplica siempre es por rendimiento, aunque esté guardado 'classic'", () => {
+    expect(crossingMode({ groupCount: 3, advancePerGroup: 2, crossing: "classic" })).toBe("performance");
+    expect(crossingMode({ groupCount: 4, advancePerGroup: 1 })).toBe("performance");
+    expect(crossingMode({ groupCount: 4, advancePerGroup: 2, extraQualifiers: 1 })).toBe("performance");
+  });
+
+  it("T-CLS-05: 2 grupos — A1 vs B2 y B1 vs A2, aunque B rinda mucho más que A", () => {
+    const b = buildKnockoutFromGroups(groupsOf(2), 2, { crossing: "classic" });
+    expect(firstRound(b).map(label)).toEqual(["A1-B2", "B1-A2"]);
+  });
+
+  it("T-CLS-06: 4 grupos — A1-B2, C1-D2 en una mitad y B1-A2, D1-C2 en la otra", () => {
+    const b = buildKnockoutFromGroups(groupsOf(4), 2, { crossing: "classic" });
+    expect(firstRound(b).map(label)).toEqual(["A1-B2", "C1-D2", "B1-A2", "D1-C2"]);
+  });
+
+  it("T-CLS-07: 8 grupos — nadie se enfrenta a su propio grupo y los de un grupo quedan en mitades opuestas", () => {
+    const b = buildKnockoutFromGroups(groupsOf(8), 2, { crossing: "classic" });
+    const fr = firstRound(b);
+    expect(fr).toHaveLength(8);
+    fr.forEach((m) => expect(m.pairA.id[0]).not.toBe(m.pairB.id[0]));
+    const half = (idx) => (idx < 4 ? 0 : 1);
+    const where = {};
+    fr.forEach((m, i) => [m.pairA.id, m.pairB.id].forEach((id) => { where[id] = half(i); }));
+    "ABCDEFGH".split("").forEach((g) => expect(where[`${g}1`]).not.toBe(where[`${g}2`]));
+  });
+
+  it("T-CLS-08: en cualquier cantidad de grupos juegan los 2 primeros de cada uno, sin repetir", () => {
+    for (const n of [2, 4, 8]) {
+      const ids = firstRound(buildKnockoutFromGroups(groupsOf(n), 2, { crossing: "classic" })).flatMap((m) => [m.pairA.id, m.pairB.id]);
+      expect(new Set(ids).size).toBe(n * 2);
+    }
+  });
+
+  it("T-CLS-09: sin indicar el cruce sigue sembrando por rendimiento (comportamiento anterior)", () => {
+    const b = buildKnockoutFromGroups(groupsOf(2), 2);
+    expect(firstRound(b).map(label)).not.toEqual(["A1-B2", "B1-A2"]);
+  });
+
+  it("T-CLS-10: classicFirstRound describe los cruces por grupo y puesto, para la proyección", () => {
+    expect(classicFirstRound(2)).toEqual([
+      [{ group: 0, pos: 1 }, { group: 1, pos: 2 }],
+      [{ group: 1, pos: 1 }, { group: 0, pos: 2 }],
+    ]);
+    expect(classicFirstRound(4).map(([a, b]) => `${"ABCD"[a.group]}${a.pos}-${"ABCD"[b.group]}${b.pos}`)).toEqual(["A1-B2", "C1-D2", "B1-A2", "D1-C2"]);
+  });
+
+  it("T-CLS-11: las reglas explican el cruce clásico o el de rendimiento según corresponda", () => {
+    const classic = generateRules("mundialito", { groupCount: 2, advancePerGroup: 2 }).join(" ");
+    expect(classic).toMatch(/1º del Grupo A contra el 2º del Grupo B/);
+    const perf = generateRules("mundialito", { groupCount: 2, advancePerGroup: 2, crossing: "performance" }).join(" ");
+    expect(perf).not.toMatch(/1º del Grupo A contra el 2º del Grupo B/);
+    expect(perf).toMatch(/mejor clasificado contra el peor/);
+    expect(generateRules("mundialito", { groupCount: 3, advancePerGroup: 2 }).join(" ")).toMatch(/mejor clasificado contra el peor/);
+  });
+});
+
+describe("projectedFirstRound — primera ronda con las tablas actuales", () => {
+  const st = (id, wins, played, gf, gc) => ({ id, p1: id, p2: "x", pts: wins, wins, played, gf, gc });
+  const g = (n, played) => ({ id: n, name: `Grupo ${"AB"[n]}`, matches: [], standings: [st(`${"AB"[n]}1`, 2, played, 12, 2), st(`${"AB"[n]}2`, 1, played, 6, 8), st(`${"AB"[n]}3`, 0, played, 1, 11)] });
+
+  it("T-PRJ-01: con algún grupo sin partidos jugados no hay proyección", () => {
+    expect(projectedFirstRound([g(0, 2), g(1, 0)], { groupCount: 2, advancePerGroup: 2 })).toBeNull();
+  });
+
+  it("T-PRJ-02: con todos los grupos en marcha devuelve los cruces de la primera ronda con las tablas de hoy", () => {
+    const rounds = projectedFirstRound([g(0, 1), g(1, 1)], { groupCount: 2, advancePerGroup: 2 });
+    expect(rounds.map((m) => `${m.pairA.id}-${m.pairB.id}`)).toEqual(["A1-B2", "B1-A2"]);
+  });
+
+  it("T-PRJ-03: marca el pasa directo cuando el cuadro lo necesita", () => {
+    const rounds = projectedFirstRound([g(0, 1), g(1, 1)], { groupCount: 2, advancePerGroup: 3 });
+    expect(rounds.some((m) => m.pairA?.id === "bye" || m.pairB?.id === "bye")).toBe(true);
   });
 });

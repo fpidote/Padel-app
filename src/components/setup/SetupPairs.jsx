@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { buildShareMessage } from "../../logic/utils";
-import { validateMundialitoConfig, knockoutInfo, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail, describeFormat, positionName, availableStages, optionsForStage, stageChoiceLabel, MIN_PAIRS } from "../../logic/mundialito";
+import { validateMundialitoConfig, knockoutInfo, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail, describeFormat, positionName, availableStages, optionsForStage, stageChoiceLabel, MIN_PAIRS, classicCrossingApplicable, crossingMode } from "../../logic/mundialito";
 import MatchFormatPicker from "../shared/MatchFormatPicker";
 import LaunchModal, { SummaryRow, SummaryCard } from "../shared/LaunchModal";
 import { GroupsPreview, FixturePreview, BracketPreview, PozoPreview } from "./DrawPreview";
@@ -422,6 +422,30 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
                         </div>
                       )}
                     </>
+                  )}
+                  {tot >= MIN_PAIRS && classicCrossingApplicable(t.config.groupCount || 2, t.config.advancePerGroup ?? 2, t.config.extraQualifiers || 0) && (
+                    <div>
+                      <label className="text-xs text-gray-400 font-semibold block mb-1">Cruces de la fase final</label>
+                      <p className="text-xs text-gray-500 mb-2">Cómo se enfrentan los clasificados en la primera ronda del cuadro.</p>
+                      <div className="flex flex-col gap-2">
+                        {[
+                          { id: "classic", title: "Clásico por grupos", detail: "1º A vs 2º B, 1º B vs 2º A… Se conocen desde el principio." },
+                          { id: "performance", title: "Por rendimiento", detail: "Mejor clasificado contra el peor, según los resultados de los grupos." },
+                        ].map((opt) => {
+                          const active = crossingMode(t.config) === opt.id;
+                          return (
+                            <button key={opt.id}
+                              onClick={() => persist({ ...t, config: { ...t.config, crossing: opt.id } })}
+                              className={`w-full text-left rounded-xl border px-3.5 py-3 cursor-pointer transition-colors ${active ? "text-white" : "bg-[#1f2937] border-[#374151] text-[#cbd5e1]"}`}
+                              style={active ? { background: color, borderColor: color } : undefined}
+                            >
+                              <div className="font-bold text-sm">{opt.id === "classic" ? "⭐ " : ""}{opt.title}</div>
+                              <div className={`text-xs mt-1 ${active ? "text-white/80" : "text-gray-400"}`}>{opt.detail}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   )}
                   {tot >= MIN_PAIRS && knockoutInfo(t.config.groupCount || 2, t.config.advancePerGroup ?? 2, t.config.extraQualifiers || 0).qualifiers >= 4 && (
                     <div>
@@ -859,6 +883,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
                 {t.type === "relampago" && <SummaryRow label="Cuadro" value={t.config.seedByOrder ? "Por orden de carga" : "Sorteado al azar"} />}
                 {t.type === "liga" && <SummaryRow label="Jornadas" value={activeDraw.rounds.length} />}
                 {t.type === "liga" && <SummaryRow label="Ida y vuelta" value={t.config.idaYVuelta ? "Sí" : "No"} />}
+                {t.type === "mundialito" && <SummaryRow label="Cruces de la fase final" value={crossingMode(t.config) === "classic" ? "Clásico por grupos (1º A vs 2º B)" : "Por rendimiento (mejor contra peor)"} />}
                 {t.type === "mundialito" && mundialitoThirdPlace(t.config) && <SummaryRow label="Partido por el 3.º puesto" value="Sí" />}
                 {t.type === "liga" && ligaThirdPlace(t.config, tot) && <SummaryRow label="Partido por el 3.º puesto" value="Sí" />}
                 {t.type === "liga" && <SummaryRow label="Eliminatoria final" value={t.config.playoffEnabled ? `Sí (${ligaQualifiers(t.config, tot)} parejas)` : "No"} />}

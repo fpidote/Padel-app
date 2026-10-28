@@ -8,14 +8,15 @@ import {
   canReopenMundialito,
   reopenMundialitoPatch,
   mundialitoThirdPlace,
-  extraQualifiersText,
   mundialitoCanFinish,
+  crossingMode,
 } from "../../logic/mundialito";
 import { computeStandings, sortStandings, standingsLabels } from "../../logic/standings";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import { showToast } from "../../logic/toast";
 import MatchCard from "../shared/MatchCard";
 import PodiumCard from "../shared/PodiumCard";
+import CrossingsProjection from "./CrossingsProjection";
 import PairStandings from "../shared/PairStandings";
 
 export default function PlayMundialito({
@@ -158,7 +159,7 @@ export default function PlayMundialito({
       const bracket = buildKnockoutFromGroups(
         groupsWithRounds,
         t.config.advancePerGroup || 2,
-        { thirdPlace: mundialitoThirdPlace(t.config), extraQualifiers: t.config.extraQualifiers || 0 },
+        { thirdPlace: mundialitoThirdPlace(t.config), extraQualifiers: t.config.extraQualifiers || 0, crossing: crossingMode(t.config) },
       );
       await persist({
         ...t,
@@ -410,66 +411,7 @@ export default function PlayMundialito({
 
         {tab === "knockout" && (
           <>
-            {t.phase === "groups" && (
-              <div
-                className="rounded-xl bg-[#1e293b] p-5"
-              >
-                <h3
-                  className="mb-2 text-center text-[18px] font-black text-[#38bdf8]"
-                >
-                  🔮 Proyección de Cruces
-                </h3>
-                <p
-                  className="mb-5 text-center text-[13px] text-[#94a3b8]"
-                >
-                  {t.config.extraQualifiers > 0
-                    ? `Pasan los ${t.config.advancePerGroup || 2} primeros de cada grupo y ${extraQualifiersText(t.config.advancePerGroup || 2, t.config.extraQualifiers)} (🔸). Los cruces se arman al terminar los grupos.`
-                    : "Al terminar los grupos, los cruces se armarán enfrentando a los líderes contra los peores clasificados."}
-                </p>
-                {!(t.config.extraQualifiers > 0) && (
-                <div
-                  className="flex flex-col gap-3"
-                >
-                  {Array.from({
-                    length:
-                      (groupsWithRounds.length *
-                        (t.config.advancePerGroup || 2)) /
-                      2,
-                  }).map((_, i) => {
-                    const groupA = i % groupsWithRounds.length;
-                    const groupB = (i + 1) % groupsWithRounds.length;
-                    const worstRank = t.config.advancePerGroup || 2;
-                    return (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between rounded-lg border border-[#334155] bg-[#0f172a] px-4 py-3"
-                      >
-                        <span
-                          className="flex-1 text-right font-extrabold text-[#f1f5f9]"
-                        >
-                          1º{" "}
-                          {groupsWithRounds[groupA]?.name ||
-                            `Grupo ${groupA + 1}`}
-                        </span>
-                        <span
-                          className="mx-4 font-black text-[#38bdf8]"
-                        >
-                          VS
-                        </span>
-                        <span
-                          className="flex-1 text-left font-extrabold text-[#94a3b8]"
-                        >
-                          {worstRank}º{" "}
-                          {groupsWithRounds[groupB]?.name ||
-                            `Grupo ${groupB + 1}`}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-                )}
-              </div>
-            )}
+            {t.phase === "groups" && <CrossingsProjection groups={groupsWithRounds} config={t.config} />}
 
             {t.phase === "knockout" && (
               <>

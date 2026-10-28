@@ -185,7 +185,10 @@ function avoidFirstRoundClashes(entries) {
 
 // Orden de siembra de los clasificados: primero los primeros de grupo, luego los segundos, etc.;
 // dentro de cada puesto, por rendimiento. Así los pasa directo van a los mejores y no al grupo A.
-export function seedQualifiers(groups, advancePerGroup, extraQualifiers = 0) {
+export function seedQualifiers(groups, advancePerGroup, extraQualifiers = 0, crossing = "performance") {
+  if (crossing === "classic" && classicCrossingApplicable(groups.length, advancePerGroup, extraQualifiers)) {
+    return classicSeedList(groups);
+  }
   const entries = [];
   const candidates = [];
   groups.forEach((g, gi) => {
@@ -201,6 +204,55 @@ export function seedQualifiers(groups, advancePerGroup, extraQualifiers = 0) {
   entries.sort((a, b) => a.pos - b.pos || byPerformance(a.pair, b.pair) || a.gi - b.gi);
   avoidFirstRoundClashes(entries);
   return entries.map((e) => e.pair);
+}
+
+// ── Cruce clásico por grupos: el 1º de un grupo contra el 2º del otro ─────────────────────────
+// Solo está definido con 2, 4 u 8 grupos pasando 2 y sin extras (cuadro exacto, sin pasa directo).
+// En los demás casos (3 grupos, pasa directo, mejores terceros, pasa 1...) manda el rendimiento.
+export function classicCrossingApplicable(groupCount, advancePerGroup, extraQualifiers = 0) {
+  return [2, 4, 8].includes(groupCount) && advancePerGroup === 2 && !extraQualifiers;
+}
+
+// "classic" por defecto cuando aplica; el organizador puede elegir "performance" (config.crossing).
+export function crossingMode(config) {
+  const applicable = classicCrossingApplicable(config?.groupCount ?? 2, config?.advancePerGroup ?? 2, config?.extraQualifiers || 0);
+  return applicable && config?.crossing !== "performance" ? "classic" : "performance";
+}
+
+// Cruces de la primera ronda en el orden del cuadro, como { group, pos } (pos 1 = primero). La mitad
+// de arriba enfrenta a los primeros de los grupos A, C, E... con los segundos de B, D, F...; la de
+// abajo, al revés. Así dos parejas del mismo grupo solo pueden volver a verse en la final.
+export function classicFirstRound(groupCount) {
+  const top = [];
+  const bottom = [];
+  for (let g = 0; g < groupCount; g += 2) {
+    top.push([{ group: g, pos: 1 }, { group: g + 1, pos: 2 }]);
+    bottom.push([{ group: g + 1, pos: 1 }, { group: g, pos: 2 }]);
+  }
+  return [...top, ...bottom];
+}
+
+// Clasificados ordenados como siembra para que buildBracket forme exactamente esos cruces.
+function classicSeedList(groups) {
+  const ranked = groups.map((g) => sortStandings(g.standings, g.matches || []));
+  const desired = classicFirstRound(groups.length).map(([a, b]) => [ranked[a.group][a.pos - 1], ranked[b.group][b.pos - 1]]);
+  const list = Array(groups.length * 2);
+  firstRoundSeedPairs(list.length).forEach(([x, y], i) => {
+    list[x] = desired[i][0];
+    list[y] = desired[i][1];
+  });
+  return list;
+}
+
+// Cruces de la primera ronda con las tablas de hoy (provisional). null hasta que cada grupo haya
+// jugado algún partido: antes de eso las tablas están en cero y los cruces serían arbitrarios.
+export function projectedFirstRound(groups, config) {
+  if (!groups.length || !groups.every((g) => g.standings.some((s) => (s.played || 0) > 0))) return null;
+  const bracket = buildKnockoutFromGroups(groups, config.advancePerGroup ?? 2, {
+    extraQualifiers: config.extraQualifiers || 0,
+    crossing: crossingMode(config),
+  });
+  return bracket.filter((m) => m.bracket === "winners" && m.round === 1).sort((a, b) => a.matchIndex - b.matchIndex);
 }
 
 // Cuántos clasifican, de qué tamaño es el cuadro y cuántos pasan directo a la segunda ronda.
@@ -284,8 +336,8 @@ export function reopenMundialitoPatch() {
   return { knockoutBracket: null, phase: "groups" };
 }
 
-export function buildKnockoutFromGroups(groups, advancePerGroup, { thirdPlace = false, extraQualifiers = 0 } = {}) {
-  return buildBracket(seedQualifiers(groups, advancePerGroup, extraQualifiers), { consolation: false, thirdPlace });
+export function buildKnockoutFromGroups(groups, advancePerGroup, { thirdPlace = false, extraQualifiers = 0, crossing = "performance" } = {}) {
+  return buildBracket(seedQualifiers(groups, advancePerGroup, extraQualifiers, crossing), { consolation: false, thirdPlace });
 }
 
 // ¿Se juega el partido por el 3.º y 4.º puesto? Solo con la opción activada y semifinales
