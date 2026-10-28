@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { createSaveQueue } from "./saveQueue";
+import { createSaveQueue, VersionConflictError } from "./saveQueue";
 
 // Escritura falsa que controla cuándo termina cada guardado
 function fakeWrite() {
@@ -100,5 +100,65 @@ describe("createSaveQueue — guardados en orden, sin descartar cambios", () => 
     q.confirm({ ver: 7 });
     expect(q.lastSaved()).toEqual({ ver: 7 });
     expect(f.calls).toHaveLength(0);
+  });
+});
+
+describe("createSaveQueue — conflictos de versión", () => {
+  it("T-SQ-20: un conflicto llama a onConflict una vez con el estado del servidor y no a onFailure", async () => {
+    const f = fakeWrite();
+    const onConflict = vi.fn();
+    const onFailure = vi.fn();
+    const q = createSaveQueue({ write: f.write, onConflict, onFailure });
+    const p = q.save({ ver: 2 });
+    await tick();
+    f.calls[0].reject(new VersionConflictError({ ver: 5 }));
+    expect(await p).toBe(false);
+    expect(onConflict).toHaveBeenCalledTimes(1);
+    expect(onConflict).toHaveBeenCalledWith({ ver: 5 });
+    expect(onFailure).not.toHaveBeenCalled();
+  });
+
+  it("T-SQ-21: un conflicto descarta el guardado pendiente y resuelve false a todos", async () => {
+    const f = fakeWrite();
+    const q = createSaveQueue({ write: f.write, onConflict: () => {} });
+    const p1 = q.save({ ver: 2 });
+    const p2 = q.save({ ver: 3 });
+    await tick();
+    f.calls[0].reject(new VersionConflictError({ ver: 5 }));
+    expect(await p1).toBe(false);
+    expect(await p2).toBe(false);
+    await tick();
+    expect(f.calls).toHaveLength(1);
+    expect(q.isSaving()).toBe(false);
+  });
+
+  it("T-SQ-22: tras un conflicto la cola acepta nuevos guardados y lo confirmado es el estado del servidor", async () => {
+    const f = fakeWrite();
+    const q = createSaveQueue({ write: f.write, onConflict: () => {} });
+    const p1 = q.save({ ver: 2 });
+    await tick();
+    f.calls[0].reject(new VersionConflictError({ ver: 5 }));
+    await p1;
+    expect(q.lastSaved()).toEqual({ ver: 5 });
+    const p2 = q.save({ ver: 6 });
+    await tick();
+    f.calls[1].resolve();
+    expect(await p2).toBe(true);
+    expect(q.lastSaved()).toEqual({ ver: 6 });
+  });
+
+  it("T-SQ-23: un error que no es de versión sigue llamando a onFailure como antes", async () => {
+    const f = fakeWrite();
+    const onFailure = vi.fn();
+    const onConflict = vi.fn();
+    const q = createSaveQueue({ write: f.write, onFailure, onConflict });
+    q.confirm({ ver: 1 });
+    const p = q.save({ ver: 2 });
+    await tick();
+    f.calls[0].reject(new Error("red"));
+    expect(await p).toBe(false);
+    expect(onFailure).toHaveBeenCalledTimes(1);
+    expect(onFailure.mock.calls[0][0]).toEqual({ ver: 1 });
+    expect(onConflict).not.toHaveBeenCalled();
   });
 });

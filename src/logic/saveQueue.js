@@ -8,7 +8,18 @@
 // write(state)  → Promise que guarda ese estado (setDoc).
 // onFailure(lastSaved, err) → se llama una vez por fallo; lastSaved es el último estado confirmado, al
 //                que hay que volver porque los cambios pendientes partían del que falló.
-export function createSaveQueue({ write, onFailure = () => {} }) {
+// onConflict(serverState) → write lanzó VersionConflictError: se descartan los cambios pendientes, se da
+//                por confirmado el estado del servidor y se avisa una vez.
+// Otro organizador guardó antes: el guardado no se pisa y se devuelve el estado que hay en el servidor.
+export class VersionConflictError extends Error {
+  constructor(serverState) {
+    super("Conflicto de versión");
+    this.name = "VersionConflictError";
+    this.serverState = serverState;
+  }
+}
+
+export function createSaveQueue({ write, onFailure = () => {}, onConflict = () => {} }) {
   let confirmed = null;
   let current = null; // lote que se está escribiendo: { state, resolvers }
   let next = null; // lote en espera
@@ -22,7 +33,12 @@ export function createSaveQueue({ write, onFailure = () => {} }) {
         const dropped = [batch, next].filter(Boolean);
         current = null;
         next = null;
-        onFailure(confirmed, err);
+        if (err instanceof VersionConflictError) {
+          confirmed = err.serverState;
+          onConflict(err.serverState);
+        } else {
+          onFailure(confirmed, err);
+        }
         dropped.forEach((b) => b.resolvers.forEach((resolve) => resolve(false)));
         return;
       }
