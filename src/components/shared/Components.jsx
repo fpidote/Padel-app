@@ -3,6 +3,22 @@ import { useContext } from 'react';
 import { TOURNAMENT_TYPES } from '../../logic/constants';
 import { RoleContext } from './RoleContext';
 
+// Flecha para salir del torneo: la provee TournamentPage por RoleContext (dueño: Mis torneos; resto: inicio)
+export function BackButton({ className = "" }) {
+  const { onBack } = useContext(RoleContext);
+  if (!onBack) return null;
+  return (
+    <button
+      data-testid="btn-volver"
+      onClick={onBack}
+      aria-label="Volver"
+      className={`w-8 h-8 rounded-[10px] bg-white/5 border border-white/[0.08] flex items-center justify-center text-sm text-[#64748b] hover:text-[#f1f5f9] cursor-pointer transition-colors flex-shrink-0 ${className}`}
+    >
+      ←
+    </button>
+  );
+}
+
 export function THeader({ t, code, isAdmin, copyCode, subtitle, onEdit }) {
   const { isHelper, onHelpers } = useContext(RoleContext);
   const typeInfo = TOURNAMENT_TYPES.find((x) => x.id === t.type) || TOURNAMENT_TYPES[0];
@@ -20,7 +36,8 @@ export function THeader({ t, code, isAdmin, copyCode, subtitle, onEdit }) {
         style={{ background: typeInfo.color }}
       />
 
-      <div className="relative z-10">
+      <BackButton className="relative z-10 mr-2.5 -ml-1" />
+      <div className="relative z-10 flex-1 min-w-0">
         {/* Etiqueta del formato */}
         <div
           className="text-[10px] font-bold tracking-[1.5px] uppercase mb-1.5 opacity-70"

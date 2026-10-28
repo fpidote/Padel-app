@@ -5,6 +5,7 @@ import { calcularDescansos, isCourtComplete } from "../../logic/manualRounds";
 import ManualRoundBuilder from "./ManualRoundBuilder";
 import { buildShareMessage } from "../../logic/utils";
 import MatchFormatPicker from "../shared/MatchFormatPicker";
+import { BackButton } from "../shared/Components";
 import LaunchModal, { SummaryRow, SummaryCard } from "../shared/LaunchModal";
 
 const COLOR = "#0284c7";
@@ -341,9 +342,12 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
 
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
-          <div>
-            <h1 className="text-xl font-black" style={{ color: COLOR }}>🔄 Americano</h1>
-            <p className="text-xs text-gray-500 mt-1">Código: <span className="text-yellow-400 font-bold tracking-widest">{code}</span></p>
+          <div className="flex items-start gap-2.5">
+            <BackButton />
+            <div>
+              <h1 className="text-xl font-black" style={{ color: COLOR }}>🔄 Americano</h1>
+              <p className="text-xs text-gray-500 mt-1">Código: <span className="text-yellow-400 font-bold tracking-widest">{code}</span></p>
+            </div>
           </div>
           <button
             onClick={handleShare}

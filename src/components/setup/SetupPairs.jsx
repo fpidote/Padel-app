@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { buildShareMessage } from "../../logic/utils";
 import { validateMundialitoConfig, knockoutInfo, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail, describeFormat, positionName, availableStages, optionsForStage, stageChoiceLabel, MIN_PAIRS, classicCrossingApplicable, crossingMode } from "../../logic/mundialito";
 import MatchFormatPicker from "../shared/MatchFormatPicker";
+import { BackButton } from "../shared/Components";
 import LaunchModal, { SummaryRow, SummaryCard } from "../shared/LaunchModal";
 import { GroupsPreview, FixturePreview, BracketPreview, PozoPreview } from "./DrawPreview";
 import { hasDraw, drawIsRandom, drawKey, buildStartDraw, startPatch } from "../../logic/launchDraw";
@@ -223,13 +224,16 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
 
         {/* ── Header ── */}
         <div className="flex items-start justify-between mb-6">
-          <div>
-            <h1 className="text-xl font-black" style={{ color }}>
-              {typeInfo?.icon} {typeInfo?.name}
-            </h1>
-            <p className="text-xs text-gray-500 mt-1">
-              Código: <span className="text-yellow-400 font-bold tracking-widest">{code}</span>
-            </p>
+          <div className="flex items-start gap-2.5">
+            <BackButton />
+            <div>
+              <h1 className="text-xl font-black" style={{ color }}>
+                {typeInfo?.icon} {typeInfo?.name}
+              </h1>
+              <p className="text-xs text-gray-500 mt-1">
+                Código: <span className="text-yellow-400 font-bold tracking-widest">{code}</span>
+              </p>
+            </div>
           </div>
           <button
             onClick={handleShare}

@@ -77,7 +77,8 @@ export default function TournamentPage() {
   const canEditTournament = !t.scoringStarted;
   const onEditTournament = isOwner && canEditTournament ? () => setEditMode(true) : undefined;
 
-  const role = { isHelper, onHelpers: isOwner ? () => setShowHelpers(true) : undefined };
+  // El dueño vuelve a "Mis torneos"; el ayudante y el espectador, a la página principal
+  const role = { isHelper, onHelpers: isOwner ? () => setShowHelpers(true) : undefined, onBack: () => navigate(isOwner ? "/panel" : "/") };
 
   return (
     <RoleContext.Provider value={role}>
@@ -125,6 +126,18 @@ export default function TournamentPage() {
           </div>
         )}
       </Suspense>
+      {/* Invitación para quien solo consulta; el dueño y los ayudantes ya tienen la herramienta */}
+      {!canScore && (
+        <div className="px-4 pt-2 pb-6">
+          <button
+            data-testid="banner-crear"
+            onClick={() => navigate("/")}
+            className="w-full bg-[#84cc16]/10 border border-[#84cc16]/25 text-[#bef264] rounded-xl py-3 px-4 text-sm font-semibold cursor-pointer hover:bg-[#84cc16]/15 transition-colors"
+          >
+            ¿Quieres crear tu propio torneo? <span className="font-black underline">Haz clic aquí</span>
+          </button>
+        </div>
+      )}
       {showHelpers && isOwner && <HelpersModal code={code} t={t} persist={persist} onClose={() => setShowHelpers(false)} />}
     </RoleContext.Provider>
   );
