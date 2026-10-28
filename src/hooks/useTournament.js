@@ -1,11 +1,12 @@
 // src/hooks/useTournament.js
 import { useState, useEffect, useRef } from "react";
-import { onSnapshot, doc, setDoc } from "firebase/firestore";
+import { onSnapshot, doc, runTransaction } from "firebase/firestore";
 import { onAuthStateChanged, signInWithPopup } from "firebase/auth";
 import { db, auth, googleProvider } from "../firebase";
 import { buildShareMessage } from "../logic/utils";
 import { showToast } from "../logic/toast";
 import { createSaveQueue } from "../logic/saveQueue";
+import { applyVersionedWrite } from "../logic/saveTransaction";
 
 export function useTournament(code) {
   const [authUser, setAuthUser] = useState(null);
@@ -26,7 +27,16 @@ export function useTournament(code) {
   const queueRef = useRef(null);
   if (!queueRef.current) {
     queueRef.current = createSaveQueue({
-      write: (state) => setDoc(doc(db, "torneos", codeRef.current), { data: JSON.stringify(state) }, { merge: true }),
+      // Transacción que comprueba la versión: si otro organizador guardó antes, no se pisa nada (onConflict)
+      write: (state) =>
+        runTransaction(db, (tx) =>
+          applyVersionedWrite(tx, doc(db, "torneos", codeRef.current), state, queueRef.current.lastSaved()?.ver),
+        ),
+      onConflict: (serverState) => {
+        verRef.current = serverState.ver ?? 0;
+        setT(serverState);
+        showToast("Otro organizador guardó a la vez; se cargó la versión más reciente. Repite tu cambio.");
+      },
       onFailure: (lastSaved, err) => {
         console.error("Error al guardar:", err);
         // Los cambios pendientes partían del estado que falló: se vuelve al último guardado
@@ -112,7 +122,12 @@ export function useTournament(code) {
       showToast("No se guardaron los cambios: sin conexión. Vuelve a intentarlo cuando se recupere.");
       return;
     }
-    const updated = { ...newT, ver: Math.max(newT.ver || 0, verRef.current ?? 0) + 1 };
+    // Sin el estado del servidor aún cargado no hay versión sobre la que comprobar: no se guarda a ciegas
+    if (!queueRef.current.lastSaved()) {
+      showToast("El torneo todavía se está cargando. Inténtalo de nuevo en un momento.");
+      return;
+    }
+    const updated = { ...newT, ver: Math.max(newT.ver || 0, verRef.current ?? 0) + 1, writeId: crypto.randomUUID() };
     verRef.current = updated.ver;
     setT(updated);
     setSaving(true);
