@@ -378,7 +378,7 @@ Codex CLI está instalado y con login. Claude decide qué delegar, sin preguntar
 
 - **Delegar**: tareas sencillas pero voluminosas o mecánicas (tests de lógica pura, conversiones mecánicas de estilos a Tailwind verificadas con capturas, renombrados repetitivos, revisión de un diff antes de commitear).
 - **No delegar**: decisiones de diseño, Firebase/Firestore/Rules, auth, cambios de una o dos líneas (el arranque de Codex cuesta más que hacerlo directo).
-- **Cuota**: cada llamada gasta ~17-36k tokens del plan gratuito. Agrupar el trabajo en pocas llamadas grandes y acotadas, no muchas chicas.
+- **Cuota**: cada llamada gasta ~17-36k tokens del plan gratuito, y una revisión de un diff grande (~20 archivos, ~1000 líneas) llegó a ~80k. Pedir revisiones acotadas (un commit o un archivo) y agrupar el trabajo en pocas llamadas. El plan es gratuito con ventana de 30 días; el uso aproximado se ve en `~/.codex/sessions/` (campo `rate_limits`) o con `/status` dentro de Codex.
 - **Comando**: `codex exec --sandbox workspace-write "<tarea>"` desde la raíz del proyecto, con archivos permitidos explícitos y "no hagas commits". Para solo leer, `--sandbox read-only`.
 - **Revisión obligatoria**: Claude lee el diff y corre `npx vitest run` antes de dar la tarea por buena. No fiarse del resumen de Codex.
 - Si Codex falla por límite de cuota, Claude hace la tarea directamente.
