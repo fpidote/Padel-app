@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { buildFirstRoundAmericano, precomputeAllRounds, isDuplicateName, duplicateNameKeys, normalizeName, MIN_ROUNDS, roundsCountError } from "../../logic/americano";
+import { buildFirstRoundAmericano, precomputeAllRounds, isDuplicateName, duplicateNameKeys, normalizeName, MIN_ROUNDS, roundsCountError, restBalance, restBalanceText, fairRoundOptions, classicTotalRounds } from "../../logic/americano";
 import { calcularDescansos, isCourtComplete } from "../../logic/manualRounds";
 import ManualRoundBuilder from "./ManualRoundBuilder";
 import { buildShareMessage } from "../../logic/utils";
@@ -87,6 +87,13 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
     ? tot >= 2 && (t.pairInputs || []).every(p => p.p1.trim() && p.p2.trim())
     : tot >= 4 && (t.playerInputs || []).every(p => p.name.trim().length > 0))
     && manualReady;
+
+  // Reparto de partidos: con jugadores de sobra unos descansan más que otros salvo que las rondas cuadren
+  const matchmakingMode = t.config.matchmaking || "americano";
+  const balanceMode = isPairs ? "pairs" : "individual";
+  const effectiveRounds = isManual ? null : (t.config.maxRounds ?? (!isPairs && matchmakingMode === "americano" ? classicTotalRounds(tot, null) : null));
+  const balance = effectiveRounds ? restBalance({ count: tot, courts: t.config.courts, mode: balanceMode, rounds: effectiveRounds }) : null;
+  const fairOptions = !isManual && tot >= (isPairs ? 2 : 4) ? fairRoundOptions({ count: tot, courts: t.config.courts, mode: balanceMode }) : [];
 
   const scoring   = t.config.scoringSystem || "timed";
   const useLevels = !!t.config.useLevels;
@@ -556,6 +563,24 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
                   <input type="number" value={roundsCustom} onChange={e => handleRoundsCustom(e.target.value)} placeholder="Otro" min={MIN_ROUNDS} max={30} className="w-16 py-2 rounded-lg text-sm text-center font-bold outline-none bg-[#374151] text-gray-300 placeholder:text-gray-600 shrink-0" />
                 </div>
                 {roundsError && <p data-testid="error-rondas" className="mt-2 text-xs font-semibold text-amber-400">⚠️ {roundsError}</p>}
+                {balance && (
+                  <p data-testid="aviso-descansos" className={`mt-2 text-xs font-semibold ${balance.equal ? "text-green-400" : "text-amber-400"}`}>
+                    {balance.equal ? "✓" : "⚠️"} {restBalanceText(balance, isPairs)}
+                  </p>
+                )}
+                {fairOptions.length > 0 && !balance?.equal && (
+                  <div data-testid="rondas-parejas" className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-400">
+                    <span>Para que todos jueguen lo mismo:</span>
+                    {fairOptions.slice(0, 3).map((o) => (
+                      <button
+                        key={o.rounds}
+                        type="button"
+                        onClick={() => { setRoundsCustom(""); setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); persist({ ...t, config: { ...t.config, maxRounds: o.rounds } }); }}
+                        className="px-2.5 py-1 rounded-lg font-bold cursor-pointer bg-[#374151] text-gray-200"
+                      >{o.rounds} rondas ({o.plays} partidos)</button>
+                    ))}
+                  </div>
+                )}
               </>
             )}
 
@@ -742,7 +767,8 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
                   </SummaryCard>
 
                 <SummaryCard title="Formato">
-                    <SummaryRow label="Rondas" value={isManual ? String(localManualRounds.length) : t.config.maxRounds ? String(t.config.maxRounds) : "Ilimitadas"} />
+                    <SummaryRow label="Rondas" value={isManual ? String(localManualRounds.length) : t.config.maxRounds ? String(t.config.maxRounds) : effectiveRounds ? String(effectiveRounds) : "Ilimitadas"} />
+                    {balance && <SummaryRow label={isPairs ? "Partidos por pareja" : "Partidos por jugador"} value={restBalanceText(balance, isPairs)} yellow={!balance.equal} />}
                     <SummaryRow label="Emparejamiento" value={(t.config.matchmaking || "americano") === "americano" ? "Americano" : (t.config.matchmaking || "americano") === "mexicano" ? "Mexicano" : "Manual"} />
                   </SummaryCard>
               </div>

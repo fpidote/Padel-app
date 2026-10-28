@@ -94,7 +94,7 @@ export default function MatchFormatPicker({ config, color, allowSets = false, in
             onType={(v) => typeNumber("matchMinutes", v)}
           />
           <div>
-            <label className="text-xs text-gray-400 font-semibold block mb-2">Qué cuenta para la tabla</label>
+            <label className="text-xs text-gray-400 font-semibold block mb-2">Qué se anota en cada partido</label>
             <div className="flex gap-2">
               <Chip active={metric === "games"} color={color} onClick={() => onChange({ timedMetric: "games" })}>
                 Games ganados

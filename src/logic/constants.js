@@ -74,8 +74,8 @@ export function generateRules(type, config, context = {}) {
     const s = config.scoringSystem || "timed";
     if (s === "rally") return `Partidos en rally scoring a ${config.rallyPoints ?? 24} puntos.`;
     if (s === "games") return `Partidos al primero en llegar a ${config.targetGames ?? 6} juegos.`;
-    const metric = (config.timedMetric ?? "games") === "games" ? "juegos" : "puntos acumulados";
-    return `Partidos de ${config.matchMinutes ?? 10} minutos. Se cuentan ${metric}.`;
+    const metric = (config.timedMetric ?? "games") === "games" ? "juegos" : "puntos";
+    return `Partidos de ${config.matchMinutes ?? 10} minutos. El resultado se anota en ${metric}.`;
   }
 
   function goldenPointDesc() {
@@ -94,9 +94,7 @@ export function generateRules(type, config, context = {}) {
         const metric = s === "games" ? "juegos"
           : s === "rally" ? "puntos"
           : (config.timedMetric ?? "games") === "games" ? "juegos" : "puntos";
-        rotationDesc = (config.mode === "pairs")
-          ? `La pareja que acumule más ${metric} al final del torneo gana.`
-          : `El jugador que acumule más ${metric} al final del torneo gana.`;
+        rotationDesc = `${config.mode === "pairs" ? "Gana la pareja" : "Gana el jugador"} con más partidos ganados; si empatan, decide la diferencia de ${metric}.`;
       } else if (config.mode === "individual" || !config.mode) {
         rotationDesc = matchmaking === "mexicano"
           ? "Emparejamiento Mexicano: desde ronda 2 los mejores juegan entre sí."
@@ -112,8 +110,10 @@ export function generateRules(type, config, context = {}) {
       const timedTiebreak = !config.scoringFormat?.startsWith("sets") && (config.scoringSystem || "timed") === "timed"
         ? ["Si al terminar el tiempo van igualados en el marcador, se decide cerrando el game en juego o con un punto de oro, según defina el organizador."]
         : [];
+      const rankMetric = (config.scoringSystem || "timed") === "games" || ((config.scoringSystem || "timed") === "timed" && (config.timedMetric ?? "games") === "games") ? "juegos" : "puntos";
       const rules = [
         scoringDesc(),
+        `Clasificación: partidos ganados y, si empatan, diferencia de ${rankMetric} a favor y en contra.`,
         ...timedTiebreak,
         goldenPointDesc(),
         rotationDesc,

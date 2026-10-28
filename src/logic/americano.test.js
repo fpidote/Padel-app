@@ -10,6 +10,10 @@ import {
   americanoPodium,
   americanoMatchesPlayed,
   canFinishAnyRound,
+  restBalance,
+  fairRoundOptions,
+  classicTotalRounds,
+  restBalanceText,
   isDuplicateName,
   duplicateNameKeys,
   MIN_ROUNDS,
@@ -856,5 +860,78 @@ describe("canFinishAnyRound", () => {
 
   test("un torneo ya finalizado no se vuelve a ofrecer", () => {
     expect(canFinishAnyRound({ ...base, status: "finished" })).toBe(false);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// restBalance / fairRoundOptions — que todos jueguen lo mismo
+// ═══════════════════════════════════════════════════════════════
+describe("restBalance", () => {
+  test("sin jugadores de sobra nadie descansa: no hay desigualdad que avisar", () => {
+    expect(restBalance({ count: 8, courts: 2, mode: "individual", rounds: 4 })).toBeNull();
+  });
+
+  test("10 jugadores, 2 pistas, 4 rondas: 8 juegan 3 partidos y 2 juegan 4", () => {
+    expect(restBalance({ count: 10, courts: 2, mode: "individual", rounds: 4 })).toEqual({
+      equal: false, restPerRound: 2,
+      more: { count: 2, plays: 4 }, less: { count: 8, plays: 3 },
+    });
+  });
+
+  test("10 jugadores, 2 pistas, 5 rondas: todos descansan una vez y juegan 4", () => {
+    const b = restBalance({ count: 10, courts: 2, mode: "individual", rounds: 5 });
+    expect(b.equal).toBe(true);
+    expect(b.plays).toBe(4);
+  });
+
+  test("parejas: 6 parejas, 2 pistas, 3 rondas: cada pareja juega 2 partidos", () => {
+    const b = restBalance({ count: 6, courts: 2, mode: "pairs", rounds: 3 });
+    expect(b.equal).toBe(true);
+    expect(b.plays).toBe(2);
+    expect(restBalance({ count: 6, courts: 2, mode: "pairs", rounds: 4 }).equal).toBe(false);
+  });
+});
+
+describe("fairRoundOptions", () => {
+  test("10 jugadores y 2 pistas: 5 y 10 rondas reparten igual", () => {
+    expect(fairRoundOptions({ count: 10, courts: 2, mode: "individual" })).toEqual([
+      { rounds: 5, plays: 4 }, { rounds: 10, plays: 8 },
+    ]);
+  });
+
+  test("sin descansos no hay nada que sugerir", () => {
+    expect(fairRoundOptions({ count: 8, courts: 2, mode: "individual" })).toEqual([]);
+  });
+
+  test("nunca sugiere menos del mínimo de rondas", () => {
+    fairRoundOptions({ count: 9, courts: 2, mode: "individual" }).forEach((o) => expect(o.rounds).toBeGreaterThanOrEqual(2));
+  });
+});
+
+describe("classicTotalRounds", () => {
+  test("con rondas fijadas usa ese número; sin fijar, jugadores menos uno con tope de 12", () => {
+    expect(classicTotalRounds(10, 4)).toBe(4);
+    expect(classicTotalRounds(10, null)).toBe(9);
+    expect(classicTotalRounds(20, null)).toBe(12);
+  });
+});
+
+describe("restBalanceText", () => {
+  test("desigual: dice cuántos juegan un partido más", () => {
+    const b = restBalance({ count: 10, courts: 2, mode: "individual", rounds: 4 });
+    expect(restBalanceText(b, false)).toBe("2 jugadores jugarán 4 partidos y 8 jugarán 3.");
+  });
+
+  test("singular y parejas", () => {
+    const b = restBalance({ count: 5, courts: 2, mode: "pairs", rounds: 2 });
+    // 5 parejas, 2 pistas: descansa 1 por ronda; 2 rondas -> 2 descansos: 2 parejas descansan 1, 3 no
+    expect(restBalanceText(b, true)).toBe("3 parejas jugarán 2 partidos y 2 jugarán 1.");
+    const one = { equal: false, restPerRound: 1, more: { count: 1, plays: 3 }, less: { count: 4, plays: 2 } };
+    expect(restBalanceText(one, false)).toBe("1 jugador jugará 3 partidos y 4 jugarán 2.");
+  });
+
+  test("igual: todos juegan lo mismo", () => {
+    const b = restBalance({ count: 10, courts: 2, mode: "individual", rounds: 5 });
+    expect(restBalanceText(b, false)).toBe("Todos juegan 4 partidos.");
   });
 });

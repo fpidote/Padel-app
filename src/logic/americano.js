@@ -172,7 +172,7 @@ export function precomputeAllRounds(entities, config) {
   // Pairs mode: sin pre-cálculo nivel-aware; retornar null para que el caller lo omita
   if (isPairs) return { rounds: null, warnings: [] };
 
-  const totalRounds = maxRounds ?? Math.min(entities.length - 1, 12); // cap matches existing stub formula
+  const totalRounds = classicTotalRounds(entities.length, maxRounds);
   const activeCourts = Math.min(courts, Math.floor(entities.length / 4));
 
   // ALGO-05: Pre-comprobación de restricción imposible (D-12)
@@ -515,6 +515,50 @@ export function duplicateNameKeys(players) {
 
 // Con una sola ronda cada jugador juega un único partido con una única pareja: no hay Americano.
 export const MIN_ROUNDS = 2;
+
+// Rondas reales de un Americano Clásico: las fijadas o, si se deja "Ilimitadas", jugadores menos uno con
+// un tope de 12.
+export const classicTotalRounds = (count, maxRounds) => maxRounds ?? Math.min(count - 1, 12);
+
+// ¿Todos juegan los mismos partidos? Con jugadores (o parejas) de sobra descansan `restPerRound` por
+// ronda; si esos descansos no se reparten exactos, unos juegan un partido más que otros. Devuelve null
+// cuando nadie descansa.
+export function restBalance({ count, courts, mode, rounds }) {
+  const units = mode === "pairs" ? 2 : 4;
+  const activeCourts = Math.min(courts, Math.floor(count / units));
+  const restPerRound = count - activeCourts * units;
+  if (restPerRound <= 0) return null;
+  const totalRests = rounds * restPerRound;
+  const baseRests = Math.floor(totalRests / count);
+  const extra = totalRests % count; // entidades que descansan una vez más
+  if (extra === 0) return { equal: true, restPerRound, plays: rounds - baseRests };
+  return {
+    equal: false,
+    restPerRound,
+    more: { count: count - extra, plays: rounds - baseRests },
+    less: { count: extra, plays: rounds - baseRests - 1 },
+  };
+}
+
+// Frase para el organizador sobre cómo quedan repartidos los partidos.
+export function restBalanceText(b, isPairs) {
+  if (!b) return "";
+  if (b.equal) return `Todos juegan ${b.plays} ${b.plays === 1 ? "partido" : "partidos"}.`;
+  const noun = (n) => (isPairs ? (n === 1 ? "pareja" : "parejas") : (n === 1 ? "jugador" : "jugadores"));
+  const verb = (n) => (n === 1 ? "jugará" : "jugarán");
+  const games = (n) => (n === 1 ? "partido" : "partidos");
+  return `${b.more.count} ${noun(b.more.count)} ${verb(b.more.count)} ${b.more.plays} ${games(b.more.plays)} y ${b.less.count} ${verb(b.less.count)} ${b.less.plays}.`;
+}
+
+// Cantidades de rondas (desde el mínimo, hasta 12) con las que todos juegan lo mismo.
+export function fairRoundOptions({ count, courts, mode }) {
+  const options = [];
+  for (let rounds = MIN_ROUNDS; rounds <= 12; rounds++) {
+    const b = restBalance({ count, courts, mode, rounds });
+    if (b?.equal) options.push({ rounds, plays: b.plays });
+  }
+  return options;
+}
 
 // Sin límite de rondas ("Ilimitadas" en Mexicano y parejas) nadie marca cuál es la última: el organizador
 // decide cuándo cerrar, a partir del mínimo de rondas.

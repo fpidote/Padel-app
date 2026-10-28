@@ -52,9 +52,9 @@ describe("MatchFormatPicker", () => {
     expect(at(html, "Games para ganar")).toBeLessThan(at(html, "Mejor de 3 sets"));
   });
 
-  it("por tiempo pregunta qué cuenta para la tabla", () => {
+  it("por tiempo pregunta qué se anota en cada partido", () => {
     const html = render({ scoringSystem: "timed" });
-    expect(html).toContain("Qué cuenta para la tabla");
+    expect(html).toContain("Qué se anota en cada partido");
     expect(html).toContain("Games ganados");
     expect(html).toContain("Puntos acumulados");
   });

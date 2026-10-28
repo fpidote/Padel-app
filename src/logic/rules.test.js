@@ -49,3 +49,22 @@ describe("reglas escritas de la Liga", () => {
     expect(liga({ scoringFormat: "games", scoringSystem: "games" })).not.toContain("tie-break");
   });
 });
+
+describe("reglas escritas: cómo se clasifica el Americano", () => {
+  it("T-RUL-08: dice que la tabla ordena por partidos ganados y luego por diferencia, no por games sumados", () => {
+    const text = americano({ scoringSystem: "timed", timedMetric: "games" });
+    expect(text).toContain("partidos ganados");
+    expect(text).toContain("diferencia de juegos");
+    expect(text).not.toContain("Se cuentan");
+  });
+
+  it("T-RUL-09: con puntos acumulados habla de diferencia de puntos", () => {
+    expect(americano({ scoringSystem: "timed", timedMetric: "points" })).toContain("diferencia de puntos");
+  });
+
+  it("T-RUL-10: en modo manual ya no dice que gana quien acumule más juegos", () => {
+    const text = americano({ matchmaking: "manual", scoringSystem: "timed", timedMetric: "games" });
+    expect(text).not.toContain("acumule más");
+    expect(text).toContain("partidos ganados");
+  });
+});

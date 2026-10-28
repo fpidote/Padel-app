@@ -1266,7 +1266,7 @@ function StandingsAmericano({ rows, rounds, podium, finished, roundNum, useLevel
         )}
       </div>
       <div className="text-[11px] text-[#475569] px-4 pb-2.5">
-        1º Puntos · 2º Diferencia ({labels.diff}) · 3º {labels.plus} a favor · {labels.minus} en contra · PJ partidos jugados
+        1º PTS (1 por partido ganado) · 2º Diferencia ({labels.diff}) · 3º {labels.plus} a favor · {labels.minus} en contra · PJ partidos jugados
       </div>
       <table className="w-full border-collapse">
         <thead>
