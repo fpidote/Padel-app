@@ -1,5 +1,5 @@
 // src/components/play/PlayLiga.jsx
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { generateRules } from "../../logic/constants";
 import { advanceBracket, unadvanceBracket, canEditBracketMatch, bracketRoundName, bracketPodium, bracketSemifinalLosers } from "../../logic/relampago";
 import {
@@ -19,6 +19,7 @@ import {
   ligaQualifiedPairs,
   ligaRoundDone,
   ligaCurrentRound,
+  renameLigaPlayer,
 } from "../../logic/liga";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import MatchCard from "../shared/MatchCard";
@@ -28,11 +29,16 @@ import { clearScoreInputs } from "../../logic/sets";
 import RestingNote from "../shared/RestingNote";
 import { showToast } from "../../logic/toast";
 import { sortStandings, standingsLabels } from "../../logic/standings";
+import { RoleContext } from "../shared/RoleContext";
+import { helperAllows } from "../../logic/helpers";
 
 export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTournament }) {
   const [tab, setTab] = useState("fixture");
   const [ls, setLs] = useState({});
-  const [confirm, setConfirm] = useState(null); // { kind: "delete" | "start" | "reopen" | "finish", matchId? }
+  const [confirm, setConfirm] = useState(null); // { kind: "delete" | "start" | "reopen" | "finish" | "next", matchId? }
+  const [renameModal, setRenameModal] = useState(null); // { names: { [pairId]: { p1, p2 } }, error? }
+  const { isHelper } = useContext(RoleContext);
+  const canRename = isAdmin && helperAllows(isHelper, t, "rename");
   // Jornada que se ve (número) o "all". Abre en la primera con partidos pendientes y no salta sola al completarla
   const [roundView, setRoundView] = useState(() => ligaCurrentRound(t.rounds, t.matches));
 
@@ -105,6 +111,29 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
     } catch (err) {
       console.error("Error al finalizar el torneo:", err);
       showToast("No se pudo finalizar el torneo. Inténtalo de nuevo.");
+    }
+  }
+
+  async function handleRenameConfirm() {
+    if (!renameModal) return;
+    let patch = { pairs: t.pairs, matches: t.matches, knockoutBracket: t.knockoutBracket };
+    for (const pair of t.pairs || []) {
+      for (const field of ["p1", "p2"]) {
+        const value = renameModal.names[pair.id]?.[field] ?? pair[field];
+        if (!value.trim()) {
+          setRenameModal((prev) => ({ ...prev, error: "Ningún nombre puede quedar vacío." }));
+          return;
+        }
+        if (value.trim() === pair[field]) continue;
+        patch = { ...patch, ...renameLigaPlayer({ ...t, ...patch }, pair.id, field, value) };
+      }
+    }
+    try {
+      await persist({ ...t, ...patch });
+      setRenameModal(null);
+    } catch (err) {
+      console.error("Error al renombrar jugador:", err);
+      setRenameModal((prev) => (prev ? { ...prev, error: "No se pudo guardar el nombre. Intenta de nuevo." } : null));
     }
   }
 
@@ -219,7 +248,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
             )}
             {/* ── Selector de jornadas ── */}
             {sortedRounds.length > 1 && (
-              <div className="flex gap-1.5 overflow-x-auto pb-1">
+              <div className="flex flex-wrap gap-1.5">
                 {sortedRounds.map((r) => (
                   <button
                     key={r.round}
@@ -227,7 +256,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                     onClick={() => setRoundView(r.round)}
                     className="shrink-0 p-[6px_12px] rounded-lg text-[13px] font-bold border-0 cursor-pointer"
                     style={{
-                      background: shownRound === r.round ? "#db2777" : "#1f2937",
+                      background: shownRound === r.round ? "#0284c7" : "#1f2937",
                       color: shownRound === r.round ? "#fff" : ligaRoundDone(matches, r.round) ? "#4ade80" : "#64748b",
                     }}
                   >
@@ -238,7 +267,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                   data-testid="chip-jornada-todas"
                   onClick={() => setRoundView("all")}
                   className="shrink-0 p-[6px_12px] rounded-lg text-[13px] font-bold border-0 cursor-pointer"
-                  style={{ background: shownRound === "all" ? "#db2777" : "#1f2937", color: shownRound === "all" ? "#fff" : "#94a3b8" }}
+                  style={{ background: shownRound === "all" ? "#0284c7" : "#1f2937", color: shownRound === "all" ? "#fff" : "#94a3b8" }}
                 >
                   Todas
                 </button>
@@ -267,7 +296,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
             {nextRound && ligaRoundDone(matches, shownRound) && (
               <button
                 data-testid="btn-siguiente-jornada"
-                onClick={() => setRoundView(nextRound.round)}
+                onClick={() => (isAdmin ? setConfirm({ kind: "next" }) : setRoundView(nextRound.round))}
                 className="w-full bg-[#1f2937] border border-[#374151] text-gray-100 font-bold rounded-xl py-3 text-sm cursor-pointer"
               >
                 Siguiente jornada →
@@ -298,6 +327,15 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                 semifinalists={bracketSemifinalLosers(t.knockoutBracket)}
                 finished={finished}
               />
+            )}
+            {canRename && (
+              <button
+                data-testid="btn-renombrar"
+                onClick={() => setRenameModal({ names: {} })}
+                className="w-full mb-3 bg-[#1f2937] border border-[#374151] text-gray-300 font-bold rounded-xl py-3 text-sm cursor-pointer"
+              >
+                ✏️ Renombrar jugadores
+              </button>
             )}
             <PairStandings
               pairs={t.pairs || []}
@@ -446,6 +484,57 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
         )}
       </div>
 
+      {confirm?.kind === "next" && nextRound && (
+        <SimpleModal
+          icon="➔"
+          message={`Vas a pasar a la jornada ${nextRound.round}. Podrás seguir corrigiendo los resultados de las jornadas anteriores. ¿Continuar?`}
+          confirmLabel="Siguiente jornada"
+          danger={false}
+          onClose={() => setConfirm(null)}
+          onConfirm={() => {
+            setConfirm(null);
+            setRoundView(nextRound.round);
+          }}
+        />
+      )}
+      {renameModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4" onClick={() => setRenameModal(null)}>
+          <div className="bg-[#1e293b] rounded-2xl border border-[#334155] p-6 w-full max-w-sm max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-gray-50 font-bold text-base mb-4">Cambiar nombres</h3>
+            <div className="flex flex-col gap-2 mb-3">
+              {(t.pairs || []).map((pair) => (
+                <div key={pair.id} className="flex gap-2">
+                  {["p1", "p2"].map((field) => (
+                    <input
+                      key={field}
+                      aria-label={`Jugador ${field === "p1" ? 1 : 2} de ${pair.p1} / ${pair.p2}`}
+                      value={renameModal.names[pair.id]?.[field] ?? pair[field]}
+                      onChange={(e) =>
+                        setRenameModal((prev) => ({
+                          ...prev,
+                          error: null,
+                          names: { ...prev.names, [pair.id]: { ...prev.names[pair.id], [field]: e.target.value } },
+                        }))
+                      }
+                      className="min-w-0 flex-1 bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-2 text-gray-50 text-sm font-bold outline-none focus:border-[#38bdf8]"
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+            {renameModal.error && <p className="text-xs text-red-400 mb-3">{renameModal.error}</p>}
+            <p className="text-xs text-amber-400/80 mb-5">Este cambio se reflejará en todas las jornadas, tablas y la eliminatoria.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setRenameModal(null)} className="flex-1 py-2 rounded-lg border border-[#334155] text-gray-400 text-sm font-bold cursor-pointer">
+                Cancelar
+              </button>
+              <button onClick={handleRenameConfirm} className="flex-1 py-2 rounded-lg bg-[#38bdf8] text-[#0f172a] text-sm font-black cursor-pointer">
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {confirm?.kind === "delete" && (
         <SimpleModal
           icon="🗑️"

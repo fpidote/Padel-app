@@ -45,12 +45,14 @@ export default function HelpersModal({ code, t, persist, onClose }) {
           enlace iniciando sesión con Google. Debe ser el correo con el que esa persona inicia sesión.
         </p>
 
-        {t?.type === "americano" && (
+        {(t?.type === "americano" || t?.type === "liga") && (
           <div className="mb-4 space-y-2">
-            <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
-              <input type="checkbox" data-testid="perm-niveles" checked={!!perms.levels} onChange={() => togglePerm("levels")} />
-              Los ayudantes pueden ver los niveles de los jugadores
-            </label>
+            {t.type === "americano" && (
+              <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+                <input type="checkbox" data-testid="perm-niveles" checked={!!perms.levels} onChange={() => togglePerm("levels")} />
+                Los ayudantes pueden ver los niveles de los jugadores
+              </label>
+            )}
             <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
               <input type="checkbox" data-testid="perm-renombrar" checked={!!perms.rename} onChange={() => togglePerm("rename")} />
               Los ayudantes pueden renombrar jugadores

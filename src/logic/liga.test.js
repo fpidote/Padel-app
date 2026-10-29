@@ -18,6 +18,7 @@ import {
   finishPatch,
   ligaRestingPairs,
   ligaQualifiedPairs,
+  renameLigaPlayer,
 } from "./liga.js";
 import { generateRules } from "./constants.js";
 
@@ -628,5 +629,36 @@ describe("selector de jornadas", () => {
     expect(ligaCurrentRound(rounds, [m(1, true), m(2, true), m(3, true)])).toBe(3);
     expect(ligaCurrentRound([], [])).toBe(1);
     expect(ligaCurrentRound([{ round: 3 }, { round: 1 }, { round: 2 }], [m(1, true), m(2, false), m(3, false)])).toBe(2);
+  });
+});
+
+describe("renameLigaPlayer", () => {
+  const A = { id: 1, p1: "Ana", p2: "Bea" };
+  const B = { id: 2, p1: "Cris", p2: "Dani" };
+  const t = {
+    pairs: [A, B],
+    matches: [{ id: "m1", pairA: A, pairB: B, saved: true }],
+    knockoutBracket: [{ id: "k1", pairA: A, pairB: B, winner: A }],
+  };
+
+  test("T-LIGA-RN-1: propaga el nombre en parejas, partidos y cuadro por id", () => {
+    const patch = renameLigaPlayer(t, 1, "p2", "  Bárbara ");
+    expect(patch.pairs[0]).toEqual({ id: 1, p1: "Ana", p2: "Bárbara" });
+    expect(patch.matches[0].pairA.p2).toBe("Bárbara");
+    expect(patch.knockoutBracket[0].pairA.p2).toBe("Bárbara");
+    expect(patch.knockoutBracket[0].winner.p2).toBe("Bárbara");
+  });
+
+  test("T-LIGA-RN-2: no toca otras parejas ni añade claves ausentes", () => {
+    const patch = renameLigaPlayer(t, 1, "p1", "Anita");
+    expect(patch.pairs[1]).toEqual(B);
+    expect(patch.matches[0].pairB).toEqual(B);
+    expect("loser" in patch.matches[0]).toBe(false);
+  });
+
+  test("T-LIGA-RN-3: nombre vacío o campo inválido devuelve null; sin cuadro no lo crea", () => {
+    expect(renameLigaPlayer(t, 1, "p1", "   ")).toBeNull();
+    expect(renameLigaPlayer(t, 1, "id", "X")).toBeNull();
+    expect("knockoutBracket" in renameLigaPlayer({ pairs: [A], matches: [] }, 1, "p1", "Z")).toBe(false);
   });
 });

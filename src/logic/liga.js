@@ -258,3 +258,20 @@ export function ligaCurrentRound(rounds, matches) {
   if (numbers.length === 0) return 1;
   return numbers.find((n) => !ligaRoundDone(matches, n)) ?? numbers[numbers.length - 1];
 }
+
+// ── Renombrar jugadores ──────────────────────────────────────
+// Los partidos y el cuadro guardan copias de la pareja, así que el nombre nuevo se propaga por id.
+// Devuelve el patch para persist, o null si el nombre queda vacío o el campo no es p1/p2.
+export function renameLigaPlayer(t, pairId, field, name) {
+  const trimmed = (name || "").trim();
+  if (!trimmed || (field !== "p1" && field !== "p2")) return null;
+  const rename = (p) => (p && p.id === pairId ? { ...p, [field]: trimmed } : p);
+  const renameMatch = (m) => {
+    const out = { ...m };
+    for (const key of ["pairA", "pairB", "winner", "loser"]) if (m[key]) out[key] = rename(m[key]);
+    return out;
+  };
+  const patch = { pairs: (t.pairs || []).map(rename), matches: (t.matches || []).map(renameMatch) };
+  if (t.knockoutBracket) patch.knockoutBracket = t.knockoutBracket.map(renameMatch);
+  return patch;
+}
