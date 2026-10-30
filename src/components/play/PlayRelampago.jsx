@@ -1,5 +1,5 @@
 // src/components/play/PlayRelampago.jsx
-import { useState, useRef, useEffect, Fragment } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, Fragment } from "react";
 import { generateRules } from "../../logic/constants";
 import { advanceBracket, canEditBracketMatch, countPlayed, bracketRoundName, relampagoPodium, relampagoCanFinish, relampagoRankingOrder, startEditBracketMatch, cancelEditBracketMatch, correctBracketMatch, adminBracketMatchView } from "../../logic/relampago";
 import { matchScoreState, isSetsFormat } from "../../logic/matchScore";
@@ -273,6 +273,39 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
   );
 }
 
+// Hueco de un partido en el cuadro: centrado en su línea. Abierto puede ser más alto que su hueco, así que
+// se desplaza lo justo para no salirse por arriba (tapando el título de la ronda) ni por abajo del cuadro.
+function BracketSlot({ centerY, containerHeight, open, children }) {
+  const ref = useRef(null);
+  const [shift, setShift] = useState(0);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!open || !el) {
+      setShift(0);
+      return undefined;
+    }
+    const fit = () => {
+      const h = el.offsetHeight;
+      const top = centerY - h / 2;
+      setShift(Math.max(0, Math.min(top, containerHeight - h)) - top);
+    };
+    fit();
+    // La tarjeta crece al añadir filas de set
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fit);
+    ro?.observe(el);
+    return () => ro?.disconnect();
+  }, [open, centerY, containerHeight]);
+  return (
+    <div
+      ref={ref}
+      className={`absolute left-0 right-0 -translate-y-1/2 ${open ? "z-20" : "z-[1]"}`}
+      style={{ top: centerY + shift }}
+    >
+      {children}
+    </div>
+  );
+}
+
 function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, onCancel, finished, isRematch = false, canEditMatch = () => true, accentColor, scoringFormat }) {
   // La tarjeta abierta se eleva: con sets es más alta que su slot y se solaparía con la siguiente
   const [openId, setOpenId] = useState(null);
@@ -373,11 +406,7 @@ function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, onCancel, fi
                   if (match.pairA?.id === "bye" && match.pairB?.id === "bye") return null;
                   const centerY = matchCenterY(roundMatches.length, mi);
                   return (
-                    <div
-                      key={match.id}
-                      className={`absolute left-0 right-0 -translate-y-1/2 ${openId === match.id ? "z-20" : "z-[1]"}`}
-                      style={{ top: centerY }}
-                    >
+                    <BracketSlot key={match.id} centerY={centerY} containerHeight={containerHeight} open={openId === match.id}>
                       <BracketMatchCard
                         match={isAdmin ? adminBracketMatchView(match) : match}
                         isAdmin={isAdmin}
@@ -392,7 +421,7 @@ function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, onCancel, fi
                         scoringFormat={scoringFormat}
                         onToggle={(open) => setOpenId(open ? match.id : null)}
                       />
-                    </div>
+                    </BracketSlot>
                   );
                 })}
               </div>

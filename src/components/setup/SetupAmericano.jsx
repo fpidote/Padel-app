@@ -562,7 +562,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
                       onClick={() => { setRoundsCustom(""); setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); persist({ ...t, config: { ...t.config, maxRounds: n } }); }}
                       className={`px-3 py-2 rounded-xl text-sm font-bold cursor-pointer transition-colors ${(t.config.maxRounds ?? null) === n ? "text-white" : "bg-[#374151] text-[#94a3b8]"}`}
                       style={(t.config.maxRounds ?? null) === n ? { background: COLOR } : undefined}
-                    >{n === null ? "Ilimitadas" : n}</button>
+                    >{n === null ? (!isPairs && matchmakingMode === "americano" ? `Automáticas (${classicTotalRounds(tot, null)})` : "Ilimitadas") : n}</button>
                   ))}
                   <input type="number" value={roundsCustom} onChange={e => handleRoundsCustom(e.target.value)} placeholder="Otro" min={MIN_ROUNDS} max={30} className="w-16 py-2 rounded-lg text-sm text-center font-bold outline-none bg-[#374151] text-gray-300 placeholder:text-gray-600 shrink-0" />
                 </div>
