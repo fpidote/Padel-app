@@ -1,5 +1,5 @@
 // src/components/play/PlayMundialito.jsx
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { generateRules } from "../../logic/constants";
 import { advanceBracket, unadvanceBracket, canEditBracketMatch, bracketRoundName, bracketPodium, bracketSemifinalLosers } from "../../logic/relampago";
 import {
@@ -31,6 +31,13 @@ export default function PlayMundialito({
   const [ls, setLs] = useState({});
   const [confirm, setConfirm] = useState(null); // { kind: "delete" | "start" | "reopen" | "finish", groupId?, matchId? }
   const locked = mundialitoGroupsLocked(t);
+
+  // Quien está mirando Grupos pasa a Eliminatoria cuando el organizador la inicia; quien está en otra pestaña se queda
+  const prevPhase = useRef(t.phase);
+  useEffect(() => {
+    if (prevPhase.current !== "knockout" && t.phase === "knockout") setTab((cur) => (cur === "groups" ? "knockout" : cur));
+    prevPhase.current = t.phase;
+  }, [t.phase]);
 
   const isSetFormat =
     t.config?.scoringFormat === "sets3" || t.config?.scoringFormat === "sets5";
@@ -304,13 +311,16 @@ export default function PlayMundialito({
                     </div>
                   </div>
                   {sortStandings(group.standings, group.matches)
-                    .map((s, si) => (
+                    .map((s, si) => {
+                      // Sin partidos guardados nadie está clasificado: la marca saldría solo por el orden de la lista
+                      const started = group.matches.some((m) => m.saved);
+                      return (
                       <div
                         key={s.id}
                         className="flex items-center rounded-[4px] px-2 py-[6px] text-[13px]"
                         style={{
                           background:
-                            si < (t.config.advancePerGroup || 2)
+                            started && si < (t.config.advancePerGroup || 2)
                               ? "#16a34a22"
                               : "transparent",
                         }}
@@ -318,8 +328,8 @@ export default function PlayMundialito({
                         <div
                           className="flex-1 font-bold text-[#f1f5f9]"
                         >
-                          {si < (t.config.advancePerGroup || 2) && "⚡ "}
-                          {si === (t.config.advancePerGroup || 2) && t.config.extraQualifiers > 0 && "🔸 "}
+                          {started && si < (t.config.advancePerGroup || 2) && "⚡ "}
+                          {started && si === (t.config.advancePerGroup || 2) && t.config.extraQualifiers > 0 && "🔸 "}
                           {s.p1} / {s.p2}
                         </div>
                         <div
@@ -353,7 +363,8 @@ export default function PlayMundialito({
                           {s.wins}
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                 </div>
 
                 <div>
