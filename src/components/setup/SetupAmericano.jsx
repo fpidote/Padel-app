@@ -557,13 +557,17 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
               <>
                 <SectionHeader>🔄 Rondas</SectionHeader>
                 <div className="flex gap-2 flex-wrap">
-                  {[null, 4, 6, 8, 10, 12].filter(n => n === null || isPairs || matchmakingMode !== "americano" || n !== classicTotalRounds(tot, null)).map(n => (
+                  {[null, 4, 6, 8, 10, 12].filter(n => n === null || isPairs || matchmakingMode !== "americano" || n !== classicTotalRounds(tot, null)).map(n => {
+                    // Elegir justo el número automático del Clásico equivale a "Automáticas": ese chip queda marcado
+                    const selected = (t.config.maxRounds ?? null) === n || (n === null && !isPairs && matchmakingMode === "americano" && t.config.maxRounds === classicTotalRounds(tot, null));
+                    return (
                     <button key={n ?? "ilim"}
                       onClick={() => { setRoundsCustom(""); setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); persist({ ...t, config: { ...t.config, maxRounds: n } }); }}
-                      className={`px-3 py-2 rounded-xl text-sm font-bold cursor-pointer transition-colors ${(t.config.maxRounds ?? null) === n ? "text-white" : "bg-[#374151] text-[#94a3b8]"}`}
-                      style={(t.config.maxRounds ?? null) === n ? { background: COLOR } : undefined}
+                      className={`px-3 py-2 rounded-xl text-sm font-bold cursor-pointer transition-colors ${selected ? "text-white" : "bg-[#374151] text-[#94a3b8]"}`}
+                      style={selected ? { background: COLOR } : undefined}
                     >{n === null ? (!isPairs && matchmakingMode === "americano" ? `Automáticas (${classicTotalRounds(tot, null)})` : "Ilimitadas") : n}</button>
-                  ))}
+                    );
+                  })}
                   <input type="number" value={roundsCustom} onChange={e => handleRoundsCustom(e.target.value)} placeholder="Otro" min={MIN_ROUNDS} max={30} className="w-16 py-2 rounded-lg text-sm text-center font-bold outline-none bg-[#374151] text-gray-300 placeholder:text-gray-600 shrink-0" />
                 </div>
                 {roundsError && <p data-testid="error-rondas" className="mt-2 text-xs font-semibold text-amber-400">⚠️ {roundsError}</p>}

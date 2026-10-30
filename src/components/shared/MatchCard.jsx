@@ -96,7 +96,7 @@ export default function MatchCard({
         </div>
       ) : (
         // Por games, o resultado ya guardado
-        <div className="grid grid-cols-[1fr_auto_1fr] gap-[10px] px-4 py-4">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-[10px] px-4 py-4">
           <PairNames pair={match.pairA} align="right" />
 
           <div className="flex items-center gap-1.5 self-center">

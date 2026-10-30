@@ -4,7 +4,7 @@
 export default function PairNames({ pair, align = "left", fallback = "Por definir" }) {
   const alignment = align === "right" ? "items-end text-right" : "items-start text-left";
   return (
-    <div className={`flex flex-col self-center text-sm font-bold leading-snug text-gray-50 ${alignment}`}>
+    <div className={`flex min-w-0 flex-col self-center [overflow-wrap:anywhere] text-sm font-bold leading-snug text-gray-50 ${alignment}`}>
       {pair ? (
         <>
           <span>{pair.p1}{"\u00A0/"}</span>{" "}
