@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { generateRules } from "../../logic/constants";
+import { generateRules, TOURNAMENT_TYPES } from "../../logic/constants";
 import {
   buildPozoRound,
   applyPozoRoundResults,
@@ -8,6 +8,12 @@ import {
 } from "../../logic/pozo";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import PairStandings from "../shared/PairStandings";
+import MatchShell from "../shared/match/MatchShell";
+import MatchActions from "../shared/match/MatchActions";
+import PairNames from "../shared/match/PairNames";
+import { ScoreBox, ScoreInput } from "../shared/match/ScoreBox";
+
+const ACCENT = TOURNAMENT_TYPES.find((tt) => tt.id === "pozo").color;
 
 function resultBadge(won, isTop, isBottom, hasSittingOut) {
   if (won) {
@@ -62,6 +68,20 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
   async function onEditCourt(ci) {
     const updated = t.currentPozoRound.map((c, i) =>
       i === ci ? { ...c, saved: false } : c,
+    );
+    await persist({ ...t, currentPozoRound: updated });
+  }
+
+  // Cancelar la corrección: el resultado que había vuelve a quedar guardado
+  async function onCancelEditCourt(ci) {
+    setLs((prev) => {
+      const n = { ...prev };
+      delete n[`${ci}_A`];
+      delete n[`${ci}_B`];
+      return n;
+    });
+    const updated = t.currentPozoRound.map((c, i) =>
+      i === ci ? { ...c, saved: true } : c,
     );
     await persist({ ...t, currentPozoRound: updated });
   }
@@ -267,119 +287,63 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
                   const isBottom      = court.courtNum === t.config.courts;
                   const hasSittingOut = (t.sittingOut?.length ?? 0) > 0;
 
+                  const badge = (won) => {
+                    const { text, cls } = resultBadge(won, isTop, isBottom, hasSittingOut);
+                    return <div className={`text-xs font-bold mt-0.5 ${cls}`}>{text}</div>;
+                  };
+                  const startEdit = isAdmin ? () => onEditCourt(ci) : undefined;
+                  const isEditing = !court.saved && court.scoreA != null && court.scoreA !== "";
+
                   return (
-                    <div
+                    <MatchShell
                       key={ci}
-                      className="bg-[#1f2937] rounded-2xl border overflow-hidden"
-                      style={{ borderColor: isTop ? "#f59e0b" : "#374151" }}
+                      label={`${isTop ? "👑 " : ""}PISTA ${court.courtNum}${isTop ? " · REY" : ""}`}
+                      accentColor={ACCENT}
+                      saved={court.saved}
+                      onEdit={court.saved ? startEdit : undefined}
                     >
-                      {/* Header */}
-                      <div className="flex justify-between items-center px-4 py-2.5 border-b border-gray-700">
-                        <span className="text-xs font-bold text-gray-500 tracking-widest">
-                          {isTop ? "👑 " : ""}PISTA {court.courtNum}
-                          {isTop && <span className="ml-2 text-yellow-400 normal-case tracking-normal font-semibold text-xs">Rey</span>}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          {!isTop && <span className="text-xs text-sky-400 font-semibold">↑ Ganador sube</span>}
-                          {court.saved && <span className="text-xs text-green-400 font-semibold">✅ Guardado</span>}
-                          {court.saved && isAdmin && (
-                            <button
-                              onClick={() => onEditCourt(ci)}
-                              className="text-xs font-semibold text-gray-500 hover:text-sky-400 bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded-lg cursor-pointer transition-colors"
-                            >
-                              ✏️ Editar
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                      {!isTop && <div className="pt-3 text-center text-xs text-sky-400 font-semibold">↑ Ganador sube</div>}
 
-                      {/* Body — grid 3 columnas */}
-                      <div className="grid px-4 py-4" style={{ gridTemplateColumns: "1fr auto 1fr", gap: "10px" }}>
-                        {/* Pareja A — derecha */}
+                      <div className="grid grid-cols-[1fr_auto_1fr] gap-[10px] px-4 py-4">
                         <div className="flex flex-col items-end self-center">
-                          <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Pareja A</div>
-                          <div className="text-sm font-bold text-gray-50 text-right">
-                            {court.pairA ? `${court.pairA.p1} / ${court.pairA.p2}` : "Por definir"}
-                          </div>
-                          {court.saved && (() => {
-                            const { text, cls } = resultBadge(
-                              parseInt(court.scoreA) > parseInt(court.scoreB),
-                              isTop, isBottom, hasSittingOut
-                            );
-                            return <div className={`text-xs font-bold mt-0.5 ${cls}`}>{text}</div>;
-                          })()}
+                          <PairNames pair={court.pairA} align="right" />
+                          {court.saved && badge(parseInt(court.scoreA) > parseInt(court.scoreB))}
                         </div>
 
-                        {/* Score centro */}
                         <div className="flex items-center gap-1.5 self-center">
                           {court.saved ? (
                             <>
-                              <div
-                                onClick={() => isAdmin && onEditCourt(ci)}
-                                title={isAdmin ? "Click para editar" : undefined}
-                                className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl font-black ${parseInt(court.scoreA) > parseInt(court.scoreB) ? "bg-green-500/10 border border-green-500/40 text-green-400" : "bg-gray-800 border border-gray-600 text-gray-400"} ${isAdmin ? "cursor-pointer" : ""}`}
-                              >
-                                {court.scoreA}
-                              </div>
-                              <span className="text-gray-600 font-black text-lg">-</span>
-                              <div
-                                onClick={() => isAdmin && onEditCourt(ci)}
-                                title={isAdmin ? "Click para editar" : undefined}
-                                className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl font-black ${parseInt(court.scoreB) > parseInt(court.scoreA) ? "bg-green-500/10 border border-green-500/40 text-green-400" : "bg-gray-800 border border-gray-600 text-gray-400"} ${isAdmin ? "cursor-pointer" : ""}`}
-                              >
-                                {court.scoreB}
-                              </div>
+                              <ScoreBox value={court.scoreA} won={parseInt(court.scoreA) > parseInt(court.scoreB)} onClick={startEdit} />
+                              <span className="text-gray-600 font-black text-lg">–</span>
+                              <ScoreBox value={court.scoreB} won={parseInt(court.scoreB) > parseInt(court.scoreA)} onClick={startEdit} />
                             </>
                           ) : isAdmin ? (
                             <>
-                              <input
-                                type="number" min="0"
-                                value={sA}
-                                onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
-                                onChange={(e) => setLs((p) => ({ ...p, [`${ci}_A`]: e.target.value }))}
-                                className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-700 text-center text-xl font-black text-sky-400 outline-none focus:border-sky-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              />
-                              <span className="text-gray-600 font-black text-lg">-</span>
-                              <input
-                                type="number" min="0"
-                                value={sB}
-                                onKeyDown={(e) => ["-", "e", ".", ","].includes(e.key) && e.preventDefault()}
-                                onChange={(e) => setLs((p) => ({ ...p, [`${ci}_B`]: e.target.value }))}
-                                className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-700 text-center text-xl font-black text-sky-400 outline-none focus:border-sky-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              />
+                              <ScoreInput accentColor={ACCENT} value={sA} onChange={(v) => setLs((p) => ({ ...p, [`${ci}_A`]: v }))} />
+                              <span className="text-gray-600 font-black text-lg">–</span>
+                              <ScoreInput accentColor={ACCENT} value={sB} onChange={(v) => setLs((p) => ({ ...p, [`${ci}_B`]: v }))} />
                             </>
                           ) : (
                             <span className="text-gray-600 font-black text-lg">–</span>
                           )}
                         </div>
 
-                        {/* Pareja B — izquierda */}
                         <div className="flex flex-col items-start self-center">
-                          <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Pareja B</div>
-                          <div className="text-sm font-bold text-gray-50">
-                            {court.pairB ? `${court.pairB.p1} / ${court.pairB.p2}` : "Por definir"}
-                          </div>
-                          {court.saved && (() => {
-                            const { text, cls } = resultBadge(
-                              parseInt(court.scoreB) > parseInt(court.scoreA),
-                              isTop, isBottom, hasSittingOut
-                            );
-                            return <div className={`text-xs font-bold mt-0.5 ${cls}`}>{text}</div>;
-                          })()}
+                          <PairNames pair={court.pairB} align="left" />
+                          {court.saved && badge(parseInt(court.scoreB) > parseInt(court.scoreA))}
                         </div>
                       </div>
 
-                      {isAdmin && !court.saved && valid && (
-                        <div className="px-4 pb-3">
-                          <button
-                            onClick={() => onSaveCourt(ci)}
-                            className="w-full py-2.5 rounded-xl text-sm font-bold bg-[#d97706] hover:bg-[#b45309] text-white cursor-pointer transition-colors"
-                          >
-                            Guardar resultado
-                          </button>
-                        </div>
+                      {isAdmin && !court.saved && (
+                        <MatchActions
+                          isEditing={isEditing}
+                          canSave={valid}
+                          onSave={() => onSaveCourt(ci)}
+                          onCancel={() => onCancelEditCourt(ci)}
+                          accentColor={ACCENT}
+                        />
                       )}
-                    </div>
+                    </MatchShell>
                   );
                 })}
 
