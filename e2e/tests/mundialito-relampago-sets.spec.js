@@ -238,7 +238,7 @@ test("Relámpago por sets: guarda sets, actualiza posiciones y conserva las esta
 
   // Corregir: las estadísticas no cambian hasta guardar; cancelar lo deja todo igual
   await page.getByRole("button", { name: /Cuadro$/ }).first().click();
-  await page.getByText("✏️ Corregir resultado").first().click();
+  await page.getByText("✏️ Editar").first().click();
   await expect.poll(async () => (await getTournamentData(CODE)).bracket.find((m) => m.id === first.id).editing).toBe(true);
   data = await getTournamentData(CODE);
   expect(data.bracket.find((m) => m.id === first.id).saved).toBe(true);

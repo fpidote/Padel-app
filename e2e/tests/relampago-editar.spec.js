@@ -31,7 +31,7 @@ test("corregir mantiene el resultado para el espectador, valida el marcador, can
   await page.goto(`/torneo/${CODE}`);
   await page.evaluate(async (t) => { await window.__e2eSignIn(t); }, await getTestToken());
 
-  await page.getByText("✏️ Corregir resultado").first().click();
+  await page.getByText("✏️ Editar").first().click();
   await expect.poll(async () => (await partido()).editing, { timeout: 8000 }).toBe(true);
   expect(await partido()).toMatchObject({ saved: true, scoreA: "6", scoreB: "2" });
 
@@ -54,7 +54,7 @@ test("corregir mantiene el resultado para el espectador, valida el marcador, can
   expect(await partido()).toMatchObject({ saved: true, scoreA: "6", scoreB: "2" });
 
   // Corregir a favor de la otra pareja y guardar con Enter
-  await page.getByText("✏️ Corregir resultado").first().click();
+  await page.getByText("✏️ Editar").first().click();
   await expect.poll(async () => (await partido()).editing, { timeout: 8000 }).toBe(true);
   await casillas.nth(0).fill("3");
   await casillas.nth(1).fill("6");

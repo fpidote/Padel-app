@@ -59,7 +59,7 @@ test("con 5 parejas los pasa directo avanzan solos y el partido real enruta gana
   await page.screenshot({ path: "test-results/cuadro-byes-390.png", fullPage: true });
 
   // Corregir: el resultado sigue publicado hasta guardar la corrección
-  await page.getByText("✏️ Corregir resultado").first().click();
+  await page.getByText("✏️ Editar").first().click();
   await expect.poll(async () => (await getTournamentData(CODE)).bracket.find((m) => m.id === real.id).editing).toBe(true);
   d = await getTournamentData(CODE);
   expect(d.bracket.find((m) => m.id === real.id).saved).toBe(true);

@@ -1,6 +1,6 @@
 // src/components/play/PlayLiga.jsx
 import { useState, useContext } from "react";
-import { generateRules } from "../../logic/constants";
+import { generateRules, TOURNAMENT_TYPES } from "../../logic/constants";
 import { advanceBracket, unadvanceBracket, canEditBracketMatch, bracketRoundName, bracketPodium, bracketSemifinalLosers } from "../../logic/relampago";
 import {
   recomputeLigaStandings,
@@ -31,6 +31,8 @@ import { showToast } from "../../logic/toast";
 import { sortStandings, standingsLabels } from "../../logic/standings";
 import { RoleContext } from "../shared/RoleContext";
 import { helperAllows } from "../../logic/helpers";
+
+const ACCENT = TOURNAMENT_TYPES.find((tt) => tt.id === "liga").color;
 
 export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTournament }) {
   const [tab, setTab] = useState("fixture");
@@ -256,7 +258,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                     onClick={() => setRoundView(r.round)}
                     className="shrink-0 p-[6px_12px] rounded-lg text-[13px] font-bold border-0 cursor-pointer"
                     style={{
-                      background: shownRound === r.round ? "#0284c7" : "#1f2937",
+                      background: shownRound === r.round ? ACCENT : "#1f2937",
                       color: shownRound === r.round ? "#fff" : ligaRoundDone(matches, r.round) ? "#4ade80" : "#64748b",
                     }}
                   >
@@ -267,7 +269,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                   data-testid="chip-jornada-todas"
                   onClick={() => setRoundView("all")}
                   className="shrink-0 p-[6px_12px] rounded-lg text-[13px] font-bold border-0 cursor-pointer"
-                  style={{ background: shownRound === "all" ? "#0284c7" : "#1f2937", color: shownRound === "all" ? "#fff" : "#94a3b8" }}
+                  style={{ background: shownRound === "all" ? ACCENT : "#1f2937", color: shownRound === "all" ? "#fff" : "#94a3b8" }}
                 >
                   Todas
                 </button>
@@ -439,7 +441,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                           locked={
                             match.saved && (finished || !canEditBracketMatch(t.knockoutBracket, match.id))
                           }
-                          accentColor="#db2777"
+                          accentColor={ACCENT}
                           scoringFormat={t.config?.scoringFormat || "sets3"}
                           stageLabel="FASE FINAL"
                         />
@@ -462,7 +464,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                       locked={
                         thirdMatch.saved && (finished || !canEditBracketMatch(t.knockoutBracket, thirdMatch.id))
                       }
-                      accentColor="#db2777"
+                      accentColor={ACCENT}
                       scoringFormat={t.config?.scoringFormat || "sets3"}
                     />
                   </div>
@@ -629,7 +631,7 @@ function LigaRoundAccordion({ round, single, matches, allMatches, isAdmin, ls, s
               onEdit={onEdit}
               onDelete={onDelete}
               locked={locked}
-              accentColor="#db2777"
+              accentColor={ACCENT}
               scoringFormat={scoringFormat}
               stageLabel="LIGA"
             />

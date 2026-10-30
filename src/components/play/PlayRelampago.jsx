@@ -2,7 +2,8 @@
 import { useState, useRef, useEffect, Fragment } from "react";
 import { generateRules } from "../../logic/constants";
 import { advanceBracket, canEditBracketMatch, countPlayed, bracketRoundName, relampagoPodium, relampagoCanFinish, relampagoRankingOrder, startEditBracketMatch, cancelEditBracketMatch, correctBracketMatch, adminBracketMatchView } from "../../logic/relampago";
-import { analyzeSets, validateGamesScore } from "../../logic/sets";
+import { matchScoreState, isSetsFormat } from "../../logic/matchScore";
+import { ScoreInput } from "../shared/match/ScoreBox";
 import { blockNonIntegerKey, goToNextScore } from "../../logic/scoreInput";
 import { applyMatchToPairs } from "../../logic/standings";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
@@ -22,9 +23,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
     onToggle?.(next);
   }
 
-  const isSetFormat = scoringFormat === "sets3" || scoringFormat === "sets5";
-  const maxSets = scoringFormat === "sets5" ? 5 : 3;
-  const setsNeeded = maxSets === 5 ? 3 : 2;
+  const isSetFormat = isSetsFormat(scoringFormat);
 
   // Al corregir un resultado la tarjeta se abre con lo que había escrito (también tras recargar)
   const editing = isAdmin && !!match.editing;
@@ -48,15 +47,17 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing]);
 
-  // Sets cargados hasta ahora, validados con las reglas del pádel
-  const live = analyzeSets(
-    Array.from({ length: maxSets }, (_, i) => ({
+  // Sets (o games) cargados hasta ahora, validados con las reglas del pádel
+  const aVal = ls[`${match.id}_A`] ?? "";
+  const bVal = ls[`${match.id}_B`] ?? "";
+  const { live, visibleSetRows, gamesError, isValid: canSave } = matchScoreState(scoringFormat, {
+    setRows: Array.from({ length: 5 }, (_, i) => ({
       a: ls[`${match.id}_set${i}_A`] ?? "",
       b: ls[`${match.id}_set${i}_B`] ?? "",
     })),
-    setsNeeded,
-  );
-  const visibleSetRows = live.finished ? live.sets.length : Math.min(live.sets.length + 1, maxSets);
+    gamesA: aVal,
+    gamesB: bVal,
+  });
 
   const isByeA = match.pairA?.id === "bye";
   const isByeB = match.pairB?.id === "bye";
@@ -64,13 +65,6 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
   const nameB = isByeB ? "Pasa directo" : (match.pairB ? `${match.pairB.p1} / ${match.pairB.p2}` : "Por definir");
   const isTBD = !match.pairA || !match.pairB;
   const isBye = isByeA || isByeB;
-
-  const aVal = ls[`${match.id}_A`] ?? "";
-  const bVal = ls[`${match.id}_B`] ?? "";
-  const gamesError = isSetFormat ? null : validateGamesScore(aVal, bVal);
-  const canSave = isSetFormat
-    ? live.finished
-    : aVal !== "" && bVal !== "" && !gamesError;
 
   const wonA = match.saved && match.winner?.id === match.pairA?.id;
   const wonB = match.saved && match.winner?.id === match.pairB?.id;
@@ -81,7 +75,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
       : `${match.pairA.p1} / ${match.pairA.p2}`;
     return (
       <div
-        className="bg-[#1e293b] rounded-[10px] border-l-[3px] p-[10px_14px] select-none"
+        className="bg-[#1f2937] rounded-xl border border-[#374151] border-l-[3px] p-[10px_14px] select-none"
         style={{ borderLeftColor: accentColor }}
       >
         <div className="text-sm font-bold text-slate-100 mb-1">
@@ -124,12 +118,12 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
   return (
     <div
       onClick={handleCardClick}
-      className="bg-[#1e293b] rounded-[10px] border-l-[3px] p-[12px_14px] relative select-none"
+      className="bg-[#1f2937] rounded-xl border border-[#374151] border-l-[3px] p-[12px_14px] relative select-none"
       style={{
         borderLeftColor: accentColor,
         cursor: !isAdmin || isTBD || isBye || match.saved ? "default" : "pointer",
-        // Abierta con sets desborda su slot: se ve como popover
-        boxShadow: expanded && isSetFormat ? "0 12px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.1)" : undefined,
+        // Abierta puede desbordar su slot: se ve como popover
+        boxShadow: expanded ? "0 12px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.1)" : undefined,
       }}
     >
       {match.saved && (
@@ -147,14 +141,14 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
           {nameA}
         </span>
         {expanded && !isSetFormat ? (
-          <input
-            type="number" min="0"
+          <ScoreInput
+            size="set"
+            accentColor={accentColor}
             value={aVal}
             onClick={(e) => e.stopPropagation()}
-            onChange={(e) => setLs((prev) => ({ ...prev, [`${match.id}_A`]: e.target.value }))}
+            onChange={(v) => setLs((prev) => ({ ...prev, [`${match.id}_A`]: v }))}
             onKeyDown={onScoreKey}
             data-score="" enterKeyHint="next"
-            className="w-9 h-7 rounded-md bg-[#0f172a] border border-[#334155] text-center text-sky-400 font-bold text-sm outline-none"
           />
         ) : (
           <span className="text-base font-extrabold min-w-7 text-right" style={{ color: match.saved ? (wonA ? "#4ade80" : "#475569") : "#334155" }}>
@@ -172,14 +166,14 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
           {nameB}
         </span>
         {expanded && !isSetFormat ? (
-          <input
-            type="number" min="0"
+          <ScoreInput
+            size="set"
+            accentColor={accentColor}
             value={bVal}
             onClick={(e) => e.stopPropagation()}
-            onChange={(e) => setLs((prev) => ({ ...prev, [`${match.id}_B`]: e.target.value }))}
+            onChange={(v) => setLs((prev) => ({ ...prev, [`${match.id}_B`]: v }))}
             onKeyDown={onScoreKey}
             data-score="" enterKeyHint="next"
-            className="w-9 h-7 rounded-md bg-[#0f172a] border border-[#334155] text-center text-sky-400 font-bold text-sm outline-none"
           />
         ) : (
           <span className="text-base font-extrabold min-w-7 text-right" style={{ color: match.saved ? (wonB ? "#4ade80" : "#475569") : "#334155" }}>
@@ -202,18 +196,19 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
         <div className="mt-2 flex flex-col gap-1.5">
           {Array.from({ length: visibleSetRows }).map((_, i) => (
             <div key={i} className="flex items-center gap-1.5">
-              <span className="w-9 text-[10px] font-bold text-slate-500">SET {i + 1}</span>
+              <span className="w-9 text-[10px] font-bold text-gray-500">SET {i + 1}</span>
               {["A", "B"].map((side, si) => (
                 <Fragment key={side}>
                   {si === 1 && <span className="font-bold text-slate-500">-</span>}
-                  <input
-                    type="number" min="0"
+                  <ScoreInput
+                    size="set"
+                    accentColor={accentColor}
+                    error={live.errorIndex === i}
                     value={ls[`${match.id}_set${i}_${side}`] ?? ""}
                     onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => setLs((prev) => ({ ...prev, [`${match.id}_set${i}_${side}`]: e.target.value }))}
+                    onChange={(v) => setLs((prev) => ({ ...prev, [`${match.id}_set${i}_${side}`]: v }))}
                     onKeyDown={onScoreKey}
-            data-score="" enterKeyHint="next"
-                    className={`w-9 h-7 rounded-md bg-[#0f172a] border text-center text-sm font-bold text-sky-400 outline-none ${live.errorIndex === i ? "border-red-500/60" : "border-[#334155]"}`}
+                    data-score="" enterKeyHint="next"
                   />
                 </Fragment>
               ))}
@@ -231,37 +226,41 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
         <p data-testid="games-error" className="mt-1.5 text-[11px] font-semibold text-amber-400">⚠️ {gamesError}</p>
       )}
 
-      {expanded && canSave && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            save();
-          }}
-          className="mt-2 w-full py-[5px] rounded-md text-white font-bold text-xs border-0 cursor-pointer"
-          style={{ background: accentColor }}
-        >
-          ✓ Guardar
-        </button>
-      )}
-
-      {editing && (
-        <button
-          type="button"
-          data-testid="btn-cancelar-edicion"
-          onClick={(e) => { e.stopPropagation(); onCancel(match.id); }}
-          className="mt-2 w-full py-1.5 rounded-md text-white font-bold text-xs border-0 cursor-pointer bg-red-700"
-        >
-          ✕ Cancelar
-        </button>
+      {(editing || (expanded && canSave)) && (
+        <div className="mt-2 flex gap-2">
+          {editing && (
+            <button
+              type="button"
+              data-testid="btn-cancelar-edicion"
+              onClick={(e) => { e.stopPropagation(); onCancel(match.id); }}
+              className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-red-700 hover:bg-red-600 text-white cursor-pointer border-0"
+            >
+              ✕ Cancelar
+            </button>
+          )}
+          {expanded && canSave && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                save();
+              }}
+              className="flex-1 py-2.5 rounded-xl text-xs font-black text-white cursor-pointer border-0"
+              style={{ background: accentColor }}
+            >
+              {editing ? "Guardar" : "Guardar resultado"}
+            </button>
+          )}
+        </div>
       )}
 
       {match.saved && isAdmin && !isBye && (canEdit ? (
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onEdit(match.id); }}
-          className="mt-1.5 w-full py-1.5 rounded-md text-center text-[11px] font-semibold text-slate-300 bg-[#0f172a] border border-[#334155] cursor-pointer"
+          className="mt-2 w-full py-1.5 rounded-lg text-center text-xs font-semibold text-gray-400 hover:text-gray-200 bg-white/[0.06] hover:bg-white/10 border-0 cursor-pointer transition-colors"
         >
-          ✏️ Corregir resultado
+          ✏️ Editar
         </button>
       ) : (
         <div className="mt-1.5 text-center text-[10px] leading-snug text-slate-500">
