@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useContext } from "react";
-import { generateRules } from "../../logic/constants";
+import { generateRules, TOURNAMENT_TYPES } from "../../logic/constants";
 import { pk } from "../../logic/utils";
 import { standingsLabels } from "../../logic/standings";
 import { buildRoundAmericano, americanoStandings, americanoPodium, americanoMatchesPlayed, canFinishAnyRound, startEditCourt, adminCourtView, roundAllSaved, standingsTitle, hasStandingsData } from "../../logic/americano";
@@ -10,6 +10,12 @@ import History from "../shared/History";
 import PodiumCard from "../shared/PodiumCard";
 import { validateGamesScore } from "../../logic/sets";
 import { scoreInputProps } from "../../logic/scoreInput";
+import MatchShell from "../shared/match/MatchShell";
+import MatchActions from "../shared/match/MatchActions";
+import PairNames from "../shared/match/PairNames";
+import { ScoreBox, ScoreInput } from "../shared/match/ScoreBox";
+
+const ACCENT = TOURNAMENT_TYPES.find((tt) => tt.id === "americano").color;
 
 const LEVELS = [
   { id: 0, label: "Sin definir",  short: "-", color: "#64748b" },
@@ -709,12 +715,6 @@ function CourtsAmericano({ t, isAdmin, canRename, ls, setLs, allSaved, onSave, o
   const showLevel = t.config.useLevels && isAdmin && showLevelsToggle;
   const isPairs = t.config.mode === "pairs";
 
-  function renderNames(pair) {
-    if (!pair) return [];
-    if (Array.isArray(pair)) return pair.map((p) => p.name || "");
-    return [`${pair.p1} / ${pair.p2}`];
-  }
-
   function getLevels(pair) {
     if (!Array.isArray(pair)) return [];
     return pair.map((p) => LEVELS[p.level || 0]);
@@ -784,7 +784,7 @@ function CourtsAmericano({ t, isAdmin, canRename, ls, setLs, allSaved, onSave, o
     }
   }
 
-  function renderEditableName(type, id, field, displayName, lvl, levelPosition) {
+  function renderEditableName(type, id, field, displayName, lvl, levelPosition, slash = false) {
     return (
       <div key={`${type}-${id}-${field}`} className="leading-snug flex items-center gap-1">
         {levelPosition === "before" && showLevel && lvl && (
@@ -796,7 +796,7 @@ function CourtsAmericano({ t, isAdmin, canRename, ls, setLs, allSaved, onSave, o
           className={`text-sm font-bold text-gray-50${canRename ? " cursor-pointer" : ""}`}
           onClick={() => canRename && setRenameModal({ type, id, field, value: getCurrentName(type, id, field) })}
         >
-          {displayName}
+          {displayName}{slash && " /"}
         </span>
         {levelPosition === "after" && showLevel && lvl && (
           <span className="text-[10px] font-bold rounded-[4px] p-[1px_4px]" style={{ background: lvl.color + "20", color: lvl.color }}>
@@ -824,37 +824,19 @@ function CourtsAmericano({ t, isAdmin, canRename, ls, setLs, allSaved, onSave, o
         if (!matchesSearch(court)) return null;
         const scoreA = parseInt(court.scoreA);
         const scoreB = parseInt(court.scoreB);
-        const namesA = renderNames(court.pairA);
-        const namesB = renderNames(court.pairB);
         const levelsA = getLevels(court.pairA);
         const levelsB = getLevels(court.pairB);
 
         return (
-          <div key={ci} className="bg-[#1f2937] rounded-2xl border border-gray-700 overflow-hidden mb-3">
-            {/* Header */}
-            <div className="flex justify-between items-center px-4 py-2.5 border-b border-gray-700">
-              <span className="text-xs font-bold text-gray-500 tracking-widest">PISTA {ci + 1}</span>
-              <div className="flex items-center gap-2">
-                {court.saved && isAdmin && (
-                  <button
-                    onClick={() => onEdit(ci)}
-                    className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-sky-400 bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
-                  >
-                    ✏️ Editar
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Body — 3 columnas */}
+          <MatchShell key={ci} label={`PISTA ${ci + 1}`} accentColor={ACCENT} saved={court.saved} onEdit={court.saved && isAdmin ? () => onEdit(ci) : undefined}>
             <div className="grid grid-cols-[1fr_auto_1fr] gap-[10px] px-4 py-4">
               {/* Equipo A */}
               <div className="flex flex-col items-end self-center">
                 {!isPairs
-                  ? (court.pairA || []).map((player, i) => renderEditableName("player", player.id, "name", player.name, levelsA[i], "before"))
+                  ? (court.pairA || []).map((player, i, arr) => renderEditableName("player", player.id, "name", player.name, levelsA[i], "before", i < arr.length - 1))
                   : isAdmin
-                    ? ["p1", "p2"].map(f => renderEditableName("pair", court.pairA.id, f, court.pairA[f], null, "before"))
-                    : <span className="text-sm font-bold text-gray-50 leading-snug">{namesA[0]}</span>
+                    ? ["p1", "p2"].map((f, i) => renderEditableName("pair", court.pairA.id, f, court.pairA[f], null, "before", i === 0))
+                    : <PairNames pair={court.pairA} align="right" />
                 }
               </div>
 
@@ -862,39 +844,15 @@ function CourtsAmericano({ t, isAdmin, canRename, ls, setLs, allSaved, onSave, o
               <div className="flex items-center gap-1.5 self-center">
                 {court.saved ? (
                   <>
-                    <div
-                      onClick={() => isAdmin && onEdit(ci)}
-                      title={isAdmin ? "Click para editar" : undefined}
-                      className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl font-black ${scoreA > scoreB ? "bg-green-500/10 border border-green-500/40 text-green-400" : "bg-gray-800 border border-gray-600 text-gray-400"} ${isAdmin ? "cursor-pointer" : ""}`}
-                    >
-                      {court.scoreA}
-                    </div>
-                    <span className="text-gray-600 font-black text-lg">-</span>
-                    <div
-                      onClick={() => isAdmin && onEdit(ci)}
-                      title={isAdmin ? "Click para editar" : undefined}
-                      className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl font-black ${scoreB > scoreA ? "bg-green-500/10 border border-green-500/40 text-green-400" : "bg-gray-800 border border-gray-600 text-gray-400"} ${isAdmin ? "cursor-pointer" : ""}`}
-                    >
-                      {court.scoreB}
-                    </div>
+                    <ScoreBox value={court.scoreA} won={scoreA > scoreB} onClick={isAdmin ? () => onEdit(ci) : undefined} />
+                    <span className="text-gray-600 font-black text-lg">–</span>
+                    <ScoreBox value={court.scoreB} won={scoreB > scoreA} onClick={isAdmin ? () => onEdit(ci) : undefined} />
                   </>
                 ) : isAdmin ? (
                   <>
-                    <input
-                      type="number" min="0"
-                      value={ls[`${ci}_A`] ?? ""}
-                      onChange={(e) => setLs((prev) => ({ ...prev, [`${ci}_A`]: e.target.value }))}
-                      {...scoreInputProps}
-                      className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-700 text-center text-xl font-black text-sky-400 outline-none focus:border-sky-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    />
-                    <span className="text-gray-600 font-black text-lg">-</span>
-                    <input
-                      type="number" min="0"
-                      value={ls[`${ci}_B`] ?? ""}
-                      onChange={(e) => setLs((prev) => ({ ...prev, [`${ci}_B`]: e.target.value }))}
-                      {...scoreInputProps}
-                      className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-700 text-center text-xl font-black text-sky-400 outline-none focus:border-sky-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    />
+                    <ScoreInput accentColor={ACCENT} value={ls[`${ci}_A`] ?? ""} onChange={(v) => setLs((prev) => ({ ...prev, [`${ci}_A`]: v }))} />
+                    <span className="text-gray-600 font-black text-lg">–</span>
+                    <ScoreInput accentColor={ACCENT} value={ls[`${ci}_B`] ?? ""} onChange={(v) => setLs((prev) => ({ ...prev, [`${ci}_B`]: v }))} />
                   </>
                 ) : (
                   <span className="text-gray-600 font-black text-lg">–</span>
@@ -904,50 +862,29 @@ function CourtsAmericano({ t, isAdmin, canRename, ls, setLs, allSaved, onSave, o
               {/* Equipo B */}
               <div className="flex flex-col items-start self-center">
                 {!isPairs
-                  ? (court.pairB || []).map((player, i) => renderEditableName("player", player.id, "name", player.name, levelsB[i], "after"))
+                  ? (court.pairB || []).map((player, i, arr) => renderEditableName("player", player.id, "name", player.name, levelsB[i], "after", i < arr.length - 1))
                   : isAdmin
-                    ? ["p1", "p2"].map(f => renderEditableName("pair", court.pairB.id, f, court.pairB[f], null, "after"))
-                    : <span className="text-sm font-bold text-gray-50 leading-snug">{namesB[0]}</span>
+                    ? ["p1", "p2"].map((f, i) => renderEditableName("pair", court.pairB.id, f, court.pairB[f], null, "after", i === 0))
+                    : <PairNames pair={court.pairB} align="left" />
                 }
               </div>
             </div>
 
-            {court.saved && isAdmin && (
-              <div className="text-xs text-gray-600 text-center pb-2 -mt-1 whitespace-nowrap">
-                ✓ guardado · toca para editar
-              </div>
-            )}
-
-            {/* Footer */}
-            {isAdmin && court.editing && (
-              <div className="px-4 pb-3">
-                <button
-                  type="button"
-                  data-testid="btn-cancelar-edicion"
-                  onClick={() => onSave(ci, true)}
-                  className="w-full py-2.5 rounded-xl text-sm font-bold bg-red-700 hover:bg-red-600 text-white cursor-pointer transition-colors"
-                >
-                  ✕ Cancelar
-                </button>
-              </div>
-            )}
             {isAdmin && !court.saved && validateGamesScore(ls[`${ci}_A`], ls[`${ci}_B`]) && (
               <div data-testid="score-error" className="px-4 pb-3 text-center text-[12px] text-amber-400 font-bold">
                 ⚠️ {validateGamesScore(ls[`${ci}_A`], ls[`${ci}_B`])}
               </div>
             )}
-            {isAdmin && !court.saved && hasValidScore(ci) && (
-              <div className="px-4 pb-3">
-                <button
-                  onClick={() => onSave(ci)}
-                  data-score-save=""
-                  className="w-full py-2.5 rounded-xl text-sm font-bold bg-sky-600 hover:bg-sky-500 text-white cursor-pointer transition-colors"
-                >
-                  Guardar resultado
-                </button>
-              </div>
+            {isAdmin && !court.saved && (
+              <MatchActions
+                isEditing={!!court.editing}
+                canSave={hasValidScore(ci)}
+                onSave={() => onSave(ci)}
+                onCancel={() => onSave(ci, true)}
+                accentColor={ACCENT}
+              />
             )}
-          </div>
+          </MatchShell>
         );
       })}
 
@@ -1061,7 +998,7 @@ function HistoryRound({ round, roundNum, matchesSearch, isAdmin, useLevels, show
         const isHighlighted = highlightId && String(p.id) === String(highlightId);
         return (
           <span key={p.id} className={isHighlighted ? "font-black text-sky-300" : undefined}>
-            {i > 0 && <span className="text-[#94a3b8]"> & </span>}
+            {i > 0 && <span className="text-[#94a3b8]"> / </span>}
             {p.name}
             {showLevel && (
               <span className="inline-block text-[10px] font-bold rounded p-px px-1 ml-1" style={{ background: lvl.color + "20", color: lvl.color }}>

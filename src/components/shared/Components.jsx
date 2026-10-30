@@ -136,7 +136,7 @@ export function PName({ pair }) {
     <>
       {pair.map((p, i) => (
         <span key={p.id}>
-          {i > 0 && <span className="text-[#94a3b8]"> & </span>}
+          {i > 0 && <span className="text-[#94a3b8]"> / </span>}
           {p.name}
           <PTag p={p} />
         </span>
