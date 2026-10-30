@@ -277,7 +277,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
         code={code}
         isAdmin={isAdmin}
         copyCode={copyCode}
-        subtitle={isFinished ? "🏁 Torneo finalizado" : `Ronda ${t.roundNum} de ${t.precomputedRounds ? t.precomputedRounds.length : (t.config.maxRounds || "∞")}`}
+        subtitle={isFinished ? "🏁 Torneo finalizado" : `Ronda ${t.roundNum} de ${t.precomputedRounds?.length ? t.precomputedRounds.length : (t.config.maxRounds || "∞")}`}
         onEdit={isAdmin ? onEditTournament : undefined}
       />
       <div className="p-4">
@@ -316,7 +316,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
             </div>
 
             {/* ── Toggle niveles ── */}
-            {seeLevels && t.config.useLevels && (
+            {seeLevels && t.config.useLevels && t.config.mode !== "pairs" && (
               <div className="flex justify-end mb-2">
                 <button
                   onClick={() => setShowLevelsToggle(v => !v)}
@@ -345,9 +345,9 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
             ) : (
               <>
                 {/* ── Tabs de rondas ── */}
-                {(t.precomputedRounds || t.rounds?.length > 0) && (
+                {(t.precomputedRounds?.length || t.rounds?.length > 0) && (
                   <div className="flex gap-1.5 overflow-x-auto pb-1 mb-4">
-                    {t.precomputedRounds
+                    {t.precomputedRounds?.length
                       ? t.precomputedRounds.map((_, i) => {
                           const rNum = i + 1;
                           const isCurrent = rNum === t.roundNum;
@@ -397,7 +397,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
                 )}
 
                 {shownRound !== null ? (
-                  (t.precomputedRounds && shownRound > t.roundNum) ? (
+                  (t.precomputedRounds?.length && shownRound > t.roundNum) ? (
                     <FutureRound
                       round={t.precomputedRounds[shownRound - 1]}
                       roundNum={shownRound}
@@ -796,14 +796,13 @@ function CourtsAmericano({ t, isAdmin, canRename, ls, setLs, allSaved, onSave, o
           className={`text-sm font-bold text-gray-50${canRename ? " cursor-pointer" : ""}`}
           onClick={() => canRename && setRenameModal({ type, id, field, value: getCurrentName(type, id, field) })}
         >
-          {displayName}
+          {displayName}{slash && "\u00A0/"}
         </span>
         {levelPosition === "after" && showLevel && lvl && (
           <span className="text-[10px] font-bold rounded-[4px] p-[1px_4px]" style={{ background: lvl.color + "20", color: lvl.color }}>
             {lvl.short}
           </span>
         )}
-        {slash && <span className="text-sm font-bold text-gray-50 shrink-0">/</span>}
       </div>
     );
   }
@@ -813,9 +812,9 @@ function CourtsAmericano({ t, isAdmin, canRename, ls, setLs, allSaved, onSave, o
       {t.sittingOut?.length > 0 && (
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2.5 bg-yellow-400/10 border border-yellow-400/20 rounded-xl text-sm mb-3">
           <span>⏳</span>
-          <span className="text-yellow-400 font-semibold shrink-0">Descansan:</span>
+          <span className="text-yellow-400 font-semibold shrink-0">{t.sittingOut.length > 1 ? "Descansan" : "Descansa"}:</span>
           <span className="text-gray-400">
-            {t.sittingOut.map((p) => p.name || `${p.p1}/${p.p2}`).join(" · ")}
+            {t.sittingOut.map((p) => p.name || `${p.p1} / ${p.p2}`).join(" · ")}
           </span>
         </div>
       )}

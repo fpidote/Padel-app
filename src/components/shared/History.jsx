@@ -10,8 +10,8 @@ export default function History({ rounds, matchesSearch }) {
   function renderNames(pair) {
     if (!pair) return [];
     if (Array.isArray(pair))
-      return pair.map((p) => p.name || `${p.p1} / ${p.p2}`);
-    return [`${pair.p1}`, `${pair.p2}`];
+      return pair.map((p, i, arr) => `${p.name || `${p.p1} / ${p.p2}`}${i < arr.length - 1 ? "\u00A0/" : ""}`);
+    return [`${pair.p1}\u00A0/`, `${pair.p2}`];
   }
 
   return (
@@ -34,7 +34,7 @@ export default function History({ rounds, matchesSearch }) {
               </span>
               {sitting.length > 0 && (
                 <span className="text-xs text-gray-500">
-                  ⏳ Descansó: {sitting.map((p) => p.name || p.p1).join(", ")}
+                  ⏳ {sitting.length > 1 ? "Descansaron" : "Descansó"}: {sitting.map((p) => p.name || `${p.p1} / ${p.p2}`).join(" · ")}
                 </span>
               )}
             </div>

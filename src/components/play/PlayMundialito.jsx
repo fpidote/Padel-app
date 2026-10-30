@@ -363,6 +363,7 @@ export default function PlayMundialito({
                       <RoundAccordion
                         key={roundNum}
                         roundNum={roundNum}
+                        stageLabel={group.name.toUpperCase()}
                         matches={group.matches.filter(
                           (m) => m.round === roundNum,
                         )}
@@ -480,6 +481,7 @@ export default function PlayMundialito({
                           }
                           accentColor="#059669"
                           scoringFormat={t.config?.scoringFormat || "games"}
+                          stageLabel={knockoutLabel(round, koRounds, match)}
                         />
                       ))}
                   </div>
@@ -615,9 +617,18 @@ export default function PlayMundialito({
   );
 }
 
+// Etiqueta de la tarjeta de eliminatoria: "SEMIFINAL 1", "CUARTOS 2"; la final no lleva número
+function knockoutLabel(round, koRounds, match) {
+  const name = bracketRoundName(round, Math.max(...koRounds)).toUpperCase();
+  if (name === "FINAL") return name;
+  const short = name.replace("SEMIFINALES", "SEMIFINAL").replace(" DE FINAL", "");
+  return `${short} ${(match.matchIndex ?? 0) + 1}`;
+}
+
 // 👇 NUEVO COMPONENTE PARA EL DESPLEGABLE DE CADA RONDA
 function RoundAccordion({
   roundNum,
+  stageLabel,
   matches,
   isAdmin,
   ls,
@@ -662,6 +673,7 @@ function RoundAccordion({
               locked={locked}
               accentColor="#059669"
               scoringFormat={scoringFormat}
+              stageLabel={stageLabel}
             />
           ))}
         </div>
