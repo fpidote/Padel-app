@@ -17,7 +17,7 @@ async function entrarComoAdmin(page) {
   await page.evaluate(async (t) => { await window.__e2eSignIn(t); }, await getTestToken());
 }
 
-test("Americano: un empate muestra el motivo y no ofrece Guardar", async ({ page }) => {
+test("Americano: un empate muestra el motivo y deja Guardar desactivado", async ({ page }) => {
   await seedTournament(CODE, {
     type: "americano", status: "setup",
     config: { name: "Avisos", courts: 2, matchmaking: "americano", mode: "individual", scoringSystem: "timed", matchMinutes: 10, maxRounds: 2, useLevels: false, goldenPoint: true },
@@ -32,11 +32,11 @@ test("Americano: un empate muestra el motivo y no ofrece Guardar", async ({ page
   await casillas.nth(0).fill("5");
   await casillas.nth(1).fill("5");
   await expect(page.getByTestId("score-error").first()).toContainText("Un partido no puede terminar empatado");
-  await expect(page.getByRole("button", { name: "Guardar resultado" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Guardar resultado" }).first()).toBeDisabled();
 
   await casillas.nth(1).fill("7");
   await expect(page.getByTestId("score-error")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Guardar resultado" }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Guardar resultado" }).first()).toBeEnabled();
 });
 
 test("Torneo por grupos: el resumen de parejas no habla de pistas ni de quién descansa", async ({ page }) => {
