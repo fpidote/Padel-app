@@ -442,7 +442,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
           </>
         )}
         {tab === "standings" && (
-          <StandingsAmericano labels={standingsLabels(t.config)} rows={standings} rounds={t.rounds} podium={podium} finished={isFinished} roundNum={t.roundNum} useLevels={!!t.config.useLevels} isAdmin={seeLevels} showLevelsToggle={showLevelsEff} setShowLevelsToggle={setShowLevelsToggle} />
+          <StandingsAmericano labels={standingsLabels(t.config)} rows={standings} rounds={t.rounds} podium={podium} finished={isFinished} roundNum={t.roundNum} useLevels={!!t.config.useLevels && t.config.mode !== "pairs"} isAdmin={seeLevels} showLevelsToggle={showLevelsEff} setShowLevelsToggle={setShowLevelsToggle} />
         )}
         {tab === "history" && (
           <>
@@ -1090,8 +1090,8 @@ function HistoryRound({ round, roundNum, matchesSearch, isAdmin, useLevels, show
     <div className="flex flex-col gap-4">
       {round.sittingOut?.length > 0 && (
         <div className="bg-[#fbbf2422] border border-[#fbbf2455] text-[#fbbf24] p-3 rounded-lg text-sm">
-          <span className="font-bold">⏳ Descansaron: </span>
-          <span className="font-medium">{round.sittingOut.map((p) => p.name || `${p.p1}/${p.p2}`).join(", ")}</span>
+          <span className="font-bold">⏳ {round.sittingOut.length > 1 ? "Descansaron" : "Descansó"}: </span>
+          <span className="font-medium">{round.sittingOut.map((p) => p.name || `${p.p1} / ${p.p2}`).join(" · ")}</span>
         </div>
       )}
       {courtContent}
@@ -1111,13 +1111,13 @@ function FutureRound({ round, roundNum, matchesSearch, isAdmin, useLevels, showL
   function renderPair(pair) {
     if (!pair) return null;
     if (Array.isArray(pair)) {
-      return pair.map((p) => {
+      return pair.map((p, i, arr) => {
         const currentPlayer = playersDict[p.id] || p;
         const lvl = LEVELS[currentPlayer.level || 0];
         const isHighlighted = highlightId && String(p.id) === String(highlightId);
         return (
           <span key={p.id} className="flex items-center gap-1 leading-snug">
-            <span className={`text-sm font-bold ${isHighlighted ? "font-black text-sky-300" : "text-gray-50"}`}>{p.name}</span>
+            <span className={`text-sm font-bold ${isHighlighted ? "font-black text-sky-300" : "text-gray-50"}`}>{p.name}{i < arr.length - 1 && "\u00A0/"}</span>
             {showLevel && currentPlayer.level > 0 && lvl && (
               <span className="text-[10px] font-bold rounded p-px px-1" style={{ background: lvl.color + "20", color: lvl.color }}>
                 {lvl.short}
@@ -1186,8 +1186,8 @@ function FutureRound({ round, roundNum, matchesSearch, isAdmin, useLevels, showL
       {round.sittingOut?.length > 0 && (
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2.5 bg-yellow-400/10 border border-yellow-400/20 rounded-xl text-sm mb-3">
           <span>⏳</span>
-          <span className="text-yellow-400 font-semibold shrink-0">Descansarán:</span>
-          <span className="text-gray-400">{round.sittingOut.map((p) => p.name || `${p.p1}/${p.p2}`).join(" · ")}</span>
+          <span className="text-yellow-400 font-semibold shrink-0">{round.sittingOut.length > 1 ? "Descansarán" : "Descansará"}:</span>
+          <span className="text-gray-400">{round.sittingOut.map((p) => p.name || `${p.p1} / ${p.p2}`).join(" · ")}</span>
         </div>
       )}
       <div className="mb-3">

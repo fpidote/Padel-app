@@ -63,8 +63,9 @@ describe("MatchCard — editar y eliminar un resultado guardado", () => {
 describe("MatchCard — nombres de la pareja", () => {
   it("las dos líneas de cada pareja van unidas con '/' (nunca '&')", () => {
     const html = render({});
-    expect(html).toContain("Ana /");
-    expect(html).toContain("Eva /");
+    // El espacio antes de la barra no admite salto de línea, para que "/" no quede sola
+    expect(html).toContain("Ana\u00A0/");
+    expect(html).toContain("Eva\u00A0/");
     expect(html).not.toContain("&amp;");
   });
 

@@ -167,6 +167,7 @@ export default function PlayMundialito({
         knockoutBracket: bracket,
         phase: "knockout",
       });
+      setTab("knockout");
     } catch (err) {
       console.error("Error al iniciar la fase eliminatoria:", err);
       showToast("No se pudo iniciar la fase eliminatoria. Inténtalo de nuevo.");

@@ -7,7 +7,7 @@ export default function PairNames({ pair, align = "left", fallback = "Por defini
     <div className={`flex flex-col self-center text-sm font-bold leading-snug text-gray-50 ${alignment}`}>
       {pair ? (
         <>
-          <span>{pair.p1} /</span>{" "}
+          <span>{pair.p1}{"\u00A0/"}</span>{" "}
           <span>{pair.p2}</span>
         </>
       ) : (

@@ -557,7 +557,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
               <>
                 <SectionHeader>🔄 Rondas</SectionHeader>
                 <div className="flex gap-2 flex-wrap">
-                  {[null, 4, 6, 8, 10, 12].map(n => (
+                  {[null, 4, 6, 8, 10, 12].filter(n => n === null || isPairs || matchmakingMode !== "americano" || n !== classicTotalRounds(tot, null)).map(n => (
                     <button key={n ?? "ilim"}
                       onClick={() => { setRoundsCustom(""); setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); persist({ ...t, config: { ...t.config, maxRounds: n } }); }}
                       className={`px-3 py-2 rounded-xl text-sm font-bold cursor-pointer transition-colors ${(t.config.maxRounds ?? null) === n ? "text-white" : "bg-[#374151] text-[#94a3b8]"}`}

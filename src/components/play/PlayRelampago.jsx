@@ -15,6 +15,8 @@ import { showToast } from "../../logic/toast";
 const SLOT_HEIGHT = 110;
 // Con sets la tarjeta abierta es más alta: más espacio por partido para que no tape a la vecina
 const SLOT_HEIGHT_SETS = 220;
+// A 5 sets la tarjeta abierta mide ~340 px: el hueco crece para no pisar a la vecina
+const SLOT_HEIGHT_SETS5 = 350;
 
 function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel, finished = false, canEdit = true, accentColor, scoringFormat = "games", onToggle }) {
   const [expanded, setExpandedState] = useState(false);
@@ -336,7 +338,7 @@ function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, onCancel, fi
 
   const r1Count = matchesByRound[rounds[0]].length;
   const isSetFormat = scoringFormat === "sets3" || scoringFormat === "sets5";
-  const containerHeight = Math.max(r1Count * (isSetFormat ? SLOT_HEIGHT_SETS : SLOT_HEIGHT), 100);
+  const containerHeight = Math.max(r1Count * (scoringFormat === "sets5" ? SLOT_HEIGHT_SETS5 : isSetFormat ? SLOT_HEIGHT_SETS : SLOT_HEIGHT), 100);
 
   function matchCenterY(total, idx) {
     return containerHeight * (2 * idx + 1) / (2 * total);
