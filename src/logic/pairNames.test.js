@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { isDuplicatePair, duplicatePairKeys, pairKey } from "./pairNames";
+import { describe, it, test, expect } from "vitest";
+import { isDuplicatePair, duplicatePairKeys, pairKey, pairLabel } from "./pairNames";
 
 const pairs = [{ p1: "Ana", p2: "Beto" }, { p1: "Caro", p2: "Dario" }];
 
@@ -58,5 +58,13 @@ describe("jugadores repetidos entre parejas distintas", () => {
   it("T-PN-13: un nombre escrito dos veces dentro de la misma pareja no cuenta como repetido entre parejas", async () => {
     const { duplicatePlayerKeys } = await import("./pairNames");
     expect(duplicatePlayerKeys([{ p1: "Ana", p2: "ana" }]).size).toBe(0);
+  });
+});
+
+describe("pairLabel", () => {
+  test("T-PN-LABEL-1: une los dos nombres con '/' y usa el texto de respaldo sin pareja", () => {
+    expect(pairLabel({ p1: "Ana", p2: "Beto" })).toBe("Ana / Beto");
+    expect(pairLabel(undefined)).toBe("Por definir");
+    expect(pairLabel(null, "—")).toBe("—");
   });
 });

@@ -147,7 +147,7 @@ test("Liga con 3.º puesto: al finalizar también se cierra el partido por el 3.
   await expect(page.getByText(/Torneo finalizado: los resultados están cerrados/)).toBeVisible();
   // Ningún partido, tampoco el del 3.º puesto, se puede editar una vez finalizado
   await expect(page.getByRole("button", { name: "Editar" })).toHaveCount(0);
-  const tercero = page.getByText("🥉 3.º Y 4.º PUESTO").locator("xpath=ancestor::div[.//text()[contains(.,'Cerrado')]][1]");
+  const tercero = page.getByText("3.º Y 4.º PUESTO").locator("xpath=ancestor::div[.//text()[contains(.,'Cerrado')]][1]");
   await expect(tercero).toContainText("Cerrado");
 });
 

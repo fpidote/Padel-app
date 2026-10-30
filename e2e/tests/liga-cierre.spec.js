@@ -68,6 +68,12 @@ async function verTodas(p) {
   await expect(p.getByText("Jornada 1")).toBeVisible();
 }
 
+// Eliminar vive dentro de la corrección: se pulsa Editar en la tarjeta y luego "Eliminar resultado"
+async function pedirEliminar(page, cual = "first") {
+  await page.getByRole("button", { name: "Editar" })[cual]().click();
+  await page.getByRole("button", { name: "Eliminar resultado" }).click();
+}
+
 async function entrarComoAdmin(page) {
   await page.goto(`/torneo/${CODE}`);
   const token = await getTestToken();
@@ -79,7 +85,7 @@ test("eliminar un resultado pide confirmación, deja el partido sin jugar y reca
   await seedTournament(CODE, ligaTerminada());
   await entrarComoAdmin(page);
 
-  await page.getByRole("button", { name: "Eliminar" }).first().click();
+  await pedirEliminar(page);
   const modal = page.locator(".fixed.inset-0");
   await expect(modal.getByText(/Eliminar este resultado/)).toBeVisible();
   await modal.getByRole("button", { name: "Eliminar" }).click();
@@ -102,7 +108,7 @@ test("cancelar el aviso de eliminar no cambia nada", async ({ page }) => {
   await seedTournament(CODE, ligaTerminada());
   await entrarComoAdmin(page);
 
-  await page.getByRole("button", { name: "Eliminar" }).first().click();
+  await pedirEliminar(page);
   await page.locator(".fixed.inset-0").getByRole("button", { name: "Cancelar" }).click();
   await expect(page.locator(".fixed.inset-0")).toHaveCount(0);
   const data = await getTournamentData(CODE);
@@ -182,7 +188,7 @@ test("tras eliminar un resultado recién guardado la tarjeta queda limpia, sin G
   await page.getByRole("button", { name: "Guardar resultado" }).click();
   await expect.poll(async () => (await getTournamentData(CODE)).matches.find((m) => m.id === "r3_m0").saved, { timeout: 8000 }).toBe(true);
 
-  await page.getByRole("button", { name: "Eliminar" }).last().click();
+  await pedirEliminar(page, "last");
   await page.locator(".fixed.inset-0").getByRole("button", { name: "Eliminar" }).click();
   await expect.poll(async () => (await getTournamentData(CODE)).matches.find((m) => m.id === "r3_m0").saved, { timeout: 8000 }).toBe(false);
 

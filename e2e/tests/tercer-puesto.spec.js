@@ -44,9 +44,9 @@ test("las semifinales jugadas llenan el partido por el 3.º puesto y no se confu
   await page.goto(`/torneo/${CODE}`);
   await page.getByRole("button", { name: /Eliminatoria/ }).click();
 
-  await expect(page.getByText("🥉 3.º Y 4.º PUESTO", { exact: true })).toBeVisible({ timeout: 8000 });
+  await expect(page.getByText("3.º Y 4.º PUESTO", { exact: true })).toBeVisible({ timeout: 8000 });
   // Los perdedores de las semifinales (Gus/Hugo y Eva/Fede) juegan entre sí en esa tarjeta
-  const tarjeta = page.getByText("🥉 3.º Y 4.º PUESTO", { exact: true }).locator("xpath=ancestor::div[.//text()[contains(.,'vs')]][1]");
+  const tarjeta = page.getByText("3.º Y 4.º PUESTO", { exact: true }).locator("xpath=ancestor::div[.//text()[contains(.,'vs')]][1]");
   await expect(tarjeta).toContainText(`${s0.pairB.p1} / ${s0.pairB.p2}`);
   await expect(tarjeta).toContainText(`${s1.pairB.p1} / ${s1.pairB.p2}`);
   // Las rondas se nombran por su cercanía a la final

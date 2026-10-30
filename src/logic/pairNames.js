@@ -50,3 +50,6 @@ export function duplicatePlayerKeys(pairs) {
   });
   return new Set([...count].filter(([, n]) => n > 1).map(([key]) => key));
 }
+
+// "Nombre / Nombre" de una pareja; `fallback` cuando todavía no está definida (cuadros por completar)
+export const pairLabel = (pair, fallback = "Por definir") => (pair ? `${pair.p1} / ${pair.p2}` : fallback);

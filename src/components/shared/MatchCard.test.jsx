@@ -18,15 +18,25 @@ const render = (props) =>
   );
 
 describe("MatchCard — editar y eliminar un resultado guardado", () => {
-  it("muestra Editar y Eliminar al organizador cuando se pasan los dos manejadores", () => {
+  // Corregir un resultado: sin guardar, con el marcador anterior todavía en el partido
+  const correcting = { ...match, saved: false, editing: true };
+
+  it("guardado: el organizador ve Editar y no ve Eliminar (eso va dentro de la corrección)", () => {
     const html = render({ onEdit: () => {}, onDelete: () => {} });
     expect(html).toContain("Editar");
-    expect(html).toContain("Eliminar");
+    expect(html).not.toContain("Eliminar");
   });
 
-  it("sin onDelete no hay botón Eliminar (Mundialito y Relámpago no cambian)", () => {
-    const html = render({ onEdit: () => {} });
-    expect(html).toContain("Editar");
+  it("al corregir, con onDelete aparece Eliminar resultado junto a Cancelar y Guardar", () => {
+    const html = render({ match: correcting, onEdit: () => {}, onDelete: () => {} });
+    expect(html).toContain("Eliminar resultado");
+    expect(html).toContain("Cancelar");
+    expect(html).toContain("Guardar resultado");
+  });
+
+  it("al corregir, sin onDelete no hay Eliminar (Relámpago y fase final no cambian)", () => {
+    const html = render({ match: correcting, onEdit: () => {} });
+    expect(html).toContain("Cancelar");
     expect(html).not.toContain("Eliminar");
   });
 
@@ -43,9 +53,25 @@ describe("MatchCard — editar y eliminar un resultado guardado", () => {
     expect(html).toContain("Cerrado");
   });
 
-  it("un partido sin guardar no muestra Eliminar", () => {
+  it("un partido sin resultado no muestra Eliminar ni Cancelar", () => {
     const html = render({ match: { ...match, saved: false, scoreA: "", scoreB: "", sets: null }, onEdit: () => {}, onDelete: () => {} });
     expect(html).not.toContain("Eliminar");
+    expect(html).not.toContain("Cancelar");
+  });
+});
+
+describe("MatchCard — nombres de la pareja", () => {
+  it("las dos líneas de cada pareja van unidas con '/' (nunca '&')", () => {
+    const html = render({});
+    expect(html).toContain("Ana /");
+    expect(html).toContain("Eva /");
+    expect(html).not.toContain("&amp;");
+  });
+
+  it("con por sets y sin guardar anuncia 'Al mejor de' en el cuerpo y no en la cabecera", () => {
+    const open = { ...match, saved: false, scoreA: "", scoreB: "", sets: null };
+    expect(render({ match: open })).toContain("Al mejor de 3 sets");
+    expect(render({ match: open, scoringFormat: "sets5" })).toContain("Al mejor de 5 sets");
   });
 });
 
@@ -84,11 +110,11 @@ describe("MatchCard — etiqueta de fase", () => {
   });
 
   it("con stageLabel la reemplaza, para formatos sin grupos ni revancha", () => {
-    const html = render({ stageLabel: "📅 LIGA" });
-    expect(html).toContain("📅 LIGA");
+    const html = render({ stageLabel: "LIGA" });
+    expect(html).toContain("LIGA");
     expect(html).not.toContain("FASE DE GRUPOS");
-    const ko = render({ match: { ...match, bracket: "winners" }, stageLabel: "🏆 FASE FINAL" });
-    expect(ko).toContain("🏆 FASE FINAL");
+    const ko = render({ match: { ...match, bracket: "winners" }, stageLabel: "FASE FINAL" });
+    expect(ko).toContain("FASE FINAL");
     expect(ko).not.toContain("CUADRO PRINCIPAL");
   });
 });
