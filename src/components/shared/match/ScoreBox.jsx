@@ -7,7 +7,7 @@ export function ScoreBox({ value, won = false, onClick }) {
     <div
       onClick={onClick}
       className={`font-data w-11 h-11 rounded-xl flex items-center justify-center text-[22px] font-bold ${
-        won ? "bg-green-500/10 border border-green-500/30 text-green-400" : "bg-white/[0.04] border border-white/[0.07] text-slate-600"
+        won ? "bg-green-500/10 border border-green-500/30 text-green-400" : "bg-white/[0.04] border border-white/[0.07] text-slate-400"
       } ${onClick ? "cursor-pointer" : ""}`}
       style={won ? { animation: "score-pop 0.3s ease-out" } : undefined}
     >

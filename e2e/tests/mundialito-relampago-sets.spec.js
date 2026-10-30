@@ -212,7 +212,7 @@ test("Relámpago por sets: guarda sets, actualiza posiciones y conserva las esta
   await inputs.nth(2).fill("3");
   await inputs.nth(3).fill("6");
   // 1-1: todavía no se puede guardar
-  await expect(page.getByRole("button", { name: /Guardar/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Guardar/ })).toBeDisabled();
   await inputs.nth(4).fill("7");
   await inputs.nth(5).fill("5");
   await page.getByRole("button", { name: /Guardar/ }).click();
@@ -287,7 +287,7 @@ test("Relámpago por sets: rechaza 5-3, acepta 7-6 y guarda", async ({ page }) =
   await inputs.nth(0).fill("5");
   await inputs.nth(1).fill("3");
   await expect(page.getByText(/Set inválido/i)).toBeVisible();
-  await expect(page.getByRole("button", { name: /Guardar/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Guardar/ })).toBeDisabled();
 
   await inputs.nth(0).fill("7");
   await inputs.nth(1).fill("6");

@@ -755,7 +755,7 @@ function CourtsAmericano({ t, isAdmin, canRename, ls, setLs, allSaved, onSave, o
           currentRound: (t.currentRound || []).map(renameCourt),
           sittingOut: renameInArr(t.sittingOut),
           rounds: (t.rounds || []).map(renameRound),
-          precomputedRounds: (t.precomputedRounds || []).map(renameRound),
+          precomputedRounds: t.precomputedRounds ? t.precomputedRounds.map(renameRound) : t.precomputedRounds,
         });
       } else {
         const renameCourt = (c) => ({
@@ -774,7 +774,7 @@ function CourtsAmericano({ t, isAdmin, canRename, ls, setLs, allSaved, onSave, o
           currentRound: (t.currentRound || []).map(renameCourt),
           sittingOut: (t.sittingOut || []).map(p => p.id === id ? { ...p, [field]: trimmed } : p),
           rounds: (t.rounds || []).map(renameRound),
-          precomputedRounds: (t.precomputedRounds || []).map(renameRound),
+          precomputedRounds: t.precomputedRounds ? t.precomputedRounds.map(renameRound) : t.precomputedRounds,
         });
       }
       setRenameModal(null);
@@ -796,13 +796,14 @@ function CourtsAmericano({ t, isAdmin, canRename, ls, setLs, allSaved, onSave, o
           className={`text-sm font-bold text-gray-50${canRename ? " cursor-pointer" : ""}`}
           onClick={() => canRename && setRenameModal({ type, id, field, value: getCurrentName(type, id, field) })}
         >
-          {displayName}{slash && " /"}
+          {displayName}
         </span>
         {levelPosition === "after" && showLevel && lvl && (
           <span className="text-[10px] font-bold rounded-[4px] p-[1px_4px]" style={{ background: lvl.color + "20", color: lvl.color }}>
             {lvl.short}
           </span>
         )}
+        {slash && <span className="text-sm font-bold text-gray-50 shrink-0">/</span>}
       </div>
     );
   }

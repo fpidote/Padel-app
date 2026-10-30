@@ -111,8 +111,8 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
 
   function nameColor(isByePair, wonPair, hasPair) {
     if (isByePair) return "#334155";
-    if (match.saved) return wonPair ? "#f1f5f9" : "#475569";
-    return hasPair ? "#f1f5f9" : "#475569";
+    if (match.saved) return wonPair ? "#f1f5f9" : "#94a3b8";
+    return hasPair ? "#f1f5f9" : "#94a3b8";
   }
 
   return (
@@ -151,7 +151,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
             data-score="" enterKeyHint="next"
           />
         ) : (
-          <span className="text-base font-extrabold min-w-7 text-right" style={{ color: match.saved ? (wonA ? "#4ade80" : "#475569") : "#334155" }}>
+          <span className="text-base font-extrabold min-w-7 text-right" style={{ color: match.saved ? (wonA ? "#4ade80" : "#94a3b8") : "#334155" }}>
             {expanded && isSetFormat ? live.setsA : match.saved ? match.scoreA : "–"}
           </span>
         )}
@@ -176,7 +176,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
             data-score="" enterKeyHint="next"
           />
         ) : (
-          <span className="text-base font-extrabold min-w-7 text-right" style={{ color: match.saved ? (wonB ? "#4ade80" : "#475569") : "#334155" }}>
+          <span className="text-base font-extrabold min-w-7 text-right" style={{ color: match.saved ? (wonB ? "#4ade80" : "#94a3b8") : "#334155" }}>
             {expanded && isSetFormat ? live.setsB : match.saved ? match.scoreB : "–"}
           </span>
         )}
@@ -226,7 +226,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
         <p data-testid="games-error" className="mt-1.5 text-[11px] font-semibold text-amber-400">⚠️ {gamesError}</p>
       )}
 
-      {(editing || (expanded && canSave)) && (
+      {(editing || expanded) && (
         <div className="mt-2 flex gap-2">
           {editing && (
             <button
@@ -238,15 +238,17 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
               ✕ Cancelar
             </button>
           )}
-          {expanded && canSave && (
+          {expanded && (
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 save();
               }}
-              className="flex-1 py-2.5 rounded-xl text-xs font-black text-white cursor-pointer border-0"
-              style={{ background: accentColor }}
+              disabled={!canSave}
+              data-score-save=""
+              className={`flex-1 py-2.5 rounded-xl text-xs font-black border-0 ${canSave ? "text-white cursor-pointer" : "bg-white/[0.04] text-slate-600"}`}
+              style={canSave ? { background: accentColor } : undefined}
             >
               {editing ? "Guardar" : "Guardar resultado"}
             </button>

@@ -78,9 +78,9 @@ export default function MatchCard({
       {editingNow && bySets ? (
         <div className="flex flex-col gap-2 px-4 pt-3 pb-3">
           <div className="text-center text-[11px] font-bold uppercase tracking-widest text-gray-500">🎾 Al mejor de {maxSets} sets</div>
-          <div className="flex justify-between gap-3 px-3 text-xs font-bold text-gray-400">
-            <span className="flex-1 text-left">{pairLabel(match.pairA)}</span>
-            <span className="flex-1 text-right">{pairLabel(match.pairB)}</span>
+          <div className="flex justify-between gap-3 px-3">
+            <PairNames pair={match.pairA} align="left" />
+            <PairNames pair={match.pairB} align="right" />
           </div>
           {Array.from({ length: visibleSetRows }).map((_, idx) => {
             const hasError = live.errorIndex === idx;
@@ -107,14 +107,11 @@ export default function MatchCard({
                 <ScoreInput accentColor={accentColor} value={gamesB} onChange={setCell(`${match.id}_B`)} />
               </>
             ) : bySets && match.saved ? (
-              <div className="flex gap-1.5 text-sm font-black text-gray-50">
-                {match.sets?.map((set, idx) => (
-                  <span key={idx} className="bg-[#0f172a] px-2 py-1 rounded">
-                    {set.a}-{set.b}
-                  </span>
-                ))}
-                <span className="text-slate-300 ml-1">({match.scoreA}-{match.scoreB})</span>
-              </div>
+              <>
+                <ScoreBox value={match.scoreA} won={aWon} onClick={startEdit} />
+                <span className="text-gray-600 font-black text-lg">–</span>
+                <ScoreBox value={match.scoreB} won={bWon} onClick={startEdit} />
+              </>
             ) : match.saved ? (
               <>
                 <ScoreBox value={match.scoreA} won={aWon} onClick={startEdit} />
@@ -127,6 +124,17 @@ export default function MatchCard({
           </div>
 
           <PairNames pair={match.pairB} align="left" />
+        </div>
+      )}
+
+      {/* Detalle de sets ya guardados: en una fila bajo los nombres, para no apretar la columna del marcador */}
+      {!editingNow && bySets && match.saved && match.sets?.length > 0 && (
+        <div className="flex flex-wrap justify-center gap-1.5 px-4 pb-4 -mt-1 text-sm font-black text-gray-50">
+          {match.sets.map((set, idx) => (
+            <span key={idx} className="bg-[#0f172a] px-2 py-1 rounded">
+              {set.a}-{set.b}
+            </span>
+          ))}
         </div>
       )}
 

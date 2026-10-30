@@ -46,7 +46,7 @@ test("corregir mantiene el resultado para el espectador, valida el marcador, can
   await expect(casillas.nth(1)).toHaveValue("2");
   await casillas.nth(1).fill("6");
   await expect(page.getByTestId("games-error")).toContainText("no puede terminar empatado");
-  await expect(page.getByRole("button", { name: /Guardar/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Guardar/ })).toBeDisabled();
 
   // Cancelar deja todo como estaba
   await page.getByTestId("btn-cancelar-edicion").click();

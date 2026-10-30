@@ -334,6 +334,9 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
                         </div>
                       </div>
 
+                      {isAdmin && !court.saved && !isNaN(a) && !isNaN(b) && a === b && (
+                        <div className="px-4 pb-3 text-center text-[12px] text-amber-400 font-bold">⚠️ Un partido no puede terminar empatado</div>
+                      )}
                       {isAdmin && !court.saved && (
                         <MatchActions
                           isEditing={isEditing}
