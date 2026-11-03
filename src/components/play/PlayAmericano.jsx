@@ -14,6 +14,7 @@ import MatchShell from "../shared/match/MatchShell";
 import MatchActions from "../shared/match/MatchActions";
 import PairNames from "../shared/match/PairNames";
 import { ScoreBox, ScoreInput } from "../shared/match/ScoreBox";
+import { useClearOnSaved } from "../../hooks/useClearOnSaved";
 
 const ACCENT = TOURNAMENT_TYPES.find((tt) => tt.id === "americano").color;
 
@@ -37,9 +38,11 @@ function PTag({ p }) {
   );
 }
 
-export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onEditTournament }) {
+export default function PlayAmericano({ t, serverT, code, isAdmin, persist, copyCode, onEditTournament }) {
   const [tab, setTab] = useState("courts");
   const [ls, setLs] = useState({});
+  // Si otra pantalla guarda un partido, lo escrito aquí sin guardar queda obsoleto
+  useClearOnSaved((serverT?.currentRound || []).map((c, i) => ({ key: i, saved: c.saved })), setLs, serverT?._ownWrite);
   const [viewingRound, setViewingRound] = useState(null); // null = ronda actual
   const [search, setSearch] = useState(null); // null = todos, playerID/pairID = filtrado
   const [modalMsg, setModalMsg] = useState(null);

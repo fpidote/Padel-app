@@ -26,6 +26,7 @@ import MatchCard from "../shared/MatchCard";
 import PairStandings from "../shared/PairStandings";
 import PodiumCard from "../shared/PodiumCard";
 import { clearScoreInputs } from "../../logic/sets";
+import { useClearOnSaved } from "../../hooks/useClearOnSaved";
 import RestingNote from "../shared/RestingNote";
 import { showToast } from "../../logic/toast";
 import { sortStandings, standingsLabels } from "../../logic/standings";
@@ -34,7 +35,7 @@ import { helperAllows } from "../../logic/helpers";
 
 const ACCENT = TOURNAMENT_TYPES.find((tt) => tt.id === "liga").color;
 
-export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTournament }) {
+export default function PlayLiga({ t, serverT, code, isAdmin, persist, copyCode, onEditTournament }) {
   const [tab, setTab] = useState("fixture");
 
   // Quien está mirando la Liga pasa a Eliminatoria cuando el organizador inicia la fase final; quien está en otra pestaña se queda
@@ -44,6 +45,8 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
     prevPhase.current = t.phase;
   }, [t.phase]);
   const [ls, setLs] = useState({});
+  // Si otra pantalla guarda un partido, lo escrito aquí sin guardar queda obsoleto
+  useClearOnSaved([...(serverT?.matches || []), ...(serverT?.knockoutBracket || [])].map((m) => ({ key: m.id, saved: m.saved })), setLs, serverT?._ownWrite);
   const [confirm, setConfirm] = useState(null); // { kind: "delete" | "start" | "reopen" | "finish" | "next", matchId? }
   const [renameModal, setRenameModal] = useState(null); // { names: { [pairId]: { p1, p2 } }, error? }
   const { isHelper } = useContext(RoleContext);
@@ -422,7 +425,12 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                     </div>
                     {t.knockoutBracket
                       .filter((m) => m.round === round && m.bracket !== "third")
-                      .map((match) => (
+                      .map((match) => (!match.pairA && !match.pairB ? (
+                        // Aún sin parejas: se sabrán al jugarse los partidos anteriores
+                        <div key={match.id} className="mb-3 rounded-2xl border border-dashed border-[#374151] px-4 py-5 text-center text-xs font-semibold text-gray-500">
+                          Por definir según los resultados anteriores
+                        </div>
+                      ) : (
                         <MatchCard
                           key={match.id}
                           match={isAdmin ? adminBracketMatchView(match) : match}
@@ -442,7 +450,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                           scoringFormat={t.config?.scoringFormat || "sets3"}
                           stageLabel="FASE FINAL"
                         />
-                      ))}
+                      )))}
                   </div>
                 ))}
                 {thirdMatch && (

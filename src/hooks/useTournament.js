@@ -21,10 +21,14 @@ export function useTournament(code) {
   const [ownerUid, setOwnerUid] = useState(null);
   const isOwner = !!(authUser?.uid && ownerUid && authUser.uid === ownerUid);
   const [isHelper, setIsHelper] = useState(false);
+  // Último estado confirmado por el servidor (el optimista de `t` puede ir por delante de un guardado en curso)
+  const [serverT, setServerT] = useState(null);
   const canScore = isOwner || isHelper;
   const hasTournament = !!ownerUid;
 
   const verRef = useRef(null);
+  // Identificadores de los guardados de ESTA pantalla: sirven para distinguir lo que llega de otra pantalla
+  const ownWriteIds = useRef(new Set());
   const wasAdminRef = useRef(false);
   const codeRef = useRef(code);
   codeRef.current = code;
@@ -39,7 +43,8 @@ export function useTournament(code) {
       onConflict: (serverState) => {
         verRef.current = serverState.ver ?? 0;
         setT(serverState);
-        showToast("Alguien guardó a la vez; se cargó la versión más reciente. Revisa el resultado y, si hace falta, vuelve a cargarlo o corrígelo con Editar.");
+        setServerT({ ...serverState, _ownWrite: false });
+        showToast("Tu resultado no se guardó porque otra persona guardó a la vez. Revisa el partido y vuelve a anotarlo si hace falta.");
       },
       onFailure: (lastSaved, err) => {
         console.error("Error al guardar:", err);
@@ -164,6 +169,7 @@ export function useTournament(code) {
         setOwnerUid(tournamentOwnerUid(snap.data().ownerUid, data));
         queueRef.current.confirm(data);
         setT(data);
+        setServerT({ ...data, _ownWrite: ownWriteIds.current.has(data.writeId) });
       },
       // Hallazgo 4: errores del listener expuestos como estado, no solo console.error
       (err) => {
@@ -191,6 +197,7 @@ export function useTournament(code) {
       return false;
     }
     const updated = { ...newT, ver: Math.max(newT.ver || 0, verRef.current ?? 0) + 1, writeId: newWriteId() };
+    ownWriteIds.current.add(updated.writeId);
     verRef.current = updated.ver;
     setT(updated);
     setSaving(true);
@@ -209,5 +216,5 @@ export function useTournament(code) {
     }
   }
 
-  return { t, notFound, isOwner, isHelper, canScore, signedIn: !!authUser, error, saving, persist, copyCode, sessionExpired, reauthenticate, switchAccount };
+  return { t, serverT, notFound, isOwner, isHelper, canScore, signedIn: !!authUser, error, saving, persist, copyCode, sessionExpired, reauthenticate, switchAccount };
 }

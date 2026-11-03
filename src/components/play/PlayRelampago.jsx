@@ -12,6 +12,7 @@ import PairStandings from "../shared/PairStandings";
 import { sortStandings } from "../../logic/standings";
 import PodiumCard from "../shared/PodiumCard";
 import { showToast } from "../../logic/toast";
+import { useClearOnSaved } from "../../hooks/useClearOnSaved";
 
 const SLOT_HEIGHT = 110;
 // Con sets la tarjeta abierta es más alta: más espacio por partido para que no tape a la vecina
@@ -32,6 +33,8 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
 
   // Al corregir un resultado la tarjeta se abre con lo que había escrito (también tras recargar)
   const editing = isAdmin && !!match.editing;
+  // Abierta solo si el partido sigue sin guardar o en corrección: si otra pantalla lo guardó, no se muestran casillas
+  const open = expanded && (!match.saved || editing);
   useEffect(() => {
     if (!editing) return;
     setExpandedState(true);
@@ -132,7 +135,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
         borderLeftColor: accentColor,
         cursor: !isAdmin || isTBD || isBye || match.saved ? "default" : "pointer",
         // Abierta puede desbordar su slot: se ve como popover
-        boxShadow: expanded ? "0 12px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.1)" : undefined,
+        boxShadow: open ? "0 12px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.1)" : undefined,
       }}
     >
       {match.saved && (
@@ -149,7 +152,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
         >
           {nameA}
         </span>
-        {expanded && !isSetFormat ? (
+        {open && !isSetFormat ? (
           <ScoreInput
             size="set"
             accentColor={accentColor}
@@ -161,7 +164,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
           />
         ) : (
           <span className="text-base font-extrabold min-w-7 text-right" style={{ color: match.saved ? (wonA ? "#4ade80" : "#94a3b8") : "#334155" }}>
-            {expanded && isSetFormat ? live.setsA : match.saved ? match.scoreA : "–"}
+            {open && isSetFormat ? live.setsA : match.saved ? match.scoreA : "–"}
           </span>
         )}
       </div>
@@ -174,7 +177,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
         >
           {nameB}
         </span>
-        {expanded && !isSetFormat ? (
+        {open && !isSetFormat ? (
           <ScoreInput
             size="set"
             accentColor={accentColor}
@@ -186,7 +189,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
           />
         ) : (
           <span className="text-base font-extrabold min-w-7 text-right" style={{ color: match.saved ? (wonB ? "#4ade80" : "#94a3b8") : "#334155" }}>
-            {expanded && isSetFormat ? live.setsB : match.saved ? match.scoreB : "–"}
+            {open && isSetFormat ? live.setsB : match.saved ? match.scoreB : "–"}
           </span>
         )}
       </div>
@@ -201,7 +204,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
         </div>
       )}
 
-      {expanded && isSetFormat && (
+      {open && isSetFormat && (
         <div className="mt-2 flex flex-col gap-1.5">
           {Array.from({ length: visibleSetRows }).map((_, i) => (
             <div key={i} className="flex items-center gap-1.5">
@@ -231,11 +234,11 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
         </div>
       )}
 
-      {expanded && gamesError && (
+      {open && gamesError && (
         <p data-testid="games-error" className="mt-1.5 text-[11px] font-semibold text-amber-400">⚠️ {gamesError}</p>
       )}
 
-      {(editing || expanded) && (
+      {(editing || open) && (
         <div className="mt-2 flex gap-2">
           {editing && (
             <button
@@ -252,7 +255,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
               ✕ Cancelar
             </button>
           )}
-          {expanded && (
+          {open && (
             <button
               type="button"
               onClick={(e) => {
@@ -449,9 +452,11 @@ function BracketView({ matches, isAdmin, ls, setLs, onSave, onEdit, onCancel, fi
   );
 }
 
-export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onEditTournament }) {
+export default function PlayRelampago({ t, serverT, code, isAdmin, persist, copyCode, onEditTournament }) {
   const [tab, setTab] = useState("bracket");
   const [ls, setLs] = useState({});
+  // Si otra pantalla guarda un partido, lo escrito aquí sin guardar queda obsoleto
+  useClearOnSaved((serverT?.bracket || []).map((m) => ({ key: m.id, saved: m.saved })), setLs, serverT?._ownWrite);
   const [confirmFinish, setConfirmFinish] = useState(false);
   const finished = t.status === "finished";
 

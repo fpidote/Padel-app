@@ -19,9 +19,11 @@ import MatchCard from "../shared/MatchCard";
 import PodiumCard from "../shared/PodiumCard";
 import CrossingsProjection from "./CrossingsProjection";
 import PairStandings from "../shared/PairStandings";
+import { useClearOnSaved } from "../../hooks/useClearOnSaved";
 
 export default function PlayMundialito({
   t,
+  serverT,
   code,
   isAdmin,
   persist,
@@ -30,6 +32,8 @@ export default function PlayMundialito({
 }) {
   const [tab, setTab] = useState("groups");
   const [ls, setLs] = useState({});
+  // Si otra pantalla guarda un partido, lo escrito aquí sin guardar queda obsoleto
+  useClearOnSaved([...(serverT?.groups || []).flatMap((g) => g.matches), ...(serverT?.knockoutBracket || [])].map((m) => ({ key: m.id, saved: m.saved })), setLs, serverT?._ownWrite);
   const [confirm, setConfirm] = useState(null); // { kind: "delete" | "start" | "reopen" | "finish", groupId?, matchId? }
   const locked = mundialitoGroupsLocked(t);
 

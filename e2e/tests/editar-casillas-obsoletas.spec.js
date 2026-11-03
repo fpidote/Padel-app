@@ -53,6 +53,69 @@ test("Liga: tras guardar otra pantalla el mismo partido, Editar abre con lo guar
   await expect(A.locator('input[type="number"]').nth(1)).toHaveValue("6");
 });
 
+test("Liga: si B abre Editar sobre un partido que guardó, la pantalla A no trae su marcador viejo sin guardar", async ({ browser }) => {
+  await seedTournament(CODE, {
+    type: "liga", status: "playing", phase: "fixture", scoringStarted: false,
+    config: { name: "Obsoletas B", courts: 2, scoringFormat: "games", idaYVuelta: false, playoffEnabled: false },
+    pairInputs: pairs, pairs, rounds: [{ round: 1, date: null }],
+    matches: [
+      { id: "r1_m0", round: 1, pairA: pairs[0], pairB: pairs[1], scoreA: "", scoreB: "", saved: false, sets: null },
+      { id: "r1_m1", round: 1, pairA: pairs[2], pairB: pairs[3], scoreA: "", scoreB: "", saved: false, sets: null },
+    ],
+    knockoutBracket: null,
+  });
+  const context = await browser.newContext();
+  const A = await abrir(context);
+  const B = await abrir(context);
+  await expect(A.locator('input[type="number"]').first()).toBeVisible({ timeout: 8000 });
+  await expect(B.locator('input[type="number"]').first()).toBeVisible({ timeout: 8000 });
+
+  await A.locator('input[type="number"]').nth(0).fill("6");
+  await A.locator('input[type="number"]').nth(1).fill("1");
+  await B.locator('input[type="number"]').nth(0).fill("2");
+  await B.locator('input[type="number"]').nth(1).fill("6");
+  await B.getByRole("button", { name: "Guardar resultado" }).first().click();
+  await expect.poll(async () => (await getTournamentData(CODE)).matches[0].saved, { timeout: 8000 }).toBe(true);
+
+  // B pulsa Editar; A no toca nada y sus casillas se abren con lo guardado (2-6), no con su 6-1
+  await B.getByRole("button", { name: /Editar/ }).first().click({ timeout: 8000 });
+  await expect.poll(async () => (await getTournamentData(CODE)).matches[0].editing, { timeout: 8000 }).toBe(true);
+  await expect(A.locator('input[type="number"]').nth(0)).toHaveValue("2", { timeout: 8000 });
+  await expect(A.locator('input[type="number"]').nth(1)).toHaveValue("6");
+});
+
+test("Relámpago: si otra pantalla guarda el partido, la tarjeta abierta aquí no sigue mostrando casillas", async ({ browser }) => {
+  await seedTournament(CODE, {
+    type: "relampago", status: "setup", phase: "setup",
+    config: { name: "Rel misma", courts: 2, scoringSystem: "timed" },
+    pairInputs: pairs, pairs: [], bracket: null,
+  });
+  const context = await browser.newContext();
+  const A = await abrir(context);
+  await A.getByTestId("btn-open-modal").or(A.getByRole("button", { name: /Iniciar Torneo/i })).first().waitFor({ timeout: 8000 });
+  if (await A.getByTestId("btn-open-modal").count()) { await A.getByTestId("btn-open-modal").click(); await A.getByTestId("btn-iniciar").click(); }
+  else await A.getByRole("button", { name: /Iniciar Torneo/i }).click();
+  const B = await abrir(context);
+  const nombres = A.getByText(/^\S+ \/ \S+$/).first();
+  await nombres.waitFor({ timeout: 8000 });
+  await B.getByText(/^\S+ \/ \S+$/).first().waitFor({ timeout: 8000 });
+
+  // Las dos abren el mismo partido; A escribe sin guardar y B guarda
+  await A.getByText(/^\S+ \/ \S+$/).first().click();
+  await A.locator('input[type="number"]').nth(0).fill("6");
+  await A.locator('input[type="number"]').nth(1).fill("2");
+  await B.getByText(/^\S+ \/ \S+$/).first().click();
+  await B.locator('input[type="number"]').nth(0).fill("3");
+  await B.locator('input[type="number"]').nth(1).fill("6");
+  await B.getByRole("button", { name: /Guardar/ }).click();
+  await expect.poll(async () => ((await getTournamentData(CODE))?.bracket ?? []).some((m) => m.saved), { timeout: 8000 }).toBe(true);
+
+  // En A el partido ya figura guardado: sin casillas ni Guardar abiertos
+  await expect(A.getByText("✏️ Editar").first()).toBeVisible({ timeout: 8000 });
+  await expect(A.locator('input[type="number"]')).toHaveCount(0);
+  await expect(A.getByRole("button", { name: /Guardar/ })).toHaveCount(0);
+});
+
 test("Relámpago: si Guardar falla la tarjeta sigue abierta con el marcador", async ({ page, context }) => {
   await seedTournament(CODE, {
     type: "relampago", status: "setup", phase: "setup",

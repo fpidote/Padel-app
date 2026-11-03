@@ -19,7 +19,7 @@ const PlayLiga = lazy(() => import('./components/play/PlayLiga'));
 export default function TournamentPage() {
   const { code } = useParams();
   const navigate = useNavigate();
-  const { t, notFound, isOwner, isHelper, canScore, signedIn, error, saving, persist, copyCode, sessionExpired, reauthenticate, switchAccount } = useTournament(code);
+  const { t, serverT, notFound, isOwner, isHelper, canScore, signedIn, error, saving, persist, copyCode, sessionExpired, reauthenticate, switchAccount } = useTournament(code);
   const online = useOnline();
   const [editMode, setEditMode] = useState(false);
   const [showHelpers, setShowHelpers] = useState(false);
@@ -70,7 +70,7 @@ export default function TournamentPage() {
     );
 
   // Los ayudantes cargan resultados (canScore); preparar, lanzar y editar el torneo es solo del dueño
-  const props = { t, code, isAdmin: canScore, saving, persist, copyCode };
+  const props = { t, serverT, code, isAdmin: canScore, saving, persist, copyCode };
   const setupProps = { ...props, isAdmin: isOwner };
   const typeInfo = TOURNAMENT_TYPES.find((x) => x.id === t.type) || TOURNAMENT_TYPES[0];
 
