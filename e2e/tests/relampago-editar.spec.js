@@ -52,6 +52,9 @@ test("corregir mantiene el resultado para el espectador, valida el marcador, can
   await page.getByTestId("btn-cancelar-edicion").click();
   await expect.poll(async () => (await partido()).editing, { timeout: 8000 }).toBe(false);
   expect(await partido()).toMatchObject({ saved: true, scoreA: "6", scoreB: "2" });
+  // La tarjeta se cierra: sin casillas ni Guardar sueltos sobre el resultado guardado
+  await expect(page.locator('input[type="number"]')).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Guardar/ })).toHaveCount(0);
 
   // Corregir a favor de la otra pareja y guardar con Enter
   await page.getByText("✏️ Editar").first().click();

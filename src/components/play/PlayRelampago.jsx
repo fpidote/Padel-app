@@ -234,7 +234,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
             <button
               type="button"
               data-testid="btn-cancelar-edicion"
-              onClick={(e) => { e.stopPropagation(); onCancel(match.id); }}
+              onClick={(e) => { e.stopPropagation(); onCancel(match.id); setExpanded(false); }}
               className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-red-700 hover:bg-red-600 text-white cursor-pointer border-0"
             >
               ✕ Cancelar
