@@ -85,6 +85,17 @@ describe("clearScoreInputs", () => {
     expect(clearScoreInputs(ls, "m1")).toEqual({ m2_A: "3", m2_set0_A: "7" });
   });
 
+  it("con las casillas que había al guardar, solo quita las que siguen igual (lo escrito después se conserva)", () => {
+    const alGuardar = { m1_A: "6", m1_B: "2" };
+    const ahora = { m1_A: "6", m1_B: "7", m1_set0_A: "3" }; // B se corrigió y set0_A es nueva mientras se guardaba
+    expect(clearScoreInputs(ahora, "m1", alGuardar)).toEqual({ m1_B: "7", m1_set0_A: "3" });
+  });
+
+  it("si nada cambió desde el guardado, limpia todo como siempre", () => {
+    const ls = { m1_A: "6", m1_B: "2", m2_A: "3" };
+    expect(clearScoreInputs(ls, "m1", { ...ls })).toEqual({ m2_A: "3" });
+  });
+
   it("no modifica el objeto original", () => {
     const ls = { m1_A: "6" };
     clearScoreInputs(ls, "m1");

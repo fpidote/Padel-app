@@ -108,7 +108,7 @@ export default function PlayMundialito({
 
     // Lo escrito se conserva hasta que el guardado entre
     const ok = await persist({ ...t, groups: updatedGroups, scoringStarted: true });
-    if (ok) setLs((prev) => clearScoreInputs(prev, matchId));
+    if (ok) setLs((prev) => clearScoreInputs(prev, matchId, ls));
   }
 
   async function onEditGroupMatch(groupId, matchId) {
@@ -192,7 +192,7 @@ export default function PlayMundialito({
         );
 
     const ok = await persist({ ...t, knockoutBracket: updated, scoringStarted: true });
-    if (ok) setLs((prev) => clearScoreInputs(prev, matchId));
+    if (ok) setLs((prev) => clearScoreInputs(prev, matchId, ls));
   }
 
   async function onFinishTournament() {

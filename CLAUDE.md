@@ -379,6 +379,8 @@ useEffect(() => {
 
 Codex CLI está instalado y con login. Claude decide qué delegar, sin preguntar caso por caso.
 
+**Regla fija (pedida por el dueño):** siempre que una tarea controlada y segura pueda hacerla Codex, se le delega para ahorrar tokens de Claude, sin esperar a que se pida. "Controlada y segura" = acotada a archivos concretos, sin tocar Firebase/Rules/auth/persist ni decisiones de diseño, y verificable con tests o capturas. Si se decide NO delegar una tarea que encaja, decirlo y justificarlo en el momento. Acuerdo con el dueño: Claude decide qué delegar con su criterio, pero delega por defecto y en cada entrega informa si usó Codex o no (y por qué no); no se salta la delegación en silencio.
+
 - **Delegar**: tareas sencillas pero voluminosas o mecánicas (tests de lógica pura, conversiones mecánicas de estilos a Tailwind verificadas con capturas, renombrados repetitivos, revisión de un diff antes de commitear).
 - **No delegar**: decisiones de diseño, Firebase/Firestore/Rules, auth, cambios de una o dos líneas (el arranque de Codex cuesta más que hacerlo directo).
 - **Cuota**: cada llamada gasta ~17-36k tokens del plan gratuito, y una revisión de un diff grande (~20 archivos, ~1000 líneas) llegó a ~80k. Pedir revisiones acotadas (un commit o un archivo) y agrupar el trabajo en pocas llamadas. El plan es gratuito con ventana de 30 días; el uso aproximado se ve en `~/.codex/sessions/` (campo `rate_limits`) o con `/status` dentro de Codex.

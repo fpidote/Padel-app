@@ -26,10 +26,13 @@ export function validateGamesScore(rawA, rawB) {
 }
 
 // Quita de `ls` (los inputs en pantalla) todo lo escrito para un partido: games y casillas de sets.
-export function clearScoreInputs(ls, matchId) {
+// Con `written` (las casillas tal como estaban al pedir el guardado) solo quita las que siguen igual: si
+// mientras el guardado estaba en curso se empezó a escribir otra corrección, eso no se borra.
+export function clearScoreInputs(ls, matchId, written) {
   const prefix = `${matchId}_`;
   const isOwn = (key) => key.startsWith(prefix) && /^(A|B|set\d+_[AB])$/.test(key.slice(prefix.length));
-  return Object.fromEntries(Object.entries(ls).filter(([key]) => !isOwn(key)));
+  const unchanged = (key) => !written || (key in written && written[key] === ls[key]);
+  return Object.fromEntries(Object.entries(ls).filter(([key]) => !(isOwn(key) && unchanged(key))));
 }
 
 // rows: [{a: "6", b: "4"}, ...] tal como están en los inputs.

@@ -450,7 +450,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
     if (isNaN(a) || isNaN(b) || a < 0 || b < 0 || a === b) return;
 
     // Lo escrito se conserva hasta que el guardado entre: si falla, el marcador sigue en las casillas
-    const clear = (ok) => { if (ok) setLs((prev) => clearScoreInputs(prev, matchId)); };
+    const clear = (ok) => { if (ok) setLs((prev) => clearScoreInputs(prev, matchId, ls)); };
 
     if (match.editing) {
       // Corrección: se quitan las estadísticas del resultado anterior y se suman las del nuevo, todo de una vez
@@ -478,7 +478,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
 
   async function onCancelEdit(matchId) {
     const ok = await persist({ ...t, bracket: cancelEditBracketMatch(t.bracket, matchId) });
-    if (ok) setLs((prev) => clearScoreInputs(prev, matchId));
+    if (ok) setLs((prev) => clearScoreInputs(prev, matchId, ls));
   }
 
   async function onFinishTournament() {

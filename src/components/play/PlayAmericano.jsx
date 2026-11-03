@@ -77,7 +77,7 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
     try {
       // Lo escrito se conserva hasta que el guardado entre: si falla, la pista vuelve con el marcador puesto
       const ok = await persist({ ...t, currentRound: cr, scoringStarted: true });
-      if (ok) setLs((prev) => clearScoreInputs(prev, ci));
+      if (ok) setLs((prev) => clearScoreInputs(prev, ci, ls));
     } catch (err) {
       console.error("Error al guardar resultado:", err);
       setModalMsg("No se pudo guardar el resultado. Intenta de nuevo.");

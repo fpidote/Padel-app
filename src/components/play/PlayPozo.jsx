@@ -59,7 +59,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
     );
     // Lo escrito se conserva hasta que el guardado entre
     const ok = await persist({ ...t, currentPozoRound: updated, scoringStarted: true });
-    if (ok) setLs((prev) => clearScoreInputs(prev, ci));
+    if (ok) setLs((prev) => clearScoreInputs(prev, ci, ls));
   }
 
   // Corregir: la pista sigue guardada para todos hasta que se guarde la corrección
@@ -76,7 +76,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
       i === ci ? { ...c, editing: false } : c,
     );
     const ok = await persist({ ...t, currentPozoRound: updated });
-    if (ok) setLs((prev) => clearScoreInputs(prev, ci));
+    if (ok) setLs((prev) => clearScoreInputs(prev, ci, ls));
   }
 
   async function finishTournament() {

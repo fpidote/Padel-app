@@ -69,7 +69,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
 
     // Lo escrito se conserva hasta que el guardado entre: si falla, la tarjeta vuelve con el marcador puesto
     const ok = await persist({ ...t, matches: updatedMatches, pairs: standings, scoringStarted: true });
-    if (ok) setLs((prev) => clearScoreInputs(prev, matchId));
+    if (ok) setLs((prev) => clearScoreInputs(prev, matchId, ls));
   }
 
   async function onEditMatch(matchId) {
@@ -157,7 +157,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
       m.id === matchId ? { ...m, sets: sets || null } : m,
     );
     const ok = await persist({ ...t, knockoutBracket: updated, scoringStarted: true });
-    if (ok) setLs((prev) => clearScoreInputs(prev, matchId));
+    if (ok) setLs((prev) => clearScoreInputs(prev, matchId, ls));
   }
 
   async function onEditKnockoutMatch(matchId) {
