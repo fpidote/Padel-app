@@ -135,13 +135,6 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
     }
   }
 
-  async function onSetRoundDate(roundNum, date) {
-    const updatedRounds = rounds.map((r) =>
-      r.round === roundNum ? { ...r, date: date || null } : r,
-    );
-    await persist({ ...t, rounds: updatedRounds });
-  }
-
   async function onStartKnockout() {
     if (!allMatchesDone) return;
     setConfirm(null);
@@ -282,7 +275,6 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                   onEdit={locked ? undefined : onEditMatch}
                   onDelete={locked ? undefined : (id) => setConfirm({ kind: "delete", matchId: id })}
                   locked={locked}
-                  onSetDate={onSetRoundDate}
                   scoringFormat={t.config?.scoringFormat || "sets3"}
                 />
               ))}
@@ -579,7 +571,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
   );
 }
 
-function LigaRoundAccordion({ round, single, matches, allMatches, isAdmin, ls, setLs, onSave, onEdit, onDelete, locked, onSetDate, scoringFormat }) {
+function LigaRoundAccordion({ round, single, matches, allMatches, isAdmin, ls, setLs, onSave, onEdit, onDelete, locked, scoringFormat }) {
   const hasUnsaved = matches.some((m) => !m.saved);
   const [isOpenState, setIsOpen] = useState(hasUnsaved || round.round === 1);
   // Con una sola jornada a la vista no hay nada que plegar
@@ -600,17 +592,6 @@ function LigaRoundAccordion({ round, single, matches, allMatches, isAdmin, ls, s
       <div className="px-4"><RestingNote matches={allMatches} round={round.round} /></div>
       {isOpen && (
         <div className="px-4 pb-4">
-          {isAdmin && (
-            <div className="mb-3">
-              <label className="text-xs text-gray-500 font-semibold block mb-1.5">📅 Fecha (opcional)</label>
-              <input
-                type="date"
-                value={round.date || ""}
-                onChange={(e) => onSetDate(round.round, e.target.value)}
-                className="bg-[#0f172a] border border-gray-700 rounded-lg text-gray-50 px-3 py-2 text-sm outline-none"
-              />
-            </div>
-          )}
           {matches.map((match) => (
             <MatchCard
               key={match.id}

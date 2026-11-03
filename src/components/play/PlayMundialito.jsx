@@ -470,7 +470,12 @@ export default function PlayMundialito({
                     </div>
                     {t.knockoutBracket
                       .filter((m) => m.round === round && m.bracket !== "third")
-                      .map((match) => (
+                      .map((match) => (!match.pairA && !match.pairB ? (
+                        // Aún sin parejas: se sabrán al jugarse los partidos anteriores
+                        <div key={match.id} className="mb-3 rounded-2xl border border-dashed border-[#374151] px-4 py-5 text-center text-xs font-semibold text-gray-500">
+                          Por definir según los resultados anteriores
+                        </div>
+                      ) : (
                         <MatchCard
                           key={match.id}
                           match={isAdmin ? adminBracketMatchView(match) : match}
@@ -490,7 +495,7 @@ export default function PlayMundialito({
                           scoringFormat={t.config?.scoringFormat || "games"}
                           stageLabel={knockoutLabel(round, koRounds, match)}
                         />
-                      ))}
+                      )))}
                   </div>
                 ))}
                 {thirdMatch && (

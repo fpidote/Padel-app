@@ -64,23 +64,37 @@ export function useTournament(code) {
   // ── ¿Soy ayudante de este torneo? ───────────────────────────
   // Una sola lectura de mi propio documento helpers/{correo}. El correo sale de los claims del token (lo
   // mismo que miran las reglas). Sin sesión, sin correo verificado o si no existe: no soy ayudante, sin avisos.
+  // Si el dueño lo añade con el torneo ya abierto, se vuelve a comprobar al volver a la pantalla (por ejemplo
+  // al regresar de WhatsApp), así no hace falta recargar; una vez confirmado no se vuelve a leer.
   useEffect(() => {
     setIsHelper(false);
     if (!authUser || !hasTournament || isOwner || !code) return undefined;
     let cancelled = false;
-    authUser
-      .getIdTokenResult()
-      .then(({ claims }) => {
-        const email = normalizeEmail(claims.email);
-        if (!email || claims.email_verified !== true) return null;
-        return getDoc(doc(db, "torneos", code, "helpers", email));
-      })
-      .then((snap) => {
-        if (!cancelled && snap?.exists()) setIsHelper(true);
-      })
-      .catch(() => {});
+    let found = false;
+    const check = () => {
+      authUser
+        .getIdTokenResult()
+        .then(({ claims }) => {
+          const email = normalizeEmail(claims.email);
+          if (!email || claims.email_verified !== true) return null;
+          return getDoc(doc(db, "torneos", code, "helpers", email));
+        })
+        .then((snap) => {
+          if (!cancelled && snap?.exists()) {
+            found = true;
+            setIsHelper(true);
+          }
+        })
+        .catch(() => {});
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && !found) check();
+    };
+    check();
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [authUser, hasTournament, isOwner, code]);
 

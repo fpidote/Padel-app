@@ -189,3 +189,16 @@ test("quien tiene sesión con otra cuenta que no es de ayudante ve cómo cambiar
   await expect(dueno.getByText("Jornada 1")).toBeVisible({ timeout: 8000 });
   await expect(dueno.getByTestId("btn-cambiar-cuenta")).toHaveCount(0);
 });
+
+test("un ayudante añadido con el torneo abierto pasa a serlo al volver a la pantalla, sin recargar", async ({ browser }) => {
+  await seedTournament(CODE, liga());
+  const ayudante = await abrir(browser, { uid: "ayudante-2", email: "nuevo@gmail.com" });
+  await expect(ayudante.getByText("🤝 Ayudante")).toHaveCount(0);
+  await expect(ayudante.locator('input[type="number"]')).toHaveCount(0);
+
+  // El dueño lo añade mientras tiene el enlace abierto; al volver a la pestaña ya puede cargar resultados
+  await addHelper(CODE, "nuevo@gmail.com");
+  await ayudante.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await expect(ayudante.getByText("🤝 Ayudante")).toBeVisible({ timeout: 8000 });
+  await expect(ayudante.locator('input[type="number"]').first()).toBeVisible();
+});
