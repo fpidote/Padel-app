@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { generateRules, TOURNAMENT_TYPES } from "../../logic/constants";
+import { clearScoreInputs } from "../../logic/sets";
 import {
   buildPozoRound,
   applyPozoRoundResults,
@@ -56,13 +57,9 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
     const updated = t.currentPozoRound.map((c, i) =>
       i === ci ? { ...c, scoreA: String(a), scoreB: String(b), saved: true } : c,
     );
-    setLs((prev) => {
-      const n = { ...prev };
-      delete n[`${ci}_A`];
-      delete n[`${ci}_B`];
-      return n;
-    });
-    await persist({ ...t, currentPozoRound: updated, scoringStarted: true });
+    // Lo escrito se conserva hasta que el guardado entre
+    const ok = await persist({ ...t, currentPozoRound: updated, scoringStarted: true });
+    if (ok) setLs((prev) => clearScoreInputs(prev, ci));
   }
 
   async function onEditCourt(ci) {
@@ -74,16 +71,11 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
 
   // Cancelar la corrección: el resultado que había vuelve a quedar guardado
   async function onCancelEditCourt(ci) {
-    setLs((prev) => {
-      const n = { ...prev };
-      delete n[`${ci}_A`];
-      delete n[`${ci}_B`];
-      return n;
-    });
     const updated = t.currentPozoRound.map((c, i) =>
       i === ci ? { ...c, saved: true } : c,
     );
-    await persist({ ...t, currentPozoRound: updated });
+    const ok = await persist({ ...t, currentPozoRound: updated });
+    if (ok) setLs((prev) => clearScoreInputs(prev, ci));
   }
 
   async function finishTournament() {

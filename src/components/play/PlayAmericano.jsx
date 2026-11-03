@@ -8,7 +8,7 @@ import { RoleContext } from "../shared/RoleContext";
 import { helperAllows } from "../../logic/helpers";
 import History from "../shared/History";
 import PodiumCard from "../shared/PodiumCard";
-import { validateGamesScore } from "../../logic/sets";
+import { validateGamesScore, clearScoreInputs } from "../../logic/sets";
 import { scoreInputProps } from "../../logic/scoreInput";
 import MatchShell from "../shared/match/MatchShell";
 import MatchActions from "../shared/match/MatchActions";
@@ -74,18 +74,12 @@ export default function PlayAmericano({ t, code, isAdmin, persist, copyCode, onE
         ? { ...c, scoreA: String(a), scoreB: String(b), saved: true, editing: false }
         : c,
     );
-    setLs((prev) => {
-      const n = { ...prev };
-      delete n[`${ci}_A`];
-      delete n[`${ci}_B`];
-      return n;
-    });
     try {
-      await persist({ ...t, currentRound: cr, scoringStarted: true });
+      // Lo escrito se conserva hasta que el guardado entre: si falla, la pista vuelve con el marcador puesto
+      const ok = await persist({ ...t, currentRound: cr, scoringStarted: true });
+      if (ok) setLs((prev) => clearScoreInputs(prev, ci));
     } catch (err) {
       console.error("Error al guardar resultado:", err);
-      // Revertir estado local para que el admin pueda reintentar
-      setLs((prev) => ({ ...prev, [`${ci}_A`]: String(a), [`${ci}_B`]: String(b) }));
       setModalMsg("No se pudo guardar el resultado. Intenta de nuevo.");
     }
   }

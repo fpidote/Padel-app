@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, useLayoutEffect, Fragment } from "react";
 import { generateRules } from "../../logic/constants";
 import { advanceBracket, canEditBracketMatch, countPlayed, bracketRoundName, relampagoPodium, relampagoCanFinish, relampagoRankingOrder, startEditBracketMatch, cancelEditBracketMatch, correctBracketMatch, adminBracketMatchView } from "../../logic/relampago";
 import { matchScoreState, isSetsFormat } from "../../logic/matchScore";
+import { clearScoreInputs } from "../../logic/sets";
 import { ScoreInput } from "../shared/match/ScoreBox";
 import { blockNonIntegerKey, goToNextScore } from "../../logic/scoreInput";
 import { applyMatchToPairs } from "../../logic/standings";
@@ -448,19 +449,14 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
     if (!match || (match.saved && !match.editing)) return;
     if (isNaN(a) || isNaN(b) || a < 0 || b < 0 || a === b) return;
 
-    setLs((prev) => {
-      const n = { ...prev };
-      Object.keys(n).forEach((k) => {
-        if (k.startsWith(`${matchId}_`)) delete n[k];
-      });
-      return n;
-    });
+    // Lo escrito se conserva hasta que el guardado entre: si falla, el marcador sigue en las casillas
+    const clear = (ok) => { if (ok) setLs((prev) => clearScoreInputs(prev, matchId)); };
 
     if (match.editing) {
       // Corrección: se quitan las estadísticas del resultado anterior y se suman las del nuevo, todo de una vez
       const quitadas = applyMatchToPairs(t.pairs, match, parseInt(match.scoreA), parseInt(match.scoreB), match.sets, -1);
       const pairs = applyMatchToPairs(quitadas, match, a, b, sets, 1);
-      await persist({ ...t, bracket: correctBracketMatch(t.bracket, matchId, a, b, sets), pairs });
+      clear(await persist({ ...t, bracket: correctBracketMatch(t.bracket, matchId, a, b, sets), pairs }));
       return;
     }
 
@@ -468,7 +464,7 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
       m.id === matchId ? { ...m, sets: sets || null } : m,
     );
     const pairs = applyMatchToPairs(t.pairs, match, a, b, sets, 1);
-    await persist({ ...t, bracket: updated, pairs, scoringStarted: true });
+    clear(await persist({ ...t, bracket: updated, pairs, scoringStarted: true }));
   }
 
   // Corregir: la tarjeta sigue guardada para todos hasta que se guarde la corrección
@@ -481,14 +477,8 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
   }
 
   async function onCancelEdit(matchId) {
-    setLs((prev) => {
-      const n = { ...prev };
-      Object.keys(n).forEach((k) => {
-        if (k.startsWith(`${matchId}_`)) delete n[k];
-      });
-      return n;
-    });
-    await persist({ ...t, bracket: cancelEditBracketMatch(t.bracket, matchId) });
+    const ok = await persist({ ...t, bracket: cancelEditBracketMatch(t.bracket, matchId) });
+    if (ok) setLs((prev) => clearScoreInputs(prev, matchId));
   }
 
   async function onFinishTournament() {

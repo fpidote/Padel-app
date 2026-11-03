@@ -1,5 +1,6 @@
 // src/components/play/PlayMundialito.jsx
 import { useState, useEffect, useRef } from "react";
+import { clearScoreInputs } from "../../logic/sets";
 import { generateRules } from "../../logic/constants";
 import { advanceBracket, unadvanceBracket, canEditBracketMatch, bracketRoundName, bracketPodium, bracketSemifinalLosers } from "../../logic/relampago";
 import {
@@ -104,13 +105,9 @@ export default function PlayMundialito({
       return { ...g, matches: updatedMatches, standings };
     });
 
-    setLs((prev) => {
-      const n = { ...prev };
-      delete n[`${matchId}_A`];
-      delete n[`${matchId}_B`];
-      return n;
-    });
-    await persist({ ...t, groups: updatedGroups, scoringStarted: true });
+    // Lo escrito se conserva hasta que el guardado entre
+    const ok = await persist({ ...t, groups: updatedGroups, scoringStarted: true });
+    if (ok) setLs((prev) => clearScoreInputs(prev, matchId));
   }
 
   async function onEditGroupMatch(groupId, matchId) {
@@ -191,13 +188,8 @@ export default function PlayMundialito({
       m.id === matchId ? { ...m, sets: sets || null } : m,
     );
 
-    setLs((prev) => {
-      const n = { ...prev };
-      delete n[`${matchId}_A`];
-      delete n[`${matchId}_B`];
-      return n;
-    });
-    await persist({ ...t, knockoutBracket: updated, scoringStarted: true });
+    const ok = await persist({ ...t, knockoutBracket: updated, scoringStarted: true });
+    if (ok) setLs((prev) => clearScoreInputs(prev, matchId));
   }
 
   async function onFinishTournament() {

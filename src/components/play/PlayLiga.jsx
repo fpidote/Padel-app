@@ -67,13 +67,9 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
     );
     const standings = recomputeLigaStandings(t.pairs, updatedMatches);
 
-    setLs((prev) => {
-      const n = { ...prev };
-      delete n[`${matchId}_A`];
-      delete n[`${matchId}_B`];
-      return n;
-    });
-    await persist({ ...t, matches: updatedMatches, pairs: standings, scoringStarted: true });
+    // Lo escrito se conserva hasta que el guardado entre: si falla, la tarjeta vuelve con el marcador puesto
+    const ok = await persist({ ...t, matches: updatedMatches, pairs: standings, scoringStarted: true });
+    if (ok) setLs((prev) => clearScoreInputs(prev, matchId));
   }
 
   async function onEditMatch(matchId) {
@@ -167,13 +163,8 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
     const updated = advanceBracket(t.knockoutBracket, matchId, a, b).map((m) =>
       m.id === matchId ? { ...m, sets: sets || null } : m,
     );
-    setLs((prev) => {
-      const n = { ...prev };
-      delete n[`${matchId}_A`];
-      delete n[`${matchId}_B`];
-      return n;
-    });
-    await persist({ ...t, knockoutBracket: updated, scoringStarted: true });
+    const ok = await persist({ ...t, knockoutBracket: updated, scoringStarted: true });
+    if (ok) setLs((prev) => clearScoreInputs(prev, matchId));
   }
 
   async function onEditKnockoutMatch(matchId) {

@@ -49,17 +49,8 @@ export default function MatchCard({
     return (v) => setLs((p) => ({ ...p, [key]: v }));
   }
 
+  // Restaura el resultado guardado; las casillas se limpian cuando ese guardado entra (quien guarda lo hace)
   function handleCancel() {
-    setLs((p) => {
-      const n = { ...p };
-      delete n[`${match.id}_A`];
-      delete n[`${match.id}_B`];
-      for (let i = 0; i < maxSets; i++) {
-        delete n[`${match.id}_set${i}_A`];
-        delete n[`${match.id}_set${i}_B`];
-      }
-      return n;
-    });
     onSave(match.id, parseInt(match.scoreA), parseInt(match.scoreB), match.sets);
   }
 

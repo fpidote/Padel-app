@@ -39,7 +39,7 @@ export function useTournament(code) {
       onConflict: (serverState) => {
         verRef.current = serverState.ver ?? 0;
         setT(serverState);
-        showToast("Otro organizador guardó a la vez; se cargó la versión más reciente. Repite tu cambio.");
+        showToast("Alguien guardó a la vez; se cargó la versión más reciente. Tu marcador sigue escrito: revísalo y vuelve a guardar.");
       },
       onFailure: (lastSaved, err) => {
         console.error("Error al guardar:", err);
@@ -163,23 +163,26 @@ export function useTournament(code) {
   // ── persist ─────────────────────────────────────────────────
   // La pantalla se actualiza al instante (estado optimista) y el guardado va por la cola: si se pide
   // otro cambio mientras se guarda, no se descarta, se guarda después con el estado más reciente.
+  // Devuelve true si el cambio quedó guardado y false si no (sin red, torneo sin cargar, conflicto o fallo):
+  // quien llama conserva lo que el usuario había escrito hasta que devuelva true.
   async function persist(newT) {
     // Sin red, setDoc no responde y dejaría el guardado colgado: se avisa y no se intenta a ciegas
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       showToast("No se guardaron los cambios: sin conexión. Vuelve a intentarlo cuando se recupere.");
-      return;
+      return false;
     }
     // Sin el estado del servidor aún cargado no hay versión sobre la que comprobar: no se guarda a ciegas
     if (!queueRef.current.lastSaved()) {
       showToast("El torneo todavía se está cargando. Inténtalo de nuevo en un momento.");
-      return;
+      return false;
     }
     const updated = { ...newT, ver: Math.max(newT.ver || 0, verRef.current ?? 0) + 1, writeId: newWriteId() };
     verRef.current = updated.ver;
     setT(updated);
     setSaving(true);
-    await queueRef.current.save(updated);
+    const saved = await queueRef.current.save(updated);
     setSaving(queueRef.current.isSaving());
+    return saved;
   }
 
   // ── copyCode ─────────────────────────────────────────────────

@@ -61,8 +61,12 @@ test("dos pantallas guardando a la vez: nunca se muestra un guardado que el serv
     }
     if (enServidor === 1) {
       hubConflicto = true;
-      const avisos = await Promise.all([A, B].map((p) => p.getByText(/Otro organizador guardó a la vez/).count()));
+      const avisos = await Promise.all([A, B].map((p) => p.getByText(/Alguien guardó a la vez/).count()));
       expect(avisos.reduce((a, b) => a + b, 0)).toBe(1);
+      // Quien perdió el guardado conserva lo que había escrito en su casilla, sin tener que recordarlo
+      const perdedora = avisos[0] === 1 ? A : B;
+      const valores = await perdedora.locator('input[type="number"]').evaluateAll((els) => els.map((e) => e.value));
+      expect(valores.some((v) => v !== "")).toBe(true);
     }
     await context.close();
   }
@@ -85,8 +89,8 @@ test("guardados en orden de dos pantallas: ambos quedan y no hay aviso", async (
   await B.locator('input[type="number"]').nth(1).fill("3");
   await B.getByRole("button", { name: "Guardar resultado" }).first().click();
   await expect.poll(guardados, { timeout: 8000 }).toBe(2);
-  await expect(A.getByText(/Otro organizador guardó a la vez/)).toHaveCount(0);
-  await expect(B.getByText(/Otro organizador guardó a la vez/)).toHaveCount(0);
+  await expect(A.getByText(/Alguien guardó a la vez/)).toHaveCount(0);
+  await expect(B.getByText(/Alguien guardó a la vez/)).toHaveCount(0);
 });
 
 test("una sola pantalla guardando varios resultados seguidos no da conflicto", async ({ page }) => {
@@ -101,5 +105,5 @@ test("una sola pantalla guardando varios resultados seguidos no da conflicto", a
   await page.getByRole("button", { name: "Guardar resultado" }).first().click();
   await page.getByRole("button", { name: "Guardar resultado" }).last().click();
   await expect.poll(guardados, { timeout: 8000 }).toBe(2);
-  await expect(page.getByText(/Otro organizador guardó a la vez/)).toHaveCount(0);
+  await expect(page.getByText(/Alguien guardó a la vez/)).toHaveCount(0);
 });
