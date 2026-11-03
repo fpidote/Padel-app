@@ -40,6 +40,8 @@ export function useTournament(code) {
       // Transacción que comprueba la versión: si otro organizador guardó antes, no se pisa nada (onConflict)
       write: (state, baseVer) =>
         runTransaction(db, (tx) => applyVersionedWrite(tx, doc(db, "torneos", codeRef.current), state, baseVer)),
+      // Lo guardado por esta pantalla también es estado confirmado: `serverT` no puede quedarse atrasado
+      onSaved: (state) => setServerT({ ...state, _ownWrite: true }),
       onConflict: (serverState) => {
         verRef.current = serverState.ver ?? 0;
         setT(serverState);

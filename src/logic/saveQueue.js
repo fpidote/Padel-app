@@ -19,7 +19,7 @@ export class VersionConflictError extends Error {
   }
 }
 
-export function createSaveQueue({ write, onFailure = () => {}, onConflict = () => {} }) {
+export function createSaveQueue({ write, onFailure = () => {}, onConflict = () => {}, onSaved = () => {} }) {
   let confirmed = null;
   let current = null; // lote que se está escribiendo: { state, resolvers }
   let next = null; // lote en espera
@@ -43,6 +43,7 @@ export function createSaveQueue({ write, onFailure = () => {}, onConflict = () =
         return;
       }
       confirmed = batch.state;
+      onSaved(batch.state);
       current = next;
       next = null;
       batch.resolvers.forEach((resolve) => resolve(true));

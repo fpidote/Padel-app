@@ -19,7 +19,7 @@ import MatchCard from "../shared/MatchCard";
 import PodiumCard from "../shared/PodiumCard";
 import CrossingsProjection from "./CrossingsProjection";
 import PairStandings from "../shared/PairStandings";
-import { useClearOnSaved } from "../../hooks/useClearOnSaved";
+import { useClearOnSaved, matchSig } from "../../hooks/useClearOnSaved";
 
 export default function PlayMundialito({
   t,
@@ -33,7 +33,7 @@ export default function PlayMundialito({
   const [tab, setTab] = useState("groups");
   const [ls, setLs] = useState({});
   // Si otra pantalla guarda un partido, lo escrito aquí sin guardar queda obsoleto
-  useClearOnSaved([...(serverT?.groups || []).flatMap((g) => g.matches), ...(serverT?.knockoutBracket || [])].map((m) => ({ key: m.id, saved: m.saved })), setLs, serverT?._ownWrite);
+  useClearOnSaved([...(serverT?.groups || []).flatMap((g) => g.matches), ...(serverT?.knockoutBracket || [])].map((m) => ({ key: m.id, sig: matchSig(m) })), setLs, serverT?._ownWrite);
   const [confirm, setConfirm] = useState(null); // { kind: "delete" | "start" | "reopen" | "finish", groupId?, matchId? }
   const locked = mundialitoGroupsLocked(t);
 
@@ -505,7 +505,15 @@ export default function PlayMundialito({
                       )))}
                   </div>
                 ))}
-                {thirdMatch && (
+                {thirdMatch && !thirdMatch.pairA && !thirdMatch.pairB && (
+                  <div>
+                    <div className="mb-2 text-[13px] font-bold uppercase text-[#94a3b8]">3.º y 4.º puesto</div>
+                    <div className="mb-3 rounded-2xl border border-dashed border-[#374151] px-4 py-5 text-center text-xs font-semibold text-gray-500">
+                      Por definir según los resultados anteriores
+                    </div>
+                  </div>
+                )}
+                {thirdMatch && (thirdMatch.pairA || thirdMatch.pairB) && (
                   <div>
                     <MatchCard
                       match={isAdmin ? adminBracketMatchView(thirdMatch) : thirdMatch}

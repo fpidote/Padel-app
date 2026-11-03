@@ -12,7 +12,7 @@ import PairStandings from "../shared/PairStandings";
 import { sortStandings } from "../../logic/standings";
 import PodiumCard from "../shared/PodiumCard";
 import { showToast } from "../../logic/toast";
-import { useClearOnSaved } from "../../hooks/useClearOnSaved";
+import { useClearOnSaved, matchSig } from "../../hooks/useClearOnSaved";
 
 const SLOT_HEIGHT = 110;
 // Con sets la tarjeta abierta es más alta: más espacio por partido para que no tape a la vecina
@@ -56,12 +56,14 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
   }, [editing]);
 
   // Sets (o games) cargados hasta ahora, validados con las reglas del pádel
-  const aVal = ls[`${match.id}_A`] ?? "";
-  const bVal = ls[`${match.id}_B`] ?? "";
+  // Al corregir, una casilla sin valor propio muestra lo guardado (p. ej. si el acuse de un guardado la limpió)
+  const typed = (key, saved) => ls[key] ?? (editing && saved !== undefined && saved !== null ? String(saved) : "");
+  const aVal = typed(`${match.id}_A`, match.scoreA);
+  const bVal = typed(`${match.id}_B`, match.scoreB);
   const { live, visibleSetRows, gamesError, isValid: canSave } = matchScoreState(scoringFormat, {
     setRows: Array.from({ length: 5 }, (_, i) => ({
-      a: ls[`${match.id}_set${i}_A`] ?? "",
-      b: ls[`${match.id}_set${i}_B`] ?? "",
+      a: typed(`${match.id}_set${i}_A`, match.sets?.[i]?.a),
+      b: typed(`${match.id}_set${i}_B`, match.sets?.[i]?.b),
     })),
     gamesA: aVal,
     gamesB: bVal,
@@ -216,7 +218,7 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
                     size="set"
                     accentColor={accentColor}
                     error={live.errorIndex === i}
-                    value={ls[`${match.id}_set${i}_${side}`] ?? ""}
+                    value={typed(`${match.id}_set${i}_${side}`, match.sets?.[i]?.[side.toLowerCase()])}
                     onClick={(e) => e.stopPropagation()}
                     onChange={(v) => setLs((prev) => ({ ...prev, [`${match.id}_set${i}_${side}`]: v }))}
                     onKeyDown={onScoreKey}
@@ -456,7 +458,7 @@ export default function PlayRelampago({ t, serverT, code, isAdmin, persist, copy
   const [tab, setTab] = useState("bracket");
   const [ls, setLs] = useState({});
   // Si otra pantalla guarda un partido, lo escrito aquí sin guardar queda obsoleto
-  useClearOnSaved((serverT?.bracket || []).map((m) => ({ key: m.id, saved: m.saved })), setLs, serverT?._ownWrite);
+  useClearOnSaved((serverT?.bracket || []).map((m) => ({ key: m.id, sig: matchSig(m) })), setLs, serverT?._ownWrite);
   const [confirmFinish, setConfirmFinish] = useState(false);
   const finished = t.status === "finished";
 

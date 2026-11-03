@@ -13,7 +13,7 @@ import MatchShell from "../shared/match/MatchShell";
 import MatchActions from "../shared/match/MatchActions";
 import PairNames from "../shared/match/PairNames";
 import { ScoreBox, ScoreInput } from "../shared/match/ScoreBox";
-import { useClearOnSaved } from "../../hooks/useClearOnSaved";
+import { useClearOnSaved, matchSig } from "../../hooks/useClearOnSaved";
 
 const ACCENT = TOURNAMENT_TYPES.find((tt) => tt.id === "pozo").color;
 
@@ -35,7 +35,7 @@ export default function PlayPozo({ t, serverT, code, isAdmin, persist, copyCode,
   const [tab, setTab] = useState("courts");
   const [ls, setLs] = useState({});
   // Si otra pantalla guarda un partido, lo escrito aquí sin guardar queda obsoleto
-  useClearOnSaved((serverT?.currentPozoRound || []).map((c, i) => ({ key: i, saved: c.saved })), setLs, serverT?._ownWrite);
+  useClearOnSaved((serverT?.currentPozoRound || []).map((c, i) => ({ key: i, sig: matchSig(c) })), setLs, serverT?._ownWrite);
   const [showFinishModal, setShowFinishModal] = useState(false);
   const [showNextModal, setShowNextModal] = useState(false);
   const [search, setSearch] = useState(null);

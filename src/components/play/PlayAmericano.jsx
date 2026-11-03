@@ -14,7 +14,7 @@ import MatchShell from "../shared/match/MatchShell";
 import MatchActions from "../shared/match/MatchActions";
 import PairNames from "../shared/match/PairNames";
 import { ScoreBox, ScoreInput } from "../shared/match/ScoreBox";
-import { useClearOnSaved } from "../../hooks/useClearOnSaved";
+import { useClearOnSaved, matchSig } from "../../hooks/useClearOnSaved";
 
 const ACCENT = TOURNAMENT_TYPES.find((tt) => tt.id === "americano").color;
 
@@ -42,7 +42,7 @@ export default function PlayAmericano({ t, serverT, code, isAdmin, persist, copy
   const [tab, setTab] = useState("courts");
   const [ls, setLs] = useState({});
   // Si otra pantalla guarda un partido, lo escrito aquí sin guardar queda obsoleto
-  useClearOnSaved((serverT?.currentRound || []).map((c, i) => ({ key: i, saved: c.saved })), setLs, serverT?._ownWrite);
+  useClearOnSaved((serverT?.currentRound || []).map((c, i) => ({ key: i, sig: matchSig(c) })), setLs, serverT?._ownWrite);
   const [viewingRound, setViewingRound] = useState(null); // null = ronda actual
   const [search, setSearch] = useState(null); // null = todos, playerID/pairID = filtrado
   const [modalMsg, setModalMsg] = useState(null);
@@ -717,9 +717,17 @@ function CourtsAmericano({ t, isAdmin, canRename, ls, setLs, allSaved, onSave, o
     return pair.map((p) => LEVELS[p.level || 0]);
   }
 
+  // Marcador a la vista de una pista: lo escrito o, al corregir, lo guardado (p. ej. si el acuse de un guardado limpió la casilla)
+  function shownScore(ci, side) {
+    const typed = ls[`${ci}_${side}`];
+    if (typed !== undefined) return typed;
+    const c = t.currentRound?.[ci];
+    return c?.editing ? String(c[`score${side}`] ?? "") : undefined;
+  }
+
   function hasValidScore(ci) {
-    const a = ls[`${ci}_A`];
-    const b = ls[`${ci}_B`];
+    const a = shownScore(ci, "A");
+    const b = shownScore(ci, "B");
     return a !== undefined && b !== undefined && a !== "" && b !== "" && !validateGamesScore(a, b);
   }
 
@@ -847,9 +855,9 @@ function CourtsAmericano({ t, isAdmin, canRename, ls, setLs, allSaved, onSave, o
                   </>
                 ) : isAdmin ? (
                   <>
-                    <ScoreInput accentColor={ACCENT} value={ls[`${ci}_A`] ?? ""} onChange={(v) => setLs((prev) => ({ ...prev, [`${ci}_A`]: v }))} />
+                    <ScoreInput accentColor={ACCENT} value={shownScore(ci, "A") ?? ""} onChange={(v) => setLs((prev) => ({ ...prev, [`${ci}_A`]: v }))} />
                     <span className="text-gray-600 font-black text-lg">–</span>
-                    <ScoreInput accentColor={ACCENT} value={ls[`${ci}_B`] ?? ""} onChange={(v) => setLs((prev) => ({ ...prev, [`${ci}_B`]: v }))} />
+                    <ScoreInput accentColor={ACCENT} value={shownScore(ci, "B") ?? ""} onChange={(v) => setLs((prev) => ({ ...prev, [`${ci}_B`]: v }))} />
                   </>
                 ) : (
                   <span className="text-gray-600 font-black text-lg">–</span>
@@ -867,9 +875,9 @@ function CourtsAmericano({ t, isAdmin, canRename, ls, setLs, allSaved, onSave, o
               </div>
             </div>
 
-            {isAdmin && !court.saved && validateGamesScore(ls[`${ci}_A`], ls[`${ci}_B`]) && (
+            {isAdmin && !court.saved && validateGamesScore(shownScore(ci, "A"), shownScore(ci, "B")) && (
               <div data-testid="score-error" className="px-4 pb-3 text-center text-[12px] text-amber-400 font-bold">
-                ⚠️ {validateGamesScore(ls[`${ci}_A`], ls[`${ci}_B`])}
+                ⚠️ {validateGamesScore(shownScore(ci, "A"), shownScore(ci, "B"))}
               </div>
             )}
             {isAdmin && !court.saved && (
