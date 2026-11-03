@@ -113,6 +113,8 @@ export default function PlayMundialito({
 
   async function onEditGroupMatch(groupId, matchId) {
     if (locked) return;
+    // Al abrir la corrección las casillas parten de lo guardado, no de lo que hubiera quedado escrito
+    setLs((prev) => clearScoreInputs(prev, matchId));
     const updatedGroups = groupsWithRounds.map((g) => {
       if (g.id !== groupId) return g;
       const updatedMatches = g.matches.map((m) =>
@@ -208,6 +210,7 @@ export default function PlayMundialito({
 
   async function onEditKnockoutMatch(matchId) {
     if (t.status === "finished" || !canEditBracketMatch(t.knockoutBracket, matchId)) return;
+    setLs((prev) => clearScoreInputs(prev, matchId));
     await persist({ ...t, knockoutBracket: startEditBracketMatch(t.knockoutBracket, matchId) });
   }
 
@@ -652,7 +655,7 @@ function RoundAccordion({
   scoringFormat,
 }) {
   // El acordeón se abre por defecto si hay partidos sin guardar o si es la Ronda 1
-  const hasUnsaved = matches.some((m) => !m.saved);
+  const hasUnsaved = matches.some((m) => !m.saved || m.editing);
   const [isOpen, setIsOpen] = useState(hasUnsaved || roundNum === 1);
 
   return (

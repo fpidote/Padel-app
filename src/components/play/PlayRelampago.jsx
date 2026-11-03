@@ -21,6 +21,8 @@ const SLOT_HEIGHT_SETS5 = 350;
 
 function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel, finished = false, canEdit = true, accentColor, scoringFormat = "games", onToggle }) {
   const [expanded, setExpandedState] = useState(false);
+  // Cada acción (guardar, cancelar) lleva su número: un fallo tardío solo reabre la tarjeta si no hubo otra acción después
+  const actionRef = useRef(0);
   function setExpanded(next) {
     setExpandedState(next);
     onToggle?.(next);
@@ -91,10 +93,14 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
     );
   }
 
-  function save() {
-    if (isSetFormat) onSave(match.id, live.setsA, live.setsB, live.sets);
-    else onSave(match.id, parseInt(aVal), parseInt(bVal));
+  // La tarjeta se cierra al instante, como el resto; si el guardado falla se reabre con el marcador puesto
+  async function save() {
+    const action = ++actionRef.current;
     setExpanded(false);
+    const ok = isSetFormat
+      ? await onSave(match.id, live.setsA, live.setsB, live.sets)
+      : await onSave(match.id, parseInt(aVal), parseInt(bVal));
+    if (ok === false && actionRef.current === action) setExpanded(true);
   }
 
   // Sin signos ni decimales en el marcador; Enter guarda cuando el resultado ya es válido y si no pasa a la casilla siguiente
@@ -235,7 +241,12 @@ function BracketMatchCard({ match, isAdmin, ls, setLs, onSave, onEdit, onCancel,
             <button
               type="button"
               data-testid="btn-cancelar-edicion"
-              onClick={(e) => { e.stopPropagation(); onCancel(match.id); setExpanded(false); }}
+              onClick={async (e) => {
+                e.stopPropagation();
+                const action = ++actionRef.current;
+                setExpanded(false);
+                if ((await onCancel(match.id)) === false && actionRef.current === action) setExpanded(true);
+              }}
               className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-red-700 hover:bg-red-600 text-white cursor-pointer border-0"
             >
               ✕ Cancelar
@@ -446,25 +457,24 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
 
   async function onSaveMatch(matchId, a, b, sets) {
     const match = t.bracket.find((m) => m.id === matchId);
-    if (!match || (match.saved && !match.editing)) return;
-    if (isNaN(a) || isNaN(b) || a < 0 || b < 0 || a === b) return;
+    if (!match || (match.saved && !match.editing)) return true; // ya estaba guardado: nada que repetir
+    if (isNaN(a) || isNaN(b) || a < 0 || b < 0 || a === b) return false;
 
     // Lo escrito se conserva hasta que el guardado entre: si falla, el marcador sigue en las casillas
-    const clear = (ok) => { if (ok) setLs((prev) => clearScoreInputs(prev, matchId, ls)); };
+    const clear = (ok) => { if (ok) setLs((prev) => clearScoreInputs(prev, matchId, ls)); return ok; };
 
     if (match.editing) {
       // Corrección: se quitan las estadísticas del resultado anterior y se suman las del nuevo, todo de una vez
       const quitadas = applyMatchToPairs(t.pairs, match, parseInt(match.scoreA), parseInt(match.scoreB), match.sets, -1);
       const pairs = applyMatchToPairs(quitadas, match, a, b, sets, 1);
-      clear(await persist({ ...t, bracket: correctBracketMatch(t.bracket, matchId, a, b, sets), pairs }));
-      return;
+      return clear(await persist({ ...t, bracket: correctBracketMatch(t.bracket, matchId, a, b, sets), pairs }));
     }
 
     const updated = advanceBracket(t.bracket, matchId, a, b).map((m) =>
       m.id === matchId ? { ...m, sets: sets || null } : m,
     );
     const pairs = applyMatchToPairs(t.pairs, match, a, b, sets, 1);
-    clear(await persist({ ...t, bracket: updated, pairs, scoringStarted: true }));
+    return clear(await persist({ ...t, bracket: updated, pairs, scoringStarted: true }));
   }
 
   // Corregir: la tarjeta sigue guardada para todos hasta que se guarde la corrección
@@ -473,12 +483,15 @@ export default function PlayRelampago({ t, code, isAdmin, persist, copyCode, onE
     if (!match) return;
     if (match.pairA?.id === "bye" || match.pairB?.id === "bye") return;
     if (finished || !canEditBracketMatch(t.bracket, matchId)) return;
+    // Al abrir la corrección las casillas parten de lo guardado, no de lo que hubiera quedado escrito
+    setLs((prev) => clearScoreInputs(prev, matchId));
     await persist({ ...t, bracket: startEditBracketMatch(t.bracket, matchId) });
   }
 
   async function onCancelEdit(matchId) {
     const ok = await persist({ ...t, bracket: cancelEditBracketMatch(t.bracket, matchId) });
     if (ok) setLs((prev) => clearScoreInputs(prev, matchId, ls));
+    return ok;
   }
 
   async function onFinishTournament() {

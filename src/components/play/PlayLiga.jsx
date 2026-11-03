@@ -1,7 +1,7 @@
 // src/components/play/PlayLiga.jsx
-import { useState, useContext } from "react";
+import { useState, useContext, useEffect, useRef } from "react";
 import { generateRules, TOURNAMENT_TYPES } from "../../logic/constants";
-import { advanceBracket, unadvanceBracket, canEditBracketMatch, bracketRoundName, bracketPodium, bracketSemifinalLosers } from "../../logic/relampago";
+import { advanceBracket, correctBracketMatch, startEditBracketMatch, adminBracketMatchView, canEditBracketMatch, bracketRoundName, bracketPodium, bracketSemifinalLosers } from "../../logic/relampago";
 import {
   recomputeLigaStandings,
   buildLigaKnockout,
@@ -36,6 +36,13 @@ const ACCENT = TOURNAMENT_TYPES.find((tt) => tt.id === "liga").color;
 
 export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTournament }) {
   const [tab, setTab] = useState("fixture");
+
+  // Quien está mirando la Liga pasa a Eliminatoria cuando el organizador inicia la fase final; quien está en otra pestaña se queda
+  const prevPhase = useRef(t.phase);
+  useEffect(() => {
+    if (prevPhase.current !== "playoff" && t.phase === "playoff") setTab((cur) => (cur === "fixture" ? "playoff" : cur));
+    prevPhase.current = t.phase;
+  }, [t.phase]);
   const [ls, setLs] = useState({});
   const [confirm, setConfirm] = useState(null); // { kind: "delete" | "start" | "reopen" | "finish" | "next", matchId? }
   const [renameModal, setRenameModal] = useState(null); // { names: { [pairId]: { p1, p2 } }, error? }
@@ -74,6 +81,8 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
 
   async function onEditMatch(matchId) {
     if (locked) return;
+    // Al abrir la corrección las casillas parten de lo guardado, no de lo que hubiera quedado escrito
+    setLs((prev) => clearScoreInputs(prev, matchId));
     await persist({ ...t, matches: startEditLigaMatch(matches, matchId) });
   }
 
@@ -150,19 +159,24 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
 
   async function onSaveKnockoutMatch(matchId, a, b, sets) {
     const match = t.knockoutBracket.find((m) => m.id === matchId);
-    if (!match || match.saved) return;
+    if (!match || (match.saved && !match.editing)) return;
     if (isNaN(a) || isNaN(b) || a < 0 || b < 0 || a === b) return;
 
-    const updated = advanceBracket(t.knockoutBracket, matchId, a, b).map((m) =>
-      m.id === matchId ? { ...m, sets: sets || null } : m,
-    );
+    // Corrección: se suelta el resultado anterior y se coloca el nuevo de una vez, sin pasos intermedios visibles
+    const updated = match.editing
+      ? correctBracketMatch(t.knockoutBracket, matchId, a, b, sets)
+      : advanceBracket(t.knockoutBracket, matchId, a, b).map((m) =>
+          m.id === matchId ? { ...m, sets: sets || null } : m,
+        );
     const ok = await persist({ ...t, knockoutBracket: updated, scoringStarted: true });
     if (ok) setLs((prev) => clearScoreInputs(prev, matchId, ls));
   }
 
   async function onEditKnockoutMatch(matchId) {
     if (t.status === "finished" || !canEditBracketMatch(t.knockoutBracket, matchId)) return;
-    await persist({ ...t, knockoutBracket: unadvanceBracket(t.knockoutBracket, matchId) });
+    // Al abrir la corrección las casillas parten de lo guardado, no de lo que hubiera quedado escrito
+    setLs((prev) => clearScoreInputs(prev, matchId));
+    await persist({ ...t, knockoutBracket: startEditBracketMatch(t.knockoutBracket, matchId) });
   }
 
   const finished = t.status === "finished";
@@ -411,7 +425,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                       .map((match) => (
                         <MatchCard
                           key={match.id}
-                          match={match}
+                          match={isAdmin ? adminBracketMatchView(match) : match}
                           isAdmin={isAdmin}
                           ls={ls}
                           setLs={setLs}
@@ -434,7 +448,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
                 {thirdMatch && (
                   <div>
                     <MatchCard
-                      match={thirdMatch}
+                      match={isAdmin ? adminBracketMatchView(thirdMatch) : thirdMatch}
                       isAdmin={isAdmin}
                       ls={ls}
                       setLs={setLs}
@@ -572,7 +586,7 @@ export default function PlayLiga({ t, code, isAdmin, persist, copyCode, onEditTo
 }
 
 function LigaRoundAccordion({ round, single, matches, allMatches, isAdmin, ls, setLs, onSave, onEdit, onDelete, locked, scoringFormat }) {
-  const hasUnsaved = matches.some((m) => !m.saved);
+  const hasUnsaved = matches.some((m) => !m.saved || m.editing);
   const [isOpenState, setIsOpen] = useState(hasUnsaved || round.round === 1);
   // Con una sola jornada a la vista no hay nada que plegar
   const isOpen = single || isOpenState;

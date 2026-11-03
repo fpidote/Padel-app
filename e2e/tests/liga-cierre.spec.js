@@ -128,6 +128,9 @@ test("iniciar la fase final avisa, cierra los resultados de la liga y permite vo
 
   await expect.poll(async () => (await getTournamentData(CODE)).phase, { timeout: 8000 }).toBe("playoff");
 
+  // La app lleva sola a Eliminatoria; los resultados de la liga se miran en Jornadas
+  await page.getByRole("button", { name: /Jornadas/ }).click();
+
   // Resultados cerrados: sin Editar ni Eliminar y con el aviso
   await expect(page.getByText(/Resultados de la liga cerrados/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Editar" })).toHaveCount(0);

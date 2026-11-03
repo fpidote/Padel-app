@@ -39,7 +39,7 @@ export function useTournament(code) {
       onConflict: (serverState) => {
         verRef.current = serverState.ver ?? 0;
         setT(serverState);
-        showToast("Alguien guardó a la vez; se cargó la versión más reciente. Tu marcador sigue escrito: revísalo y vuelve a guardar.");
+        showToast("Alguien guardó a la vez; se cargó la versión más reciente. Revisa el resultado y, si hace falta, vuelve a cargarlo o corrígelo con Editar.");
       },
       onFailure: (lastSaved, err) => {
         console.error("Error al guardar:", err);

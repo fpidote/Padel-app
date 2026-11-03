@@ -64,6 +64,8 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
 
   // Corregir: la pista sigue guardada para todos hasta que se guarde la corrección
   async function onEditCourt(ci) {
+    // Al abrir la corrección las casillas parten de lo guardado, no de lo que hubiera quedado escrito
+    setLs((prev) => clearScoreInputs(prev, ci));
     const updated = t.currentPozoRound.map((c, i) =>
       i === ci && c.saved ? { ...c, editing: true } : c,
     );
