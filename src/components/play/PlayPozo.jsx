@@ -55,16 +55,17 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
     const b = parseInt(ls[`${ci}_B`] ?? (court.scoreB != null ? String(court.scoreB) : ""));
     if (isNaN(a) || isNaN(b) || a < 0 || b < 0 || a === b) return;
     const updated = t.currentPozoRound.map((c, i) =>
-      i === ci ? { ...c, scoreA: String(a), scoreB: String(b), saved: true } : c,
+      i === ci ? { ...c, scoreA: String(a), scoreB: String(b), saved: true, editing: false } : c,
     );
     // Lo escrito se conserva hasta que el guardado entre
     const ok = await persist({ ...t, currentPozoRound: updated, scoringStarted: true });
     if (ok) setLs((prev) => clearScoreInputs(prev, ci));
   }
 
+  // Corregir: la pista sigue guardada para todos hasta que se guarde la corrección
   async function onEditCourt(ci) {
     const updated = t.currentPozoRound.map((c, i) =>
-      i === ci ? { ...c, saved: false } : c,
+      i === ci && c.saved ? { ...c, editing: true } : c,
     );
     await persist({ ...t, currentPozoRound: updated });
   }
@@ -72,7 +73,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
   // Cancelar la corrección: el resultado que había vuelve a quedar guardado
   async function onCancelEditCourt(ci) {
     const updated = t.currentPozoRound.map((c, i) =>
-      i === ci ? { ...c, saved: true } : c,
+      i === ci ? { ...c, editing: false } : c,
     );
     const ok = await persist({ ...t, currentPozoRound: updated });
     if (ok) setLs((prev) => clearScoreInputs(prev, ci));
@@ -87,7 +88,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
   }
 
   async function onNextRound() {
-    if (!t.currentPozoRound.every((c) => c.saved)) return;
+    if (!t.currentPozoRound.every((c) => c.saved && !c.editing)) return;
     try {
       const updatedPairs = applyPozoRoundResults(t.pairs, t.currentPozoRound, t.config.courts);
       const newRound     = buildPozoRound(updatedPairs, t.config.courts);
@@ -109,7 +110,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
   }
 
   async function onNextRoundMixer() {
-    if (!t.currentPozoRound.every((c) => c.saved)) return;
+    if (!t.currentPozoRound.every((c) => c.saved && !c.editing)) return;
     try {
       const tempPairs      = t.currentPozoRound.flatMap((c) => [c.pairA, c.pairB]);
       const updatedTemps   = applyPozoRoundResults(tempPairs, t.currentPozoRound, t.config.courts);
@@ -159,7 +160,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
     }
   }
 
-  const allSaved   = t.currentPozoRound?.every((c) => c.saved);
+  const allSaved   = t.currentPozoRound?.every((c) => c.saved && !c.editing);
   const isFinished = t.status === "finished";
 
   const isMixer = t.config?.pozoMode === "mixer";
@@ -269,7 +270,9 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
                 )}
 
                 {/* Pistas */}
-                {(t.currentPozoRound || []).map((court, ci) => {
+                {(t.currentPozoRound || []).map((rawCourt, ci) => {
+                  // El organizador ve abierta la pista que corrige; los demás siguen viendo el resultado guardado
+                  const court = isAdmin && rawCourt.editing ? { ...rawCourt, saved: false } : rawCourt;
                   const sA    = ls[`${ci}_A`] ?? (court.scoreA != null ? String(court.scoreA) : "");
                   const sB    = ls[`${ci}_B`] ?? (court.scoreB != null ? String(court.scoreB) : "");
                   const a     = parseInt(sA);
@@ -284,7 +287,7 @@ export default function PlayPozo({ t, code, isAdmin, persist, copyCode, onEditTo
                     return <div className={`text-xs font-bold mt-0.5 ${cls}`}>{text}</div>;
                   };
                   const startEdit = isAdmin ? () => onEditCourt(ci) : undefined;
-                  const isEditing = !court.saved && court.scoreA != null && court.scoreA !== "";
+                  const isEditing = !!rawCourt.editing;
 
                   return (
                     <MatchShell
@@ -587,7 +590,7 @@ function PozoAllRoundsView({ t, isAdmin, ls, setLs, onSaveCourt, onEditCourt, ma
               <div className="px-4 py-4 text-center text-sm text-amber-400 font-semibold">⏳ Descansa esta ronda</div>
             ) : (
               filteredCourts.map(({ court, ci }) => (
-                <React.Fragment key={ci}>{renderCurrentCourt(court, ci)}</React.Fragment>
+                <React.Fragment key={ci}>{renderCurrentCourt(isAdmin && court.editing ? { ...court, saved: false } : court, ci)}</React.Fragment>
               ))
             )}
           </div>

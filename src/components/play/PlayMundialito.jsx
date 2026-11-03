@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { clearScoreInputs } from "../../logic/sets";
 import { generateRules } from "../../logic/constants";
-import { advanceBracket, unadvanceBracket, canEditBracketMatch, bracketRoundName, bracketPodium, bracketSemifinalLosers } from "../../logic/relampago";
+import { advanceBracket, correctBracketMatch, startEditBracketMatch, adminBracketMatchView, canEditBracketMatch, bracketRoundName, bracketPodium, bracketSemifinalLosers } from "../../logic/relampago";
 import {
   buildKnockoutFromGroups,
   mundialitoGroupsLocked,
@@ -85,7 +85,7 @@ export default function PlayMundialito({
     const group = groupsWithRounds.find((g) => g.id === groupId);
     if (!group) return;
     const match = group.matches.find((m) => m.id === matchId);
-    if (!match || match.saved) return;
+    if (!match || (match.saved && !match.editing)) return;
     if (isNaN(a) || isNaN(b) || a < 0 || b < 0 || a === b) return;
 
     const updatedGroups = groupsWithRounds.map((g) => {
@@ -97,6 +97,7 @@ export default function PlayMundialito({
               scoreA: String(a),
               scoreB: String(b),
               saved: true,
+              editing: false,
               sets: sets || null,
             } // 👈 SE GUARDA EL ARRAY DE SETS
           : m,
@@ -115,10 +116,9 @@ export default function PlayMundialito({
     const updatedGroups = groupsWithRounds.map((g) => {
       if (g.id !== groupId) return g;
       const updatedMatches = g.matches.map((m) =>
-        m.id === matchId ? { ...m, saved: false } : m,
+        m.id === matchId && m.saved ? { ...m, editing: true } : m,
       );
-      const standings = computeStandings(g.pairs, updatedMatches);
-      return { ...g, matches: updatedMatches, standings };
+      return { ...g, matches: updatedMatches };
     });
     await persist({ ...t, groups: updatedGroups });
   }
@@ -128,7 +128,7 @@ export default function PlayMundialito({
     const updatedGroups = groupsWithRounds.map((g) => {
       if (g.id !== groupId) return g;
       const updatedMatches = g.matches.map((m) =>
-        m.id === matchId ? { ...m, saved: false, scoreA: "", scoreB: "", sets: null } : m,
+        m.id === matchId ? { ...m, saved: false, editing: false, scoreA: "", scoreB: "", sets: null } : m,
       );
       const standings = computeStandings(g.pairs, updatedMatches);
       return { ...g, matches: updatedMatches, standings };
@@ -154,7 +154,7 @@ export default function PlayMundialito({
 
   const allGroupsDone =
     groupsWithRounds.length > 0 &&
-    groupsWithRounds.every((g) => g.matches.every((m) => m.saved));
+    groupsWithRounds.every((g) => g.matches.every((m) => m.saved && !m.editing));
 
   async function onStartKnockout() {
     if (!allGroupsDone) return;
@@ -181,12 +181,15 @@ export default function PlayMundialito({
   // 👇 AHORA RECIBE EL PARÁMETRO 'sets'
   async function onSaveKnockoutMatch(matchId, a, b, sets) {
     const match = t.knockoutBracket.find((m) => m.id === matchId);
-    if (!match || match.saved) return;
+    if (!match || (match.saved && !match.editing)) return;
     if (isNaN(a) || isNaN(b) || a < 0 || b < 0 || a === b) return;
 
-    const updated = advanceBracket(t.knockoutBracket, matchId, a, b).map((m) =>
-      m.id === matchId ? { ...m, sets: sets || null } : m,
-    );
+    // Corrección: se suelta el resultado anterior y se coloca el nuevo de una vez, sin pasos intermedios visibles
+    const updated = match.editing
+      ? correctBracketMatch(t.knockoutBracket, matchId, a, b, sets)
+      : advanceBracket(t.knockoutBracket, matchId, a, b).map((m) =>
+          m.id === matchId ? { ...m, sets: sets || null } : m,
+        );
 
     const ok = await persist({ ...t, knockoutBracket: updated, scoringStarted: true });
     if (ok) setLs((prev) => clearScoreInputs(prev, matchId));
@@ -205,7 +208,7 @@ export default function PlayMundialito({
 
   async function onEditKnockoutMatch(matchId) {
     if (t.status === "finished" || !canEditBracketMatch(t.knockoutBracket, matchId)) return;
-    await persist({ ...t, knockoutBracket: unadvanceBracket(t.knockoutBracket, matchId) });
+    await persist({ ...t, knockoutBracket: startEditBracketMatch(t.knockoutBracket, matchId) });
   }
 
   const thirdMatch = t.knockoutBracket?.find((m) => m.bracket === "third");
@@ -470,7 +473,7 @@ export default function PlayMundialito({
                       .map((match) => (
                         <MatchCard
                           key={match.id}
-                          match={match}
+                          match={isAdmin ? adminBracketMatchView(match) : match}
                           isAdmin={isAdmin}
                           ls={ls}
                           setLs={setLs}
@@ -493,7 +496,7 @@ export default function PlayMundialito({
                 {thirdMatch && (
                   <div>
                     <MatchCard
-                      match={thirdMatch}
+                      match={isAdmin ? adminBracketMatchView(thirdMatch) : thirdMatch}
                       isAdmin={isAdmin}
                       ls={ls}
                       setLs={setLs}
@@ -667,7 +670,7 @@ function RoundAccordion({
           {matches.map((match) => (
             <MatchCard
               key={match.id}
-              match={match}
+              match={isAdmin ? adminBracketMatchView(match) : match}
               isAdmin={isAdmin}
               ls={ls}
               setLs={setLs}
