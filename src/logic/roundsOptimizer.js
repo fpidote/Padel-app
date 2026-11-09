@@ -8,11 +8,9 @@ import { pk } from "./utils";
 // tres veces el mismo rival en pocas rondas cuesta mucho más, así que el optimizador reparte las repeticiones en vez
 // de acumularlas.
 
-// Prioridad que elige el organizador: más variedad de rivales a costa de partidos algo menos igualados de nivel.
-export const OPTIMIZER_PRIORITIES = {
-  variedad: { partner: 3000, opponent: 300, advanced: 5000, balance: 150 },
-  equilibrio: { partner: 3000, opponent: 300, advanced: 5000, balance: 400 },
-};
+// Orden de prioridades: 1.º no repetir pareja (el peso más alto de largo), después partidos igualados de nivel y, dentro
+// de eso, el menor número de rivales repetidos. Los niveles no se sacrifican por variedad de rivales.
+export const OPTIMIZER_WEIGHTS = { partner: 3000, opponent: 300, advanced: 5000, balance: 400 };
 
 const level = (p) => p?.level || 0;
 

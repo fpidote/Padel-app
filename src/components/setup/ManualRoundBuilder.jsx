@@ -9,7 +9,7 @@ import {
   repeatsToWarnings,
 } from "../../logic/manualRounds";
 import { precomputeAllRounds, courtLabel } from "../../logic/americano";
-import { improveRounds, roundsCost, advancedPenaltyApplies, OPTIMIZER_PRIORITIES } from "../../logic/roundsOptimizer";
+import { improveRounds, roundsCost, advancedPenaltyApplies, OPTIMIZER_WEIGHTS } from "../../logic/roundsOptimizer";
 import { SimpleModal } from "../shared/Components";
 
 const COLOR = "#0284c7";
@@ -42,7 +42,6 @@ export default function ManualRoundBuilder({
   const [pendingDelete, setPendingDelete] = useState(null); // índice de ronda a borrar
   const [lockedRounds, setLockedRounds] = useState([]); // índices de rondas que "Re-optimizar" no toca
   const [reoptMsg, setReoptMsg] = useState(null);
-  const [priority, setPriority] = useState("variedad"); // "variedad" (menos rivales repetidos) | "equilibrio" (partidos más igualados)
   const [busy, setBusy] = useState(false); // optimizando: tarda un par de segundos con muchos jugadores
   const [showAllRepeats, setShowAllRepeats] = useState(false);
 
@@ -71,7 +70,7 @@ export default function ManualRoundBuilder({
   // Genera las rondas dejando fijas las indicadas. Cada intento se mejora intercambiando jugadores dentro de cada
   // ronda (menos repeticiones, ninguna pareja de rivales tres veces si se puede evitar) y gana el de menor coste.
   function generateBest(fixedRounds, total) {
-    const weights = OPTIMIZER_PRIORITIES[config.useLevels ? priority : "variedad"];
+    const weights = OPTIMIZER_WEIGHTS;
     const advancedPenalty = advancedPenaltyApplies(players, courts);
     const fixed = new Set(Object.keys(fixedRounds).map(Number));
     const opts = { weights, useLevels: !!config.useLevels, advancedPenalty };
@@ -255,22 +254,6 @@ export default function ManualRoundBuilder({
           </button>
         </div>
 
-        {config.useLevels && (
-          <div className="-mt-3 mb-4 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-            <span>Al armar, priorizar:</span>
-            {[["variedad", "Variedad de rivales"], ["equilibrio", "Equilibrio de nivel"]].map(([id, label]) => (
-              <button
-                key={id}
-                data-testid={`prioridad-${id}`}
-                onClick={() => setPriority(id)}
-                disabled={busy}
-                className={`px-2.5 py-1 rounded-lg font-bold cursor-pointer ${priority === id ? "bg-[#0284c7] text-white" : "bg-[#1f2937] text-[#94a3b8]"}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
 
         {rounds.length > 0 && !pendingAutoFill && !pendingComplete && (
           <div className="-mt-3 mb-4 text-xs text-gray-500">

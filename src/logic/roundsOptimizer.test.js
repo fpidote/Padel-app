@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { roundsCost, improveRounds, advancedPenaltyApplies, OPTIMIZER_PRIORITIES } from "./roundsOptimizer";
+import { roundsCost, improveRounds, advancedPenaltyApplies, OPTIMIZER_WEIGHTS } from "./roundsOptimizer";
 import { findRepeats } from "./manualRounds";
 
 const P = (id, level = 0) => ({ id, name: `J${id}`, level });
 const court = (a, b, c, d) => ({ pairA: [P(a), P(b)], pairB: [P(c), P(d)] });
 const sameRound = () => ({ courts: [court(0, 1, 2, 3), court(4, 5, 6, 7)] });
 const idsOf = (round) => round.courts.flatMap((c) => [...c.pairA, ...c.pairB]).map((p) => p.id).sort((x, y) => x - y);
-const W = OPTIMIZER_PRIORITIES.variedad;
+const W = OPTIMIZER_WEIGHTS;
 
 describe("roundsCost", () => {
   it("repetir tres veces al mismo rival cuesta mucho más que dos repeticiones sueltas", () => {
@@ -23,6 +23,13 @@ describe("roundsCost", () => {
     ];
     // 0-2 se enfrentan 2 veces y 1-3 se enfrentan 2 veces
     expect(roundsCost(triple, { weights: W })).toBeGreaterThan(roundsCost(twoDoubles, { weights: W }));
+  });
+
+  it("el orden de prioridades: repetir pareja pesa más que cualquier desequilibrio de nivel o rival repetido", () => {
+    expect(W.partner).toBeGreaterThan(W.balance * 4);
+    expect(W.partner).toBeGreaterThan(W.opponent * 4);
+    // y un punto de desequilibrio de nivel pesa más que repetir un rival una vez: los niveles no se sacrifican por variedad
+    expect(W.balance).toBeGreaterThan(W.opponent);
   });
 
   it("sin niveles activados no cuenta el desequilibrio", () => {
