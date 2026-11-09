@@ -6,7 +6,7 @@ import ManualRoundBuilder from "./ManualRoundBuilder";
 import { buildShareMessage } from "../../logic/utils";
 import MatchFormatPicker from "../shared/MatchFormatPicker";
 import CourtNamesEditor from "../shared/CourtNamesEditor";
-import { BackButton } from "../shared/Components";
+import { BackButton, SimpleModal } from "../shared/Components";
 import LaunchModal, { SummaryRow, SummaryCard } from "../shared/LaunchModal";
 
 const COLOR = "#0284c7";
@@ -62,6 +62,11 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
   const debDatetime = useRef(null);
   const debRounds   = useRef(null);
   const debManual   = useRef(null);
+  // Último estado del torneo: los guardados con retraso lo leen al ejecutarse, no el de cuando se escribió,
+  // para no deshacer cambios hechos entretanto (jugadores agregados, minutos, etc.)
+  const tRef = useRef(t);
+  tRef.current = t;
+  const [pendingManualReset, setPendingManualReset] = useState(null); // { message, confirmLabel, run }
   const navigate    = useNavigate();
   const nameInputRef = useRef(null);
   const p1InputRef   = useRef(null);
@@ -122,43 +127,67 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
     : `${t.config.targetGames ?? 6} games para ganar`;
 
   // ── Handlers ──────────────────────────────────────────────────
-  function handleName(val)     { setLocalName(val);     clearTimeout(debName.current);     debName.current     = setTimeout(() => persist({ ...t, config: { ...t.config, name: val } }), 600); }
-  function handleDesc(val)     { setLocalDesc(val);     clearTimeout(debDesc.current);     debDesc.current     = setTimeout(() => persist({ ...t, config: { ...t.config, description: val } }), 600); }
-  function handleLocation(val) { setLocalLocation(val); clearTimeout(debLocation.current); debLocation.current = setTimeout(() => persist({ ...t, config: { ...t.config, location: val } }), 600); }
-  function handleDatetime(val) { setLocalDatetime(val); clearTimeout(debDatetime.current); debDatetime.current = setTimeout(() => persist({ ...t, config: { ...t.config, datetime: val } }), 600); }
+  function persistConfig(patch) {
+    const cur = tRef.current;
+    const next = { ...cur, config: { ...cur.config, ...patch } };
+    tRef.current = next;
+    return persist(next);
+  }
+
+  // Cambios que invalidan las rondas armadas a mano: si hay, se pide confirmación antes de borrarlas
+  const roundsWord = (n) => `${n} ${n === 1 ? "ronda armada" : "rondas armadas"} a mano`;
+  function confirmManualReset(what, run) {
+    if (isManual && localManualRounds.length > 0) {
+      setPendingManualReset({ message: `${what} borrará ${roundsWord(localManualRounds.length)}. ¿Continuar?`, run });
+    } else {
+      run();
+    }
+  }
+
+  function handleName(val)     { setLocalName(val);     clearTimeout(debName.current);     debName.current     = setTimeout(() => persistConfig({ name: val }), 600); }
+  function handleDesc(val)     { setLocalDesc(val);     clearTimeout(debDesc.current);     debDesc.current     = setTimeout(() => persistConfig({ description: val }), 600); }
+  function handleLocation(val) { setLocalLocation(val); clearTimeout(debLocation.current); debLocation.current = setTimeout(() => persistConfig({ location: val }), 600); }
+  function handleDatetime(val) { setLocalDatetime(val); clearTimeout(debDatetime.current); debDatetime.current = setTimeout(() => persistConfig({ datetime: val }), 600); }
 
   function handleRoundsCustom(val) {
     setRoundsCustom(val);
     clearTimeout(debRounds.current);
     const num = parseInt(val);
     setRoundsError(val.trim() === "" ? null : roundsCountError(num));
-    if (!roundsCountError(num)) debRounds.current = setTimeout(() => { setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); persist({ ...t, config: { ...t.config, maxRounds: num } }); }, 600);
+    if (!roundsCountError(num)) debRounds.current = setTimeout(() => { setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); persistConfig({ maxRounds: num }); }, 600);
   }
 
   function handleMatchmakingChange(val) {
+    if (val === (t.config.matchmaking || "americano")) return;
     if (val !== "manual") {
-      setLocalManualRounds([]);
-      setManualResetMsg(false);
-      persist({ ...t, config: { ...t.config, matchmaking: val, manualRoundsConfig: [] } });
+      confirmManualReset(`Pasar a ${val === "mexicano" ? "Mexicano" : "Americano"}`, () => {
+        setLocalManualRounds([]);
+        setManualResetMsg(false);
+        persistConfig({ matchmaking: val, manualRoundsConfig: [] });
+      });
     } else {
       setLocalManualRounds(t.config.manualRoundsConfig ?? []);
       setLocalPrecomputedRounds(null);
       setLocalRoundWarnings([]);
       setManualResetMsg(false);
-      persist({ ...t, config: { ...t.config, matchmaking: val } });
+      persistConfig({ matchmaking: val });
     }
   }
 
   function handleCourtsChange(n) {
-    setLocalPrecomputedRounds(null);
-    setLocalRoundWarnings([]);
-    if (isManual && localManualRounds.length > 0) {
-      setLocalManualRounds([]);
-      setManualResetMsg(true);
-      persist({ ...t, config: { ...t.config, courts: n, courtNames: normalizeCourtNames(t.config.courtNames, n), manualRoundsConfig: [] } });
-    } else {
-      persist({ ...t, config: { ...t.config, courts: n, courtNames: normalizeCourtNames(t.config.courtNames, n) } });
-    }
+    if (n === t.config.courts) return;
+    const apply = () => {
+      setLocalPrecomputedRounds(null);
+      setLocalRoundWarnings([]);
+      if (isManual && localManualRounds.length > 0) {
+        setLocalManualRounds([]);
+        setManualResetMsg(true);
+        persistConfig({ courts: n, courtNames: normalizeCourtNames(tRef.current.config.courtNames, n), manualRoundsConfig: [] });
+      } else {
+        persistConfig({ courts: n, courtNames: normalizeCourtNames(tRef.current.config.courtNames, n) });
+      }
+    };
+    confirmManualReset("Cambiar el número de pistas", apply);
   }
 
   function handleReshuffle() {
@@ -173,7 +202,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
     setLocalManualRounds(rounds);
     clearTimeout(debManual.current);
     debManual.current = setTimeout(() => {
-      persist({ ...t, config: { ...t.config, manualRoundsConfig: rounds } });
+      persistConfig({ manualRoundsConfig: rounds });
     }, 600);
   }
 
@@ -198,13 +227,57 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
 
   function addPlayer() {
     if (!newName.trim()) return;
+    const name = newName.trim();
+    confirmManualReset(`Agregar a ${name}`, () => {
+      setLocalPrecomputedRounds(null);
+      setLocalRoundWarnings([]);
+      setLocalManualRounds([]);
+      setManualResetMsg(false);
+      const cur = tRef.current;
+      const next = { ...cur, playerInputs: [...(cur.playerInputs || []), { name, level: useLevels ? newLvl : 0 }], config: { ...cur.config, manualRoundsConfig: [] } };
+      tRef.current = next;
+      persist(next);
+      setNewName("");
+      nameInputRef.current?.focus();
+    });
+  }
+
+  // Mismo nombre/nivel en las rondas armadas a mano, para que cambiar el nivel no las borre
+  function updatePlayerInManual(rounds, id, patch) {
+    const fix = (p) => (p && p.id === id ? { ...p, ...patch } : p);
+    return rounds.map((round) => ({
+      ...round,
+      courts: round.courts.map((court) => ({ ...court, pairA: court.pairA.map(fix), pairB: court.pairB.map(fix) })),
+      sittingOut: (round.sittingOut || []).map(fix),
+    }));
+  }
+
+  function changePlayerLevel(i, level) {
     setLocalPrecomputedRounds(null);
     setLocalRoundWarnings([]);
-    setLocalManualRounds([]);
-    setManualResetMsg(false);
-    persist({ ...t, playerInputs: [...(t.playerInputs || []), { name: newName.trim(), level: useLevels ? newLvl : 0 }], config: { ...t.config, manualRoundsConfig: [] } });
-    setNewName("");
-    nameInputRef.current?.focus();
+    const cur = tRef.current;
+    const arr = [...(cur.playerInputs || [])];
+    arr[i] = { ...arr[i], level };
+    const manual = updatePlayerInManual(cur.config.manualRoundsConfig ?? [], i, { level });
+    setLocalManualRounds(manual);
+    const next = { ...cur, playerInputs: arr, config: { ...cur.config, manualRoundsConfig: manual } };
+    tRef.current = next;
+    persist(next);
+  }
+
+  function removePlayer(i) {
+    const name = (t.playerInputs || [])[i]?.name;
+    confirmManualReset(`Quitar a ${name}`, () => {
+      setEditingIdx(null);
+      setLocalPrecomputedRounds(null);
+      setLocalRoundWarnings([]);
+      setLocalManualRounds([]);
+      setManualResetMsg(false);
+      const cur = tRef.current;
+      const next = { ...cur, playerInputs: (cur.playerInputs || []).filter((_, idx) => idx !== i), config: { ...cur.config, manualRoundsConfig: [] } };
+      tRef.current = next;
+      persist(next);
+    });
   }
 
   function addPair() {
@@ -289,15 +362,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
       const newName = editName.trim() || arr[i].name;
       arr[i] = { ...arr[i], name: newName, level: editLvl };
       const existingManual = t.config.manualRoundsConfig ?? [];
-      const updatedManual = existingManual.map(round => ({
-        ...round,
-        courts: round.courts.map(court => ({
-          ...court,
-          pairA: court.pairA.map(p => p && p.id === i ? { ...p, name: newName } : p),
-          pairB: court.pairB.map(p => p && p.id === i ? { ...p, name: newName } : p),
-        })),
-        sittingOut: (round.sittingOut || []).map(p => p && p.id === i ? { ...p, name: newName } : p),
-      }));
+      const updatedManual = updatePlayerInManual(existingManual, i, { name: newName, level: editLvl });
       setLocalManualRounds(updatedManual);
       persist({ ...t, playerInputs: arr, config: { ...t.config, manualRoundsConfig: updatedManual } });
     }
@@ -335,6 +400,15 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
 
   return (
     <>
+    {pendingManualReset && (
+      <SimpleModal
+        icon="⚠️"
+        message={pendingManualReset.message}
+        confirmLabel="Borrar rondas"
+        onClose={() => setPendingManualReset(null)}
+        onConfirm={() => { const { run } = pendingManualReset; setPendingManualReset(null); run(); }}
+      />
+    )}
     <div className="min-h-screen bg-[#111827] text-gray-50" style={{ fontFamily: "system-ui" }}>
       <div className="max-w-lg mx-auto px-4 pb-16 pt-6">
 
@@ -475,14 +549,14 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
                           <button
                             onClick={() => {
                               if (editingIdx === i) { setEditLvl(l => (l + 1) % 4); }
-                              else { setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); setLocalManualRounds([]); const arr = [...t.playerInputs]; arr[i] = { ...arr[i], level: ((arr[i].level || 0) + 1) % 4 }; persist({ ...t, playerInputs: arr, config: { ...t.config, manualRoundsConfig: [] } }); }
+                              else { changePlayerLevel(i, ((p.level || 0) + 1) % 4); }
                             }}
                             className="w-6 h-6 flex items-center justify-center text-xs font-bold rounded-md shrink-0 cursor-pointer"
                             style={{ background: lvl.color + "20", color: lvl.color }}
                           >{lvl.short}</button>
                         );
                       })()}
-                      <button onClick={() => { setEditingIdx(null); setLocalPrecomputedRounds(null); setLocalRoundWarnings([]); setLocalManualRounds([]); setManualResetMsg(false); persist({ ...t, playerInputs: t.playerInputs.filter((_, idx) => idx !== i), config: { ...t.config, manualRoundsConfig: [] } }); }} className="text-gray-600 hover:text-red-400 transition-colors cursor-pointer text-sm leading-none shrink-0">✕</button>
+                      <button onClick={() => removePlayer(i)} className="text-gray-600 hover:text-red-400 transition-colors cursor-pointer text-sm leading-none shrink-0">✕</button>
                     </div>
                   ))
               }
@@ -550,7 +624,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
               autoSave
               courts={t.config.courts}
               courtNames={t.config.courtNames}
-              onSave={(courtNames) => persist({ ...t, config: { ...t.config, courtNames } })}
+              onSave={(courtNames) => persistConfig({ courtNames })}
             />
 
             {/* ── 5. Formato de partido ── */}
@@ -562,7 +636,26 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
               onChange={(patch) => persist({ ...t, config: { ...t.config, ...patch } })}
             />
 
-            {/* ── 6. Rondas — ocultar en modo manual ── */}
+            {/* ── 6. Emparejamiento: Americano / Mexicano / Manual, siempre a la vista ── */}
+            <SectionHeader>🎲 Emparejamiento</SectionHeader>
+            <div className="flex gap-2" data-testid="selector-emparejamiento">
+              {[
+                { id: "americano", label: "Americano" },
+                { id: "mexicano", label: "Mexicano" },
+                ...(isPairs ? [] : [{ id: "manual", label: "Manual" }]),
+              ].map(opt => (
+                <button key={opt.id} onClick={() => handleMatchmakingChange(opt.id)} className={`flex-1 py-2.5 rounded-xl text-sm font-bold cursor-pointer transition-colors ${matchmakingMode === opt.id ? "text-white" : "bg-[#1f2937] text-[#94a3b8]"}`} style={matchmakingMode === opt.id ? { background: COLOR } : undefined}>{opt.label}</button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-600 mt-1.5">
+              {matchmakingMode === "americano"
+                ? "Parejas aleatorias cada ronda"
+                : matchmakingMode === "mexicano"
+                ? "Desde ronda 2, los mejores juegan entre sí"
+                : "Tú eliges los emparejamientos de cada ronda"}
+            </p>
+
+            {/* ── 7. Rondas — ocultar en modo manual ── */}
             {!isManual && (
               <>
                 <SectionHeader>🔄 Rondas</SectionHeader>
@@ -639,7 +732,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
               </>
             )}
 
-            {/* ── 7. Configuración avanzada ── */}
+            {/* ── 8. Configuración avanzada ── */}
             <div className="mt-7">
               <button onClick={() => setShowAdvanced(s => !s)} className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-300 font-semibold transition-colors cursor-pointer bg-transparent border-0 p-0">
                 <span>{showAdvanced ? "▾" : "▸"}</span> ⚙️ Configuración avanzada
@@ -654,25 +747,6 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
                     <button onClick={() => persist({ ...t, config: { ...t.config, goldenPoint: !(t.config.goldenPoint !== false) } })} className={`px-4 py-1.5 rounded-lg text-sm font-bold cursor-pointer shrink-0 border ${t.config.goldenPoint !== false ? "bg-[#16a34a30] text-[#4ade80] border-[#4ade8040]" : "bg-[#374151] text-[#94a3b8] border-transparent"}`}>
                       {t.config.goldenPoint !== false ? "ON" : "OFF"}
                     </button>
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold text-gray-200 mb-2">Emparejamiento</div>
-                    <div className="flex gap-2">
-                      {[
-                        { id: "americano", label: "Americano" },
-                        { id: "mexicano", label: "Mexicano" },
-                        ...(isPairs ? [] : [{ id: "manual", label: "Manual" }]),
-                      ].map(opt => (
-                        <button key={opt.id} onClick={() => handleMatchmakingChange(opt.id)} className={`flex-1 py-2 rounded-xl text-sm font-bold cursor-pointer transition-colors ${(t.config.matchmaking || "americano") === opt.id ? "text-white" : "bg-[#374151] text-[#94a3b8]"}`} style={(t.config.matchmaking || "americano") === opt.id ? { background: COLOR } : undefined}>{opt.label}</button>
-                      ))}
-                    </div>
-                    <p className="text-xs text-gray-600 mt-1.5">
-                      {(t.config.matchmaking || "americano") === "americano"
-                        ? "Parejas aleatorias cada ronda"
-                        : (t.config.matchmaking || "americano") === "mexicano"
-                        ? "Desde ronda 2, los mejores juegan entre sí"
-                        : "Vos elegís los emparejamientos de cada ronda"}
-                    </p>
                   </div>
                   <div>
                     <label className="text-xs text-gray-400 font-semibold block mb-1.5">Descripción <span className="text-gray-600 font-normal">(opcional)</span></label>
@@ -692,6 +766,11 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
             >
               📋 Revisar y lanzar
             </button>
+            {isManual && !manualReady && (
+              <p data-testid="falta-armar-rondas" className="text-center text-xs font-semibold text-amber-400 mt-3">
+                Para lanzar, arma al menos {MIN_ROUNDS} rondas completas con «Armar rondas».
+              </p>
+            )}
             <p className="text-center text-xs text-gray-600 mt-3">
               Una vez guardado el primer resultado no podrás modificar la configuración del torneo.
             </p>

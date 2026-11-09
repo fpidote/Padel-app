@@ -11,6 +11,9 @@ export default function CourtNamesEditor({ courts, courtNames, onSave, autoSave 
   const [names, setNames] = useState(() => normalizeCourtNames(courtNames, courts));
   const [saving, setSaving] = useState(false);
   const deb = useRef(null);
+  // El guardado con retraso llama al último onSave, no al del render en que se escribió
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
 
   // Si cambia el número de pistas o llegan nombres de otra pantalla, y no estamos editando, se reajusta
   const savedKey = JSON.stringify(normalizeCourtNames(courtNames, courts));
@@ -24,7 +27,7 @@ export default function CourtNamesEditor({ courts, courtNames, onSave, autoSave 
   async function save(list) {
     setSaving(true);
     try {
-      const ok = await onSave(normalizeCourtNames(list, courts));
+      const ok = await onSaveRef.current(normalizeCourtNames(list, courts));
       if (ok === false) showToast("No se pudieron guardar los nombres de las pistas. Inténtalo de nuevo.");
     } catch (err) {
       console.error("Error al guardar nombres de pista:", err);

@@ -114,7 +114,9 @@ export default function ManualRoundBuilder({
   }
 
   function addRound() {
-    const next = [...rounds, buildEmptyRound(courts)];
+    // Solo las pistas que se pueden llenar con los jugadores que hay (como hace Autocompletar)
+    const fillable = Math.max(1, Math.min(courts, Math.floor(players.length / 4)));
+    const next = [...rounds, buildEmptyRound(fillable)];
     onChange(next);
     setActiveRound(next.length - 1);
   }
@@ -294,7 +296,7 @@ export default function ManualRoundBuilder({
         {/* Estado vacío */}
         {rounds.length === 0 && (
           <div className="text-center py-12 text-gray-600 text-sm">
-            Tocá <span className="font-bold text-sky-400">+</span> para armar la
+            Toca <span className="font-bold text-sky-400">+</span> para armar la
             primera ronda
           </div>
         )}
