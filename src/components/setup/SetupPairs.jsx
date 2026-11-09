@@ -55,6 +55,16 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
   const debLocation     = useRef(null);
   const debDatetime     = useRef(null);
   const debTargetRounds = useRef(null);
+  // Último estado del torneo: los guardados con retraso lo leen al ejecutarse, no el de cuando se escribió,
+  // para no deshacer lo hecho entretanto (parejas agregadas, formato, etc.)
+  const tRef = useRef(t);
+  tRef.current = t;
+  function persistConfig(patch) {
+    const cur = tRef.current;
+    const next = { ...cur, config: { ...cur.config, ...patch } };
+    tRef.current = next;
+    return persist(next);
+  }
   const navigate    = useNavigate();
   const p1InputRef  = useRef(null);
   const p2InputRef  = useRef(null);
@@ -119,22 +129,22 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
   function handleName(val) {
     setLocalName(val);
     clearTimeout(debName.current);
-    debName.current = setTimeout(() => persist({ ...t, config: { ...t.config, name: val } }), 600);
+    debName.current = setTimeout(() => persistConfig({ name: val }), 600);
   }
   function handleDesc(val) {
     setLocalDesc(val);
     clearTimeout(debDesc.current);
-    debDesc.current = setTimeout(() => persist({ ...t, config: { ...t.config, description: val } }), 600);
+    debDesc.current = setTimeout(() => persistConfig({ description: val }), 600);
   }
   function handleLocation(val) {
     setLocalLocation(val);
     clearTimeout(debLocation.current);
-    debLocation.current = setTimeout(() => persist({ ...t, config: { ...t.config, location: val } }), 600);
+    debLocation.current = setTimeout(() => persistConfig({ location: val }), 600);
   }
   function handleDatetime(val) {
     setLocalDatetime(val);
     clearTimeout(debDatetime.current);
-    debDatetime.current = setTimeout(() => persist({ ...t, config: { ...t.config, datetime: val } }), 600);
+    debDatetime.current = setTimeout(() => persistConfig({ datetime: val }), 600);
   }
 
   // «⚠️ repetido» junto al jugador que está en otra pareja; si la pareja entera se repite ya lo dice «repetida»
@@ -581,10 +591,7 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
                         clearTimeout(debTargetRounds.current);
                         debTargetRounds.current = setTimeout(() => {
                           const n = parseInt(val);
-                          persist({
-                            ...t,
-                            config: { ...t.config, targetRounds: (!val.trim() || isNaN(n) || n < 1) ? null : n },
-                          });
+                          persistConfig({ targetRounds: (!val.trim() || isNaN(n) || n < 1) ? null : n });
                         }, 600);
                       }}
                       className="w-full bg-[#0f172a] border border-[#334155] rounded-xl px-4 py-3 text-gray-50 text-sm placeholder-gray-500 focus:outline-none focus:border-[#38bdf8]"
