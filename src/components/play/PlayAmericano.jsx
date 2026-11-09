@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useContext } from "react";
 import { generateRules, TOURNAMENT_TYPES } from "../../logic/constants";
 import { pk } from "../../logic/utils";
 import { standingsLabels } from "../../logic/standings";
-import { buildRoundAmericano, americanoStandings, americanoPodium, americanoMatchesPlayed, canFinishAnyRound, startEditCourt, adminCourtView, roundAllSaved, standingsTitle, hasStandingsData, anyoneRests, courtLabel } from "../../logic/americano";
+import { buildRoundAmericano, americanoStandings, americanoPodium, americanoMatchesPlayed, canFinishAnyRound, startEditCourt, adminCourtView, roundAllSaved, standingsTitle, hasStandingsData, anyoneRests, courtLabel, americanoTotalRounds } from "../../logic/americano";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import { RoleContext } from "../shared/RoleContext";
 import { helperAllows } from "../../logic/helpers";
@@ -243,15 +243,12 @@ export default function PlayAmericano({ t, serverT, code, isAdmin, persist, copy
   const entityKey = isPairs ? "pairs" : "players";
   const standings = americanoStandings(t[entityKey]);
   const allSaved = roundAllSaved(t.currentRound);
-  const isLastRound = !!(
-    (t.config.maxRounds && t.roundNum >= t.config.maxRounds)
-    || (t.precomputedRounds?.length && t.roundNum >= t.precomputedRounds.length)
-  );
+  const totalRounds = americanoTotalRounds(t);
+  const isLastRound = !!(totalRounds && t.roundNum >= totalRounds);
   // Los torneos ya terminados antes de existir el estado "finished" se reconocen por el contador de ronda
   const isFinished = !!(
     t.status === "finished"
-    || (t.config.maxRounds && t.roundNum > t.config.maxRounds)
-    || (t.precomputedRounds?.length && t.roundNum > t.precomputedRounds.length)
+    || (totalRounds && t.roundNum > totalRounds)
   );
   const podium = isFinished ? americanoPodium(standings) : null;
   // Terminado: se enseña la última ronda jugada en lugar de una ronda actual que ya no existe

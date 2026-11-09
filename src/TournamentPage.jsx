@@ -1,8 +1,9 @@
 // src/TournamentPage.jsx
-import { useState, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTournament } from "./hooks/useTournament";
 import { useOnline } from "./hooks/useOnline";
+import { showToast } from "./logic/toast";
 import { TOURNAMENT_TYPES } from "./logic/constants";
 import { SimpleModal } from "./components/shared/Components";
 import { RoleContext } from "./components/shared/RoleContext";
@@ -23,6 +24,15 @@ export default function TournamentPage() {
   const online = useOnline();
   const [editMode, setEditMode] = useState(false);
   const [showHelpers, setShowHelpers] = useState(false);
+  // Si otra pantalla (un ayudante) carga el primer resultado mientras el dueño tiene abierto "Editar torneo", se cierra la
+  // edición: relanzar borraría esos resultados
+  const scoringStarted = !!t?.scoringStarted;
+  useEffect(() => {
+    if (editMode && scoringStarted) {
+      setEditMode(false);
+      showToast("Ya se cargó un resultado: la configuración del torneo quedó bloqueada.");
+    }
+  }, [editMode, scoringStarted]);
 
   if (notFound)
     return (

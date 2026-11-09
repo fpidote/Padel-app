@@ -12,6 +12,7 @@ import {
   canFinishAnyRound,
   restBalance,
   anyoneRests,
+  americanoTotalRounds,
   courtLabel,
   normalizeCourtNames,
   fairRoundOptions,
@@ -900,6 +901,22 @@ describe("precomputeAllRounds con rondas fijas", () => {
   test("sin rondas fijas se comporta igual que antes", () => {
     const { rounds } = precomputeAllRounds(players, { courts: 2, maxRounds: 3, mode: "individual" });
     expect(rounds).toHaveLength(3);
+  });
+});
+
+describe("americanoTotalRounds", () => {
+  test("las rondas precalculadas mandan sobre el número de rondas guardado (resto de antes de elegir Manual)", () => {
+    expect(americanoTotalRounds({ config: { maxRounds: 4 }, precomputedRounds: new Array(6).fill({}) })).toBe(6);
+  });
+
+  test("sin rondas precalculadas usa el número de la configuración", () => {
+    expect(americanoTotalRounds({ config: { maxRounds: 4 } })).toBe(4);
+    expect(americanoTotalRounds({ config: { maxRounds: 4 }, precomputedRounds: [] })).toBe(4);
+  });
+
+  test("sin ninguno de los dos no hay límite", () => {
+    expect(americanoTotalRounds({ config: {} })).toBeNull();
+    expect(americanoTotalRounds(undefined)).toBeNull();
   });
 });
 

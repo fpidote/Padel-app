@@ -6,6 +6,7 @@ import { buildShareMessage } from "../../logic/utils";
 import { validateMundialitoConfig, knockoutInfo, mundialitoThirdPlace, mundialitoFormatOptions, formatTitle, formatDetail, describeFormat, positionName, availableStages, optionsForStage, stageChoiceLabel, MIN_PAIRS, classicCrossingApplicable, crossingMode } from "../../logic/mundialito";
 import MatchFormatPicker from "../shared/MatchFormatPicker";
 import { BackButton } from "../shared/Components";
+import { showToast } from "../../logic/toast";
 import LaunchModal, { SummaryRow, SummaryCard } from "../shared/LaunchModal";
 import { GroupsPreview, FixturePreview, BracketPreview, PozoPreview } from "./DrawPreview";
 import { hasDraw, drawIsRandom, drawKey, buildStartDraw, startPatch } from "../../logic/launchDraw";
@@ -189,6 +190,12 @@ export default function SetupPairs({ t, code, isAdmin, saving, persist, typeInfo
   }
 
   async function onStart() {
+    // Otra pantalla ya cargó un resultado: relanzar con la configuración vieja los borraría
+    if (t.scoringStarted) {
+      showToast("Ya se cargó un resultado: la configuración del torneo quedó bloqueada.");
+      onExitEdit?.();
+      return;
+    }
     const finalConfig = { ...t.config, scoringSystem: t.config.scoringSystem || "timed" };
 
     if (hasDraw(t.type)) {

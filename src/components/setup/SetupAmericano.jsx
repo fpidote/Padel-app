@@ -6,6 +6,7 @@ import ManualRoundBuilder from "./ManualRoundBuilder";
 import { buildShareMessage } from "../../logic/utils";
 import MatchFormatPicker from "../shared/MatchFormatPicker";
 import CourtNamesEditor from "../shared/CourtNamesEditor";
+import { showToast } from "../../logic/toast";
 import { BackButton, SimpleModal } from "../shared/Components";
 import LaunchModal, { SummaryRow, SummaryCard } from "../shared/LaunchModal";
 
@@ -315,6 +316,12 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
   }
 
   async function onStart() {
+    // Otra pantalla ya cargó un resultado: relanzar con la configuración vieja los borraría
+    if (t.scoringStarted) {
+      showToast("Ya se cargó un resultado: la configuración del torneo quedó bloqueada.");
+      onExitEdit?.();
+      return;
+    }
     [debName, debDesc, debLocation, debDatetime, debRounds, debManual]
       .forEach(ref => clearTimeout(ref.current));
     try {

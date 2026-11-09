@@ -623,6 +623,12 @@ export function hasStandingsData(rows) {
   return (rows || []).some((r) => r.pts > 0 || r.gf > 0 || r.gc > 0);
 }
 
+// Cuántas rondas tiene el torneo: las precalculadas (Americano y Manual) mandan sobre el número de rondas de la
+// configuración, que en Manual puede ser un resto de antes de elegir Manual. Null = sin límite.
+export function americanoTotalRounds(t) {
+  return t?.precomputedRounds?.length || t?.config?.maxRounds || null;
+}
+
 // Sin límite de rondas ("Ilimitadas" en Mexicano y parejas) nadie marca cuál es la última: el organizador
 // decide cuándo cerrar, a partir del mínimo de rondas.
 export function canFinishAnyRound(t) {
