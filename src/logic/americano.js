@@ -540,6 +540,11 @@ export function restBalance({ count, courts, mode, rounds }) {
   };
 }
 
+// ¿Descansa alguien en alguna ronda? Si no, la pestaña "Descansos" no aporta nada y se oculta.
+export function anyoneRests(rounds) {
+  return Array.isArray(rounds) && rounds.some((r) => r?.sittingOut?.length > 0);
+}
+
 // Frase para el organizador sobre cómo quedan repartidos los partidos.
 export function restBalanceText(b, isPairs) {
   if (!b) return "";

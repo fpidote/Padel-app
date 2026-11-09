@@ -11,6 +11,7 @@ import {
   americanoMatchesPlayed,
   canFinishAnyRound,
   restBalance,
+  anyoneRests,
   fairRoundOptions,
   classicTotalRounds,
   restBalanceText,
@@ -871,6 +872,18 @@ describe("canFinishAnyRound", () => {
 // ═══════════════════════════════════════════════════════════════
 // restBalance / fairRoundOptions — que todos jueguen lo mismo
 // ═══════════════════════════════════════════════════════════════
+describe("anyoneRests", () => {
+  test("sin rondas o sin descansos no hay pestaña que mostrar", () => {
+    expect(anyoneRests(undefined)).toBe(false);
+    expect(anyoneRests([])).toBe(false);
+    expect(anyoneRests([{ sittingOut: [] }, { courts: [] }])).toBe(false);
+  });
+
+  test("si alguien descansa en alguna ronda, sí", () => {
+    expect(anyoneRests([{ sittingOut: [] }, { sittingOut: [{ id: 1 }] }])).toBe(true);
+  });
+});
+
 describe("restBalance", () => {
   test("sin jugadores de sobra nadie descansa: no hay desigualdad que avisar", () => {
     expect(restBalance({ count: 8, courts: 2, mode: "individual", rounds: 4 })).toBeNull();

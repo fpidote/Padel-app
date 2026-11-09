@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useContext } from "react";
 import { generateRules, TOURNAMENT_TYPES } from "../../logic/constants";
 import { pk } from "../../logic/utils";
 import { standingsLabels } from "../../logic/standings";
-import { buildRoundAmericano, americanoStandings, americanoPodium, americanoMatchesPlayed, canFinishAnyRound, startEditCourt, adminCourtView, roundAllSaved, standingsTitle, hasStandingsData } from "../../logic/americano";
+import { buildRoundAmericano, americanoStandings, americanoPodium, americanoMatchesPlayed, canFinishAnyRound, startEditCourt, adminCourtView, roundAllSaved, standingsTitle, hasStandingsData, anyoneRests } from "../../logic/americano";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import { RoleContext } from "../shared/RoleContext";
 import { helperAllows } from "../../logic/helpers";
@@ -40,6 +40,9 @@ function PTag({ p }) {
 
 export default function PlayAmericano({ t, serverT, code, isAdmin, persist, copyCode, onEditTournament }) {
   const [tab, setTab] = useState("courts");
+  // Si la pestaña Descansos deja de existir (nadie descansa), volver a Pistas
+  const restsVisible = anyoneRests(t.precomputedRounds);
+  useEffect(() => { if (tab === "descansos" && !restsVisible) setTab("courts"); }, [tab, restsVisible]);
   const [ls, setLs] = useState({});
   // Si otra pantalla guarda un partido, lo escrito aquí sin guardar queda obsoleto
   useClearOnSaved((serverT?.currentRound || []).map((c, i) => ({ key: i, sig: matchSig(c) })), setLs, serverT?._ownWrite);
@@ -287,7 +290,7 @@ export default function PlayAmericano({ t, serverT, code, isAdmin, persist, copy
             ["standings", "🏆 Posiciones"],
             ["history", "📜 Historial"],
             ["rules", "📖 Reglas"],
-            ...(t.precomputedRounds?.length ? [["descansos", "💤 Descansos"]] : []),
+            ...(anyoneRests(t.precomputedRounds) ? [["descansos", "💤 Descansos"]] : []),
           ]}
           active={tab}
           setActive={setTab}
@@ -473,7 +476,7 @@ export default function PlayAmericano({ t, serverT, code, isAdmin, persist, copy
             </ul>
           </div>
         )}
-        {tab === "descansos" && t.precomputedRounds?.length > 0 && (
+        {tab === "descansos" && anyoneRests(t.precomputedRounds) && (
           <div className="max-w-lg mx-auto">
             <p className="text-xs text-gray-500 font-semibold mb-3">Jugadores que descansan por ronda</p>
             {t.precomputedRounds.map((round, i) => {
