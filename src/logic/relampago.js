@@ -29,6 +29,13 @@ export function bracketRoundName(round, finalRound) {
   return ROUND_NAMES[finalRound - round] ?? `Ronda ${round}`;
 }
 
+export function knockoutStageLabel(round, finalRound, matchIndex) {
+  const name = bracketRoundName(round, finalRound).toUpperCase();
+  if (name === "FINAL") return name;
+  const short = name.replace("SEMIFINALES", "SEMIFINAL").replace(" DE FINAL", "");
+  return `${short} ${(matchIndex ?? 0) + 1}`;
+}
+
 // Podio de un cuadro de eliminación directa: la final decide campeón y subcampeón y, si se jugó el
 // partido por el 3.º puesto, también tercero y cuarto. Sin la final jugada no hay podio.
 export function bracketPodium(bracket) {

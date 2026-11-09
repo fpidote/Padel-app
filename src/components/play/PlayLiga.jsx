@@ -1,7 +1,7 @@
 // src/components/play/PlayLiga.jsx
 import { useState, useContext, useEffect, useRef } from "react";
 import { generateRules, TOURNAMENT_TYPES } from "../../logic/constants";
-import { advanceBracket, correctBracketMatch, startEditBracketMatch, adminBracketMatchView, canEditBracketMatch, bracketRoundName, bracketPodium, bracketSemifinalLosers } from "../../logic/relampago";
+import { advanceBracket, correctBracketMatch, startEditBracketMatch, adminBracketMatchView, canEditBracketMatch, bracketRoundName, knockoutStageLabel, bracketPodium, bracketSemifinalLosers } from "../../logic/relampago";
 import {
   recomputeLigaStandings,
   buildLigaKnockout,
@@ -448,7 +448,7 @@ export default function PlayLiga({ t, serverT, code, isAdmin, persist, copyCode,
                           }
                           accentColor={ACCENT}
                           scoringFormat={t.config?.scoringFormat || "sets3"}
-                          stageLabel="FASE FINAL"
+                          stageLabel={knockoutStageLabel(round, Math.max(...koRounds), match.matchIndex)}
                         />
                       )))}
                   </div>
@@ -463,6 +463,7 @@ export default function PlayLiga({ t, serverT, code, isAdmin, persist, copyCode,
                 )}
                 {thirdMatch && (thirdMatch.pairA || thirdMatch.pairB) && (
                   <div>
+                    <div className="text-gray-400 font-bold mb-2 uppercase text-xs tracking-wide">3.º y 4.º puesto</div>
                     <MatchCard
                       match={isAdmin ? adminBracketMatchView(thirdMatch) : thirdMatch}
                       isAdmin={isAdmin}

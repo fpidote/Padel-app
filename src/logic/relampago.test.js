@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildBracket, advanceBracket, unadvanceBracket, countPlayed, firstRoundSeedPairs, canEditBracketMatch, hasPlayedRealMatch, bracketRoundName, bracketPodium, bracketComplete, bracketSemifinalLosers, relampagoPodium, relampagoCanFinish, relampagoSetupStatus, startEditBracketMatch, cancelEditBracketMatch, correctBracketMatch, adminBracketMatchView, relampagoRankingOrder } from "./relampago.js";
+import { buildBracket, advanceBracket, unadvanceBracket, countPlayed, firstRoundSeedPairs, canEditBracketMatch, hasPlayedRealMatch, bracketRoundName, knockoutStageLabel, bracketPodium, bracketComplete, bracketSemifinalLosers, relampagoPodium, relampagoCanFinish, relampagoSetupStatus, startEditBracketMatch, cancelEditBracketMatch, correctBracketMatch, adminBracketMatchView, relampagoRankingOrder } from "./relampago.js";
 import { generateRules, TOURNAMENT_TYPES } from "./constants.js";
 
 function makePairs(n) {
@@ -478,6 +478,12 @@ describe("bracketRoundName — nombre de cada ronda según su distancia a la fin
     const rounds = [...new Set(buildBracket(makePairs(8), { consolation: false }).map((m) => m.round))];
     expect(rounds.map((r) => bracketRoundName(r, Math.max(...rounds)))).toEqual(["Cuartos de final", "Semifinales", "Final"]);
   });
+});
+
+describe("knockoutStageLabel", () => {
+  it("no numera la final", () => expect(knockoutStageLabel(4, 4, 2)).toBe("FINAL"));
+  it("numera la semifinal", () => expect(knockoutStageLabel(3, 4, 1)).toBe("SEMIFINAL 2"));
+  it("numera los cuartos", () => expect(knockoutStageLabel(2, 4, 0)).toBe("CUARTOS 1"));
 });
 
 describe("bracketPodium — campeón, subcampeón y 3.º puesto", () => {

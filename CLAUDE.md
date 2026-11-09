@@ -134,6 +134,12 @@ await setDoc(doc(db, "torneos", code), {
 
 `persist` actualiza la pantalla al instante y guarda por una cola (`src/logic/saveQueue.js`): escribe de uno en uno y, si se pide otro cambio mientras se guarda, lo junta en un único guardado posterior con el estado más reciente. **Nunca** descartar un `persist` por "ya hay uno en curso" (así se perdían parejas al añadirlas rápido o con red lenta). Si falla la escritura se vuelve al último estado guardado y se avisa con un toast (con `permission-denied`, el aviso explica que quizá quitaron el acceso).
 
+**`persist` devuelve si guardó.** Devuelve `true` cuando la cola confirma el guardado y `false` si no (sin red, torneo aún sin cargar, conflicto o fallo). Los `Play*` conservan lo que el usuario escribió en las casillas (`ls`) hasta que devuelve `true` y solo entonces las limpian con `clearScoreInputs(ls, id, ls)`, que quita únicamente las casillas que siguen igual que al pedir el guardado (lo escrito después, p. ej. otra corrección mientras el acuse tarda, se conserva). **Nunca** vaciar las casillas antes de saber si el guardado entró: así se perdían marcadores sin red o con conflicto.
+
+**Estado confirmado (`serverT`) y casillas obsoletas.** `useTournament` expone además `serverT`: el último estado CONFIRMADO por el servidor (los guardados de esta pantalla, avisados por `onSaved` de la cola, y los snapshots de otras pantallas), con `_ownWrite` para distinguir los propios. `useClearOnSaved(items, setLs, ownWrite)` (`src/hooks/useClearOnSaved.js`) borra las casillas de un partido cuando OTRA pantalla lo guarda, lo corrige o abre su corrección (la firma `matchSig` incluye guardado, `editing`, marcador y sets); con cambios propios no borra. Cada `Play*` lo llama justo después de declarar `[ls, setLs]`. En el Americano las pistas se identifican por índice, en el resto por `id` del partido.
+
+**Corregir un resultado (`editing`).** En todos los formatos corregir marca el partido con `editing: true` SIN quitarle `saved`: espectadores y tablas siguen viendo el resultado anterior hasta que el organizador guarda la corrección (`editing: false`) o cancela. El organizador ve la tarjeta abierta con la vista de administrador (`adminMatchView`, `adminCourtView`, `adminBracketMatchView`: `saved: false` solo para él). Siguiente ronda, iniciar la fase final, finalizar y "volver a la fase anterior" se ocultan mientras haya un partido en corrección. Al pulsar Editar las casillas se limpian para partir de lo guardado.
+
 **Control de versión al guardar.** La escritura es una transacción (`src/logic/saveTransaction.js`, `applyVersionedWrite`) que solo guarda si el `ver` del servidor es el de la versión sobre la que se armó el lote (`baseVer`, que la cola fija **al pedir** el guardado, no al escribir: así un cambio de otro organizador que llegue por el listener se detecta como conflicto en vez de pisarse). Si no coincide lanza `VersionConflictError`: se descarta el cambio, se carga la versión del servidor y se avisa. Cada guardado lleva un `writeId` dentro de `data` para que un reintento de un guardado que sí entró no cuente como conflicto. Un documento sin `ver` se trata como versión 0.
 
 ### Versioning anti-race-condition
@@ -165,7 +171,7 @@ setT(data);
 | `americano` | Americano | `SetupAmericano` + `PlayAmericano` | Rotativo por nivel, parejas cambian cada ronda |
 | `relampago` | Relámpago | `SetupPairs` + `PlayRelampago` | Double elimination (bracket principal + revancha) |
 | `mundialito` | Torneo por grupos (id interno `mundialito`) | `SetupPairs` + `PlayMundialito` | Fase de grupos + cuadro final |
-| `pozo` | El Pozo (oculto al crear, `hidden` en constants.js; los ya creados siguen abriéndose) | `SetupPairs` + `PlayPozo` | King of the Hill con timer por ronda |
+| `pozo` | El Pozo (oculto al crear, `hidden` en constants.js; los ya creados siguen abriéndose) | `SetupPairs` + `PlayPozo` | King of the Hill con timer por ronda. **Fuera de alcance por decisión del dueño**: no se contempla ni se proponen arreglos o mejoras para él (solo se mantiene lo que ya funciona, p. ej. la tarjeta común) |
 
 ### Ciclo de vida de un torneo
 

@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { clearScoreInputs } from "../../logic/sets";
 import { generateRules } from "../../logic/constants";
-import { advanceBracket, correctBracketMatch, startEditBracketMatch, adminBracketMatchView, canEditBracketMatch, bracketRoundName, bracketPodium, bracketSemifinalLosers } from "../../logic/relampago";
+import { advanceBracket, correctBracketMatch, startEditBracketMatch, adminBracketMatchView, canEditBracketMatch, bracketRoundName, knockoutStageLabel, bracketPodium, bracketSemifinalLosers } from "../../logic/relampago";
 import {
   buildKnockoutFromGroups,
   mundialitoGroupsLocked,
@@ -500,7 +500,7 @@ export default function PlayMundialito({
                           }
                           accentColor="#059669"
                           scoringFormat={t.config?.scoringFormat || "games"}
-                          stageLabel={knockoutLabel(round, koRounds, match)}
+                          stageLabel={knockoutStageLabel(round, Math.max(...koRounds), match.matchIndex)}
                         />
                       )))}
                   </div>
@@ -515,6 +515,7 @@ export default function PlayMundialito({
                 )}
                 {thirdMatch && (thirdMatch.pairA || thirdMatch.pairB) && (
                   <div>
+                    <div className="mb-2 text-[13px] font-bold uppercase text-[#94a3b8]">3.º y 4.º puesto</div>
                     <MatchCard
                       match={isAdmin ? adminBracketMatchView(thirdMatch) : thirdMatch}
                       isAdmin={isAdmin}
@@ -642,14 +643,6 @@ export default function PlayMundialito({
       )}
     </div>
   );
-}
-
-// Etiqueta de la tarjeta de eliminatoria: "SEMIFINAL 1", "CUARTOS 2"; la final no lleva número
-function knockoutLabel(round, koRounds, match) {
-  const name = bracketRoundName(round, Math.max(...koRounds)).toUpperCase();
-  if (name === "FINAL") return name;
-  const short = name.replace("SEMIFINALES", "SEMIFINAL").replace(" DE FINAL", "");
-  return `${short} ${(match.matchIndex ?? 0) + 1}`;
 }
 
 // 👇 NUEVO COMPONENTE PARA EL DESPLEGABLE DE CADA RONDA
