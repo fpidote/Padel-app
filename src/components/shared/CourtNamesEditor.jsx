@@ -58,7 +58,7 @@ export default function CourtNamesEditor({ courts, courtNames, onSave, autoSave 
       </button>
       {open && (
         <div className="mt-2 space-y-2">
-          <p className="text-xs text-gray-500">Si en tu club se llaman distinto, escribe el nombre que verán los jugadores.</p>
+          <p className="text-xs text-gray-500">Si en tu club se llaman distinto, escribe el nombre que verán los jugadores (hasta 20 letras).</p>
           {names.map((n, i) => (
             <div key={i} className="flex items-center gap-2">
               <span className="w-14 shrink-0 text-xs font-bold text-gray-500">Pista {i + 1}</span>

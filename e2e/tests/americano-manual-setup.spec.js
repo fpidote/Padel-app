@@ -80,7 +80,44 @@ test("con 9 jugadores y 3 pistas, '+' crea solo 2 pistas", async ({ page }) => {
   await abrir(page, { matchmaking: "manual", jugadores: [...NOMBRES, "Judy"], courts: 3 });
   await expect(page.getByTestId("falta-armar-rondas")).toBeVisible({ timeout: 8000 });
   await page.getByRole("button", { name: /Armar rondas/ }).click();
-  await page.getByRole("button", { name: "+", exact: true }).click();
+  await page.getByTestId("agregar-ronda").click();
   await expect(page.getByText("PISTA 2", { exact: true })).toBeVisible();
   await expect(page.getByText("PISTA 3", { exact: true })).toHaveCount(0);
+});
+
+test("Completar rondas faltantes rellena la ronda nueva y respeta las completas", async ({ page }) => {
+  await abrir(page, { matchmaking: "manual", rondas: RONDAS });
+  await page.getByRole("button", { name: /Armar rondas/ }).click();
+
+  // Agregar una ronda y completarla: R1 y R2 quedan igual
+  await page.getByTestId("agregar-ronda").click();
+  await page.getByTestId("completar-rondas").click();
+  await expect(page.getByText("R3 ✓")).toBeVisible({ timeout: 8000 });
+  await page.getByRole("button", { name: /✓ Guardar y volver/ }).click();
+  await expect.poll(async () => {
+    const r = (await getTournamentData(CODE))?.config?.manualRoundsConfig ?? [];
+    return r.length === 3 ? r.slice(0, 2).map((x) => x.courts.map((c) => [...c.pairA, ...c.pairB].map((p) => p.id).join(",")).join("|")).join(" / ") : null;
+  }, { timeout: 8000 }).toBe("0,1,2,3|4,5,6,7 / 0,4,1,5|2,6,3,7");
+});
+
+test("al elegir a alguien ya asignado en la ronda se intercambian de sitio", async ({ page }) => {
+  await abrir(page, { matchmaking: "manual", rondas: RONDAS });
+  await page.getByRole("button", { name: /Armar rondas/ }).click();
+  // R1 pista 1: Alice, Bob vs Carol, Dave. Elegir "Carol" en el primer hueco => Carol y Alice se intercambian
+  await page.locator("select").first().selectOption({ label: "Carol ↩" });
+  await expect(page.getByText("R1 ✓")).toBeVisible();
+  await page.getByRole("button", { name: /✓ Guardar y volver/ }).click();
+  await expect.poll(async () => {
+    const c = (await getTournamentData(CODE))?.config?.manualRoundsConfig?.[0]?.courts?.[0];
+    return c ? [...c.pairA, ...c.pairB].map((p) => p.name).join(",") : null;
+  }, { timeout: 8000 }).toBe("Carol,Bob,Alice,Dave");
+});
+
+test("borrar una ronda con jugadores pide confirmar y cancelar la conserva", async ({ page }) => {
+  await abrir(page, { matchmaking: "manual", jugadores: [...NOMBRES, "Judy"], rondas: RONDAS });
+  await page.getByRole("button", { name: /Armar rondas/ }).click();
+  await page.getByRole("button", { name: "Eliminar ronda 2" }).click();
+  await expect(page.getByText(/¿Eliminar la ronda 2\?/)).toBeVisible();
+  await page.getByRole("button", { name: "Cancelar" }).click();
+  await expect(page.getByText("R2 ✓")).toBeVisible();
 });

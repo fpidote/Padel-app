@@ -7,6 +7,8 @@ import {
   availablePlayersForSlot,
   findRepeats,
   repeatedIdsByRound,
+  repeatOffenders,
+  manualPlaysSummary,
   repeatsToWarnings,
 } from "./manualRounds";
 
@@ -201,6 +203,43 @@ describe("repeticiones de rondas manuales", () => {
       round: 3,
       constraint: "opponent_repeat",
       message: "Ronda 3: Fede y Pedro ya se enfrentaron en la ronda 1",
+    });
+  });
+
+  describe("repeatOffenders", () => {
+    it("marca solo las rondas donde se repite, no la primera coincidencia", () => {
+      const repeats = findRepeats([
+        round(court([fede, juan], [pedro, ana])),
+        round(court([fede, pedro], [juan, ana])),
+        round(court([fede, juan], [pedro, ana])),
+      ]);
+      const off = repeatOffenders(repeats);
+      expect(off.has(1)).toBe(false);
+      expect(off.get(3)).toEqual(new Set([fede.id, juan.id, pedro.id, ana.id]));
+    });
+  });
+
+  describe("manualPlaysSummary", () => {
+    const four = [fede, juan, pedro, ana];
+    const extra = { id: 99, name: "Extra" };
+
+    it("sin canchas completas no hay resumen", () => {
+      expect(manualPlaysSummary(four, [])).toBeNull();
+    });
+
+    it("si todos juegan lo mismo lo dice", () => {
+      const r = manualPlaysSummary(four, [round(court([fede, juan], [pedro, ana]))]);
+      expect(r).toEqual({ equal: true, text: "Todos juegan 1 partido." });
+    });
+
+    it("con descansos desiguales dice quién juega menos", () => {
+      const five = [...four, extra];
+      const r = manualPlaysSummary(five, [
+        round(court([fede, juan], [pedro, ana])),
+        round(court([fede, extra], [pedro, ana])),
+      ]);
+      expect(r.equal).toBe(false);
+      expect(r.text).toBe("3 jugadores jugarán 2 partidos y 2 jugarán 1.");
     });
   });
 });

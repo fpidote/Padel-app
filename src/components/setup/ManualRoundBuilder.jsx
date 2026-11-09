@@ -5,10 +5,11 @@ import {
   availablePlayersForSlot,
   calcularDescansos,
   findRepeats,
-  repeatedIdsByRound,
+  repeatOffenders,
   repeatsToWarnings,
 } from "../../logic/manualRounds";
 import { precomputeAllRounds, courtLabel } from "../../logic/americano";
+import { SimpleModal } from "../shared/Components";
 
 const COLOR = "#0284c7";
 
@@ -36,13 +37,14 @@ export default function ManualRoundBuilder({
   const [activeRound, setActiveRound] = useState(0);
   const [pendingAutoFill, setPendingAutoFill] = useState(false);
   const [pendingReopt, setPendingReopt] = useState(false);
+  const [pendingComplete, setPendingComplete] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null); // índice de ronda a borrar
   const [lockedRounds, setLockedRounds] = useState([]); // índices de rondas que "Re-optimizar" no toca
   const [reoptMsg, setReoptMsg] = useState(null);
 
   // Compañeros o rivales que se repiten entre rondas (solo canchas completas)
   const repeats = useMemo(() => findRepeats(rounds), [rounds]);
-  const repeatCount = useMemo(() => repeatsToWarnings(repeats).length, [repeats]);
-  const repeatedByRound = useMemo(() => repeatedIdsByRound(repeats), [repeats]);
+  const repeatedByRound = useMemo(() => repeatOffenders(repeats), [repeats]);
   const repeatLines = useMemo(() => {
     const roundsText = (list) => list.map((r) => `R${r}`).join(", ");
     return [
@@ -50,6 +52,28 @@ export default function ManualRoundBuilder({
       ...repeats.opponents.map((x) => `${x.a.name} y ${x.b.name}: rivales en ${roundsText(x.rounds)}`),
     ];
   }, [repeats]);
+  const repeatCount = repeatLines.length;
+  const hasPlayers = (r) => r.courts.some((c) => [...c.pairA, ...c.pairB].some(Boolean));
+  const incompleteCount = rounds.filter((r) => !isRoundComplete(r)).length;
+
+  // Genera las rondas dejando fijas las indicadas; entre varios intentos se queda con el de menos repetidos
+  function generateBest(fixedRounds, total) {
+    let best = null;
+    let bestCount = Infinity;
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const { rounds: generated } = precomputeAllRounds(players, {
+        courts,
+        maxRounds: total,
+        mode: "individual",
+        useLevels: config.useLevels,
+        fixedRounds,
+      });
+      const count = repeatsToWarnings(findRepeats(generated)).length;
+      if (count < bestCount) { best = generated; bestCount = count; }
+      if (count === 0) break;
+    }
+    return { best, bestCount };
+  }
 
   function autoFillAll() {
     const numRounds =
@@ -78,39 +102,40 @@ export default function ManualRoundBuilder({
     rounds.forEach((r, i) => {
       if (lockedRounds.includes(i) && isRoundComplete(r)) fixedRounds[i] = r;
     });
-    let best = null;
-    let bestCount = Infinity;
-    for (let attempt = 0; attempt < 8; attempt++) {
-      const { rounds: generated } = precomputeAllRounds(players, {
-        courts,
-        maxRounds: rounds.length,
-        mode: "individual",
-        useLevels: config.useLevels,
-        fixedRounds,
-      });
-      const count = repeatsToWarnings(findRepeats(generated)).length;
-      if (count < bestCount) { best = generated; bestCount = count; }
-      if (count === 0) break;
-    }
+    const { best, bestCount } = generateBest(fixedRounds, rounds.length);
     if (best) onChange(best);
     setPendingReopt(false);
     setReoptMsg(
       bestCount === 0
         ? "✓ Sin repetidos."
-        : `Quedan ${bestCount} ${bestCount === 1 ? "repetido" : "repetidos"}: con estos jugadores y rondas no se puede evitar del todo.`,
+        : `Quedan ${bestCount} ${bestCount === 1 ? "repetición" : "repeticiones"}: con estos jugadores y rondas no se puede evitar del todo.`,
     );
   }
 
-  function handleAutoFillClick() {
+  // Completa solo las rondas que faltan: las completas se respetan y cuentan como historial
+  function completeMissing() {
+    const fixedRounds = {};
+    rounds.forEach((r, i) => { if (isRoundComplete(r)) fixedRounds[i] = r; });
+    const { best } = generateBest(fixedRounds, rounds.length);
+    if (best) onChange(best);
+    setActiveRound(Math.max(0, rounds.findIndex((r) => !isRoundComplete(r))));
+    setPendingComplete(false);
+    setReoptMsg(null);
+  }
+
+  function handleCompleteClick() {
     if (players.length < 4) return;
-    const hasData = rounds.some((r) =>
-      r.courts.some((c) => [...c.pairA, ...c.pairB].some(Boolean)),
-    );
-    if (hasData) {
-      setPendingAutoFill(true);
-    } else {
-      autoFillAll();
-    }
+    if (rounds.length === 0) { autoFillAll(); return; }
+    if (incompleteCount === 0) return;
+    // Una ronda a medias se regenera entera: se avisa antes de perder lo que se había puesto
+    if (rounds.some((r) => !isRoundComplete(r) && hasPlayers(r))) setPendingComplete(true);
+    else completeMissing();
+  }
+
+  function handleRedoAllClick() {
+    if (players.length < 4) return;
+    if (rounds.some(hasPlayers)) setPendingAutoFill(true);
+    else autoFillAll();
   }
 
   function addRound() {
@@ -121,7 +146,13 @@ export default function ManualRoundBuilder({
     setActiveRound(next.length - 1);
   }
 
+  function requestDelete(i) {
+    if (hasPlayers(rounds[i])) setPendingDelete(i);
+    else deleteRound(i);
+  }
+
   function deleteRound(i) {
+    setPendingDelete(null);
     const next = rounds.filter((_, ri) => ri !== i);
     onChange(next);
     setLockedRounds([]);
@@ -133,18 +164,21 @@ export default function ManualRoundBuilder({
     const player = playerId
       ? (players.find((p) => String(p.id) === playerId) ?? null)
       : null;
+    // Si el jugador elegido ya estaba en otro hueco de esta ronda, se intercambian: quien ocupaba
+    // el hueco elegido pasa al hueco que deja libre
+    const displaced = rounds[roundIdx]?.courts[courtIdx]?.[pairKey]?.[slotIdx] ?? null;
     onChange(
       rounds.map((r, ri) => {
         if (ri !== roundIdx) return r;
         const newCourts = r.courts.map((c, ci) => {
           let updated = { ...c, pairA: [...c.pairA], pairB: [...c.pairB] };
-          // Limpiar slot previo del jugador (swap implícito)
+          // Slot previo del jugador: lo ocupa quien estaba en el hueco elegido (intercambio) o queda libre
           if (player) {
             ["pairA", "pairB"].forEach((pk) => {
               updated[pk] = updated[pk].map((p, si) =>
                 p?.id === player.id &&
                 !(ci === courtIdx && pk === pairKey && si === slotIdx)
-                  ? null
+                  ? displaced
                   : p,
               );
             });
@@ -169,6 +203,15 @@ export default function ManualRoundBuilder({
       className="min-h-screen bg-[#111827] text-gray-50"
       style={{ fontFamily: "system-ui" }}
     >
+      {pendingDelete !== null && (
+        <SimpleModal
+          icon="🗑️"
+          message={`¿Eliminar la ronda ${pendingDelete + 1}? Se pierde lo que armaste en ella.`}
+          confirmLabel="Eliminar"
+          onClose={() => setPendingDelete(null)}
+          onConfirm={() => deleteRound(pendingDelete)}
+        />
+      )}
       <div className="max-w-lg mx-auto px-4 pt-6 pb-16">
         {/* Header */}
         <button
@@ -182,18 +225,47 @@ export default function ManualRoundBuilder({
             ✏️ Armar Rondas
           </h2>
           <button
-            onClick={handleAutoFillClick}
-            disabled={players.length < 4}
+            onClick={handleCompleteClick}
+            data-testid="completar-rondas"
+            disabled={players.length < 4 || (rounds.length > 0 && incompleteCount === 0)}
             className="text-xs px-3 py-2 rounded-xl font-bold transition-colors bg-[#1f2937] border border-[#0284c7]/30 text-[#0284c7] disabled:opacity-50 disabled:cursor-not-allowed disabled:text-[#64748b] disabled:border-[#374151]"
           >
-            ↺ Autocompletar todo
+            {rounds.length === 0 ? "↺ Autocompletar rondas" : "↺ Completar rondas faltantes"}
           </button>
         </div>
+
+        {rounds.length > 0 && !pendingAutoFill && !pendingComplete && (
+          <div className="-mt-3 mb-4 text-xs text-gray-500">
+            {incompleteCount === 0
+              ? "Todas las rondas están completas. "
+              : "Las rondas completas no se tocan. "}
+            <button
+              onClick={handleRedoAllClick}
+              data-testid="rehacer-todo"
+              disabled={players.length < 4}
+              className="font-semibold text-sky-400 underline cursor-pointer bg-transparent border-0 p-0 disabled:opacity-50"
+            >
+              Rehacer todo desde cero
+            </button>
+          </div>
+        )}
+
+        {pendingComplete && (
+          <div className="mb-4 flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-yellow-400/10 border border-yellow-400/20">
+            <span className="text-xs text-yellow-400 font-semibold">
+              ⚠️ Las rondas a medias se rehacen enteras.
+            </span>
+            <div className="flex gap-2 shrink-0">
+              <button onClick={() => setPendingComplete(false)} className="text-xs px-3 py-1.5 rounded-lg font-bold cursor-pointer bg-[#374151] text-[#94a3b8]">Cancelar</button>
+              <button onClick={completeMissing} data-testid="confirmar-completar" className="text-xs px-3 py-1.5 rounded-lg font-bold cursor-pointer bg-[#b45309] text-white">Completar</button>
+            </div>
+          </div>
+        )}
 
         {pendingAutoFill && (
           <div className="mb-4 flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-yellow-400/10 border border-yellow-400/20">
             <span className="text-xs text-yellow-400 font-semibold">
-              ⚠️ Esto reemplazará las rondas actuales.
+              ⚠️ Se rehacen todas las rondas, también las completas.
             </span>
             <div className="flex gap-2 shrink-0">
               <button
@@ -204,55 +276,61 @@ export default function ManualRoundBuilder({
               </button>
               <button
                 onClick={autoFillAll}
+                data-testid="confirmar-rehacer"
                 className="text-xs px-3 py-1.5 rounded-lg font-bold cursor-pointer bg-[#b45309] text-white"
               >
-                Reemplazar
+                Rehacer
               </button>
             </div>
           </div>
         )}
 
         {/* Tabs de rondas */}
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-6">
-          {rounds.map((r, i) => {
-            const complete = isRoundComplete(r);
-            const isActive = i === safeActive;
-            return (
-              <div
-                key={i}
-                className={`shrink-0 flex items-center rounded-xl text-sm font-bold transition-colors border ${isActive ? "bg-[#0284c7] border-[#0284c7]" : complete ? "bg-[#1f2937] border-[#4ade8040]" : "bg-[#1f2937] border-[#374151]"}`}
-              >
-                <button
-                  onClick={() => setActiveRound(i)}
-                  className={`px-3 py-2 cursor-pointer bg-transparent border-0 ${isActive ? "text-white" : complete ? "text-[#4ade80]" : "text-[#64748b]"}`}
+        <div className="flex items-start gap-2 mb-6">
+          <div className="flex-1 min-w-0 flex gap-2 overflow-x-auto pb-2">
+            {rounds.map((r, i) => {
+              const complete = isRoundComplete(r);
+              const isActive = i === safeActive;
+              return (
+                <div
+                  key={i}
+                  className={`shrink-0 flex items-center rounded-xl text-sm font-bold transition-colors border ${isActive ? "bg-[#0284c7] border-[#0284c7]" : complete ? "bg-[#1f2937] border-[#4ade8040]" : "bg-[#1f2937] border-[#374151]"}`}
                 >
-                  R{i + 1} {complete ? "✓" : "✗"}{repeatedByRound.has(i + 1) ? " ⚠️" : ""}
-                </button>
-                {complete && (
                   <button
-                    onClick={() => toggleLock(i)}
-                    data-testid={`candado-ronda-${i + 1}`}
-                    className={`pr-1.5 cursor-pointer bg-transparent border-0 text-xs leading-none transition-opacity ${lockedRounds.includes(i) ? "opacity-100" : "opacity-40 hover:opacity-100"}`}
-                    title={lockedRounds.includes(i) ? "Ronda fijada: Re-optimizar no la toca" : "Fijar ronda para que Re-optimizar no la toque"}
+                    onClick={() => setActiveRound(i)}
+                    title={complete ? "Ronda completa" : "Ronda incompleta: faltan jugadores"}
+                    className={`px-3 py-2 cursor-pointer bg-transparent border-0 ${isActive ? "text-white" : complete ? "text-[#4ade80]" : "text-[#64748b]"}`}
                   >
-                    {lockedRounds.includes(i) ? "🔒" : "🔓"}
+                    R{i + 1}{complete ? " ✓" : ""}{repeatedByRound.has(i + 1) ? " ⚠️" : ""}
                   </button>
-                )}
-                <button
-                  onClick={() => deleteRound(i)}
-                  className={`pr-2.5 cursor-pointer bg-transparent border-0 text-base leading-none opacity-40 hover:opacity-100 transition-opacity ${isActive ? "text-white" : "text-[#9ca3af]"}`}
-                  title="Eliminar ronda"
-                >
-                  ×
-                </button>
-              </div>
-            );
-          })}
+                  {complete && (
+                    <button
+                      onClick={() => toggleLock(i)}
+                      data-testid={`candado-ronda-${i + 1}`}
+                      className={`pr-1.5 cursor-pointer bg-transparent border-0 text-xs leading-none transition-opacity ${lockedRounds.includes(i) ? "opacity-100" : "opacity-60 hover:opacity-100"}`}
+                      title={lockedRounds.includes(i) ? "Ronda fijada: Re-optimizar no la toca" : "Fijar ronda para que Re-optimizar no la toque"}
+                    >
+                      {lockedRounds.includes(i) ? "🔒" : "🔓"}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => requestDelete(i)}
+                    className={`pr-2.5 pl-1 cursor-pointer bg-transparent border-0 text-base leading-none opacity-40 hover:opacity-100 transition-opacity ${isActive ? "text-white" : "text-[#9ca3af]"}`}
+                    title="Eliminar ronda"
+                    aria-label={`Eliminar ronda ${i + 1}`}
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
+          </div>
           <button
             onClick={addRound}
-            className="shrink-0 px-4 py-2 rounded-xl text-sm font-bold cursor-pointer transition-colors bg-[#1f2937] border border-dashed border-[#374151] text-[#38bdf8]"
+            data-testid="agregar-ronda"
+            className="shrink-0 px-3 py-2 rounded-xl text-sm font-bold cursor-pointer transition-colors bg-[#1f2937] border border-dashed border-[#374151] text-[#38bdf8]"
           >
-            +
+            + Ronda
           </button>
         </div>
 
@@ -260,12 +338,15 @@ export default function ManualRoundBuilder({
         {repeatCount > 0 && (
           <div data-testid="aviso-repetidos" className="mb-5 px-4 py-3 rounded-xl bg-amber-400/10 border border-amber-400/20">
             <p className="text-xs font-bold text-amber-400 mb-1.5">
-              ⚠️ {repeatCount === 1 ? "Hay 1 repetido" : `Hay ${repeatCount} repetidos`} entre rondas
+              ⚠️ {repeatCount === 1 ? "Hay 1 repetición" : `Hay ${repeatCount} repeticiones`} entre rondas
             </p>
             <ul className="text-xs text-amber-200/90 space-y-0.5 mb-2.5">
               {repeatLines.slice(0, 5).map((line) => <li key={line}>{line}</li>)}
               {repeatLines.length > 5 && <li>y {repeatLines.length - 5} más</li>}
             </ul>
+            <p className="text-[11px] text-amber-200/70 mb-2.5">
+              ⚠️ marca la ronda donde se repite. Con 🔒 fijas una ronda completa para que Re-optimizar no la toque.
+            </p>
             {pendingReopt ? (
               <div className="flex items-center justify-between gap-3">
                 <span className="text-xs text-yellow-400 font-semibold">Se regenerarán las rondas sin fijar (🔓).</span>
@@ -426,12 +507,13 @@ export default function ManualRoundBuilder({
             {/* Descansos automáticos */}
             {(() => {
               const resting = calcularDescansos(players, round.courts);
-              if (!resting.length) return null;
+              // Ronda vacía: no tiene sentido decir que descansan todos
+              if (!resting.length || resting.length === players.length) return null;
               return (
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2.5 bg-yellow-400/10 border border-yellow-400/20 rounded-xl text-sm">
                   <span>⏳</span>
                   <span className="text-yellow-400 font-semibold shrink-0">
-                    Descansan:
+                    {resting.length === 1 ? "Descansa:" : "Descansan:"}
                   </span>
                   <span className="text-gray-400">
                     {resting.map((p) => p.name).join(" · ")}

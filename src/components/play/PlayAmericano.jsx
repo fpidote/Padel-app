@@ -283,7 +283,7 @@ export default function PlayAmericano({ t, serverT, code, isAdmin, persist, copy
       />
       <div className="p-4">
         {isAdmin && t.roundWarnings?.length > 0 && (
-          <WarningsBanner warnings={t.roundWarnings} />
+          <WarningsBanner warnings={t.roundWarnings} manual={t.config.matchmaking === "manual"} />
         )}
         <Tabs
           tabs={[
@@ -400,6 +400,7 @@ export default function PlayAmericano({ t, serverT, code, isAdmin, persist, copy
                 {shownRound !== null ? (
                   (t.precomputedRounds?.length && shownRound > t.roundNum) ? (
                     <FutureRound
+                      manual={t.config.matchmaking === "manual"}
                       courtNames={t.config.courtNames}
                       round={t.precomputedRounds[shownRound - 1]}
                       roundNum={shownRound}
@@ -696,6 +697,7 @@ function AllRoundsPlayerView({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSea
         .slice(t.roundNum)
         .map((round, i) => (
           <FutureRound
+            manual={t.config.matchmaking === "manual"}
             courtNames={t.config.courtNames}
             key={`future-${t.roundNum + i}`}
             round={round}
@@ -1120,7 +1122,7 @@ function HistoryRound({ courtNames, round, roundNum, matchesSearch, isAdmin, use
   );
 }
 
-function FutureRound({ courtNames, round, roundNum, matchesSearch, isAdmin, useLevels, showLevelsToggle, players, highlightId, playerView }) {
+function FutureRound({ manual, courtNames, round, roundNum, matchesSearch, isAdmin, useLevels, showLevelsToggle, players, highlightId, playerView }) {
   const playersDict = useMemo(() => {
     const dict = {};
     players?.forEach(p => { dict[p.id] = p; });
@@ -1213,7 +1215,7 @@ function FutureRound({ courtNames, round, roundNum, matchesSearch, isAdmin, useL
       )}
       <div className="mb-3">
         <span className="text-xs font-bold text-gray-600 bg-[#1e293b] border border-gray-800 rounded-md px-2 py-0.5">
-          📅 Emparejamientos tentativos
+          {manual ? "📅 Emparejamientos armados por el organizador" : "📅 Emparejamientos tentativos"}
         </span>
       </div>
       {courtItems}
@@ -1221,7 +1223,7 @@ function FutureRound({ courtNames, round, roundNum, matchesSearch, isAdmin, useL
   );
 }
 
-function WarningsBanner({ warnings }) {
+function WarningsBanner({ warnings, manual }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="mb-2 rounded-xl border border-amber-500/30 bg-amber-500/10 overflow-hidden">
@@ -1230,7 +1232,7 @@ function WarningsBanner({ warnings }) {
         className="w-full flex items-center justify-between px-4 py-2.5 text-left"
       >
         <div className="flex items-center gap-2">
-          <span className="text-amber-400 text-sm font-bold">⚠️ Avisos del sorteo</span>
+          <span className="text-amber-400 text-sm font-bold">{manual ? "⚠️ Avisos del armado" : "⚠️ Avisos del sorteo"}</span>
           <span className="text-xs text-amber-500/80 bg-amber-500/20 px-2 py-0.5 rounded-full font-semibold">
             {warnings.length}
           </span>

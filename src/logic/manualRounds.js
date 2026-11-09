@@ -136,3 +136,48 @@ export function repeatsToWarnings(repeats) {
   });
   return warnings;
 }
+
+// Jugadores implicados en una repetición, solo en las rondas donde se repite (no en la primera vez que coincidieron):
+// son las rondas que conviene tocar. Map<número de ronda 1-based, Set<id>>.
+export function repeatOffenders(repeats) {
+  const result = new Map();
+  ["partners", "opponents"].forEach((type) => {
+    repeats[type].forEach(({ a, b, rounds }) => {
+      rounds.slice(1).forEach((round) => {
+        if (!result.has(round)) result.set(round, new Set());
+        result.get(round).add(a.id);
+        result.get(round).add(b.id);
+      });
+    });
+  });
+  return result;
+}
+
+// Cuántos partidos juega cada jugador con las rondas armadas (solo canchas completas).
+// Devuelve null si aún no hay partidos; si no, { equal, text } con la frase para el organizador.
+export function manualPlaysSummary(players, rounds) {
+  const plays = new Map(players.map((p) => [p.id, 0]));
+  rounds.forEach((round) => {
+    (round.courts || []).forEach((court) => {
+      if (!isCourtComplete(court)) return;
+      [...court.pairA, ...court.pairB].forEach((p) => {
+        if (plays.has(p.id)) plays.set(p.id, plays.get(p.id) + 1);
+      });
+    });
+  });
+  const counts = [...plays.values()];
+  if (!counts.length || counts.every((n) => n === 0)) return null;
+  const min = Math.min(...counts);
+  const max = Math.max(...counts);
+  const games = (n) => (n === 1 ? "partido" : "partidos");
+  if (min === max) return { equal: true, text: `Todos juegan ${max} ${games(max)}.` };
+  const minCount = counts.filter((n) => n === min).length;
+  const maxCount = counts.filter((n) => n === max).length;
+  if (minCount + maxCount < counts.length) return { equal: false, text: `Los partidos por jugador van de ${min} a ${max}.` };
+  const noun = (n) => (n === 1 ? "jugador" : "jugadores");
+  const verb = (n) => (n === 1 ? "jugará" : "jugarán");
+  return {
+    equal: false,
+    text: `${maxCount} ${noun(maxCount)} ${verb(maxCount)} ${max} ${games(max)} y ${minCount} ${verb(minCount)} ${min}.`,
+  };
+}

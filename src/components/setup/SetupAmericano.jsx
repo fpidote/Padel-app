@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { buildFirstRoundAmericano, precomputeAllRounds, isDuplicateName, duplicateNameKeys, normalizeName, MIN_ROUNDS, roundsCountError, restBalance, restBalanceText, fairRoundOptions, classicTotalRounds, courtLabel, normalizeCourtNames } from "../../logic/americano";
-import { calcularDescansos, isCourtComplete, findRepeats, repeatsToWarnings } from "../../logic/manualRounds";
+import { calcularDescansos, isCourtComplete, findRepeats, repeatsToWarnings, manualPlaysSummary } from "../../logic/manualRounds";
 import ManualRoundBuilder from "./ManualRoundBuilder";
 import { buildShareMessage } from "../../logic/utils";
 import MatchFormatPicker from "../shared/MatchFormatPicker";
@@ -117,6 +117,9 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
 
   const canShowMatchmakingTab = canReshuffle || (isManual && localManualRounds.length > 0);
   const roundsToPreview = isManual ? localManualRounds : localPrecomputedRounds;
+  const manualPlays = isManual
+    ? manualPlaysSummary((t.playerInputs || []).map((p, i) => ({ id: i, name: p.name.trim() })).filter((p) => p.name), localManualRounds)
+    : null;
   const previewWarnings = isManual ? repeatsToWarnings(findRepeats(localManualRounds)) : localRoundWarnings;
 
   const scoringLabel  = scoring === "timed" ? "Por tiempo" : scoring === "rally" ? "Por puntos" : "Por games";
@@ -817,7 +820,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
                         </div>
                       ))}
                       {round.sittingOut.length > 0 && (
-                        <div className="text-xs text-gray-500 px-1">⏳ Descansan: {round.sittingOut.map(p => p.name).join(", ")}</div>
+                        <div className="text-xs text-gray-500 px-1">⏳ {round.sittingOut.length === 1 ? "Descansa" : "Descansan"}: {round.sittingOut.map(p => p.name).join(", ")}</div>
                       )}
                     </div>
                   </div>
@@ -866,7 +869,8 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
                 <SummaryCard title="Formato">
                     <SummaryRow label="Rondas" value={isManual ? String(localManualRounds.length) : t.config.maxRounds ? String(t.config.maxRounds) : effectiveRounds ? String(effectiveRounds) : "Ilimitadas"} />
                     {balance && <SummaryRow label={isPairs ? "Partidos por pareja" : "Partidos por jugador"} value={restBalanceText(balance, isPairs)} yellow={!balance.equal} />}
-                    <SummaryRow label="Emparejamiento" value={(t.config.matchmaking || "americano") === "americano" ? "Americano" : (t.config.matchmaking || "americano") === "mexicano" ? "Mexicano" : "Manual"} />
+                    {isManual && manualPlays && <SummaryRow label="Partidos por jugador" value={manualPlays.text} yellow={!manualPlays.equal} />}
+                    <SummaryRow label="Emparejamiento" value={isManual ? "Manual" : matchmakingMode === "mexicano" ? "Mexicano" : "Americano"} />
                   </SummaryCard>
               </div>
             )}
