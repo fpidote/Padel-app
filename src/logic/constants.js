@@ -100,7 +100,8 @@ export function generateRules(type, config, context = {}) {
       const matchmaking = config.matchmaking || "americano";
       const numRounds = context.numRounds;
       let rotationDesc;
-      if (matchmaking === "manual") {
+      // Con parejas fijas no existe Manual: aunque quede guardado de antes, se explica como Americano
+      if (matchmaking === "manual" && config.mode !== "pairs") {
         const s = config.scoringSystem || "timed";
         const metric = s === "games" ? "juegos"
           : s === "rally" ? "puntos"

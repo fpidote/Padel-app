@@ -121,3 +121,42 @@ test("borrar una ronda con jugadores pide confirmar y cancelar la conserva", asy
   await page.getByRole("button", { name: "Cancelar" }).click();
   await expect(page.getByText("R2 ✓")).toBeVisible();
 });
+
+// Guardado retrasado del armador: lo que se haga justo después de «Guardar y volver» no debe deshacerlo
+test("renombrar a un jugador justo después de Guardar y volver conserva el último cambio del armador", async ({ page }) => {
+  await abrir(page, { matchmaking: "manual", rondas: RONDAS });
+  await page.getByRole("button", { name: /Armar rondas/ }).click();
+  await page.locator("select").first().selectOption({ label: "Carol ↩" });
+  await page.getByRole("button", { name: /✓ Guardar y volver/ }).click();
+  await page.getByText("Bob", { exact: true }).first().click();
+  await page.locator("input:focus").fill("Bobby");
+  await page.locator("input:focus").press("Enter");
+  await page.waitForTimeout(2000);
+  const d = await getTournamentData(CODE);
+  const c = d.config.manualRoundsConfig[0].courts[0];
+  expect([...c.pairA, ...c.pairB].map((p) => p.name).join(",")).toBe("Carol,Bobby,Alice,Dave");
+  expect(d.playerInputs[1].name).toBe("Bobby");
+});
+
+test("el nombre de una pista escrito justo antes de abrir el armador no se pierde", async ({ page }) => {
+  await abrir(page, { matchmaking: "manual", rondas: RONDAS });
+  await page.getByTestId("nombrar-pistas").click();
+  await page.getByTestId("nombre-pista-1").fill("Central");
+  await page.getByRole("button", { name: /Armar rondas/ }).click();
+  await page.waitForTimeout(2000);
+  expect((await getTournamentData(CODE)).config.courtNames?.[0]).toBe("Central");
+});
+
+test("borrar las rondas al confirmar justo después de Guardar y volver no deja las viejas en el servidor", async ({ page }) => {
+  await abrir(page, { matchmaking: "manual", rondas: RONDAS });
+  await page.getByRole("button", { name: /Armar rondas/ }).click();
+  await page.locator("select").first().selectOption({ label: "Carol ↩" });
+  await page.getByRole("button", { name: /✓ Guardar y volver/ }).click();
+  await page.getByPlaceholder("Nombre del jugador...").fill("Ines");
+  await page.getByPlaceholder("Nombre del jugador...").press("Enter");
+  await page.getByRole("button", { name: "Borrar rondas" }).click();
+  await page.waitForTimeout(2000);
+  const d = await getTournamentData(CODE);
+  expect(d.playerInputs).toHaveLength(9);
+  expect(d.config.manualRoundsConfig ?? []).toHaveLength(0);
+});

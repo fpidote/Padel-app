@@ -67,21 +67,36 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
   const tRef = useRef(t);
   tRef.current = t;
   const [pendingManualReset, setPendingManualReset] = useState(null); // { message, confirmLabel, run }
+  // Rondas manuales más recientes (incluidas las que aún esperan su guardado retrasado): cualquier otro guardado
+  // parte de estas, no de lo que ya hay en el servidor, para no deshacer el último cambio del armador
+  const manualRef = useRef(t.config.manualRoundsConfig ?? []);
+  const setManual = (rounds) => { manualRef.current = rounds; setLocalManualRounds(rounds); };
+  const manualSavePending = useRef(false);
+  const cancelManualSave = () => { clearTimeout(debManual.current); manualSavePending.current = false; };
+  // Guarda ya el armado pendiente (al volver del armador): no espera los 600 ms
+  const flushManualSave = () => {
+    if (!manualSavePending.current) return;
+    cancelManualSave();
+    persistConfig({ manualRoundsConfig: manualRef.current });
+  };
   const navigate    = useNavigate();
   const nameInputRef = useRef(null);
   const p1InputRef   = useRef(null);
   const p2InputRef   = useRef(null);
 
   const units = isPairs ? 2 : 4;
-  const act   = t.config.courts * units;
   const tot   = isPairs ? (t.pairInputs?.length ?? 0) : (t.playerInputs?.length ?? 0);
+  // Solo se llenan las pistas que alcanzan: con 9 jugadores y 3 pistas juegan 8 en 2 pistas y 1 descansa
+  const usedCourts = Math.min(t.config.courts, Math.floor(tot / units));
+  const act   = usedCourts * units;
   const sit   = Math.max(0, tot - act);
-  const need  = Math.max(0, act - tot);
+  const need  = Math.max(0, units - tot);
 
   const statusBg  = need > 0 ? "bg-red-400/10 border-red-400/20" : sit > 0 ? "bg-yellow-400/10 border-yellow-400/20" : "bg-green-400/10 border-green-400/20";
   const statusTxt = need > 0 ? "text-red-400" : sit > 0 ? "text-yellow-400" : "text-green-400";
-  const statusMsg = `${tot} ${isPairs ? "parejas" : "jugadores"} · ${t.config.courts} pistas · ${Math.min(tot, act)} juegan` +
-    (sit > 0 ? ` · ⏳ ${sit === 1 ? "1 descansa" : `${sit} descansan`}` : need > 0 ? ` · ⚠️ faltan ${need}` : " · ✓ listo");
+  const unusedCourts = need > 0 ? 0 : t.config.courts - usedCourts;
+  const statusMsg = `${tot} ${isPairs ? "parejas" : "jugadores"} · ${t.config.courts} pistas${unusedCourts > 0 ? ` (${unusedCourts} sin usar)` : ""} · ${act} juegan` +
+    (need > 0 ? ` · ⚠️ faltan ${need}` : sit > 0 ? ` · ⏳ ${sit === 1 ? "1 descansa" : `${sit} descansan`}` : " · ✓ listo");
 
   const isManual = !isPairs && (t.config.matchmaking || "americano") === "manual";
 
@@ -96,7 +111,8 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
     && manualReady;
 
   // Reparto de partidos: con jugadores de sobra unos descansan más que otros salvo que las rondas cuadren
-  const matchmakingMode = t.config.matchmaking || "americano";
+  // Con parejas fijas no existe Manual: se trata como Americano aunque el dato guardado diga otra cosa
+  const matchmakingMode = isPairs && t.config.matchmaking === "manual" ? "americano" : (t.config.matchmaking || "americano");
   const balanceMode = isPairs ? "pairs" : "individual";
   const effectiveRounds = isManual ? null : (t.config.maxRounds ?? (!isPairs && matchmakingMode === "americano" ? classicTotalRounds(tot, null) : null));
   const balance = effectiveRounds ? restBalance({ count: tot, courts: t.config.courts, mode: balanceMode, rounds: effectiveRounds }) : null;
@@ -161,15 +177,16 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
   }
 
   function handleMatchmakingChange(val) {
-    if (val === (t.config.matchmaking || "americano")) return;
+    if (val === matchmakingMode) return;
     if (val !== "manual") {
       confirmManualReset(`Pasar a ${val === "mexicano" ? "Mexicano" : "Americano"}`, () => {
-        setLocalManualRounds([]);
+        cancelManualSave();
+        setManual([]);
         setManualResetMsg(false);
         persistConfig({ matchmaking: val, manualRoundsConfig: [] });
       });
     } else {
-      setLocalManualRounds(t.config.manualRoundsConfig ?? []);
+      setManual(t.config.manualRoundsConfig ?? []);
       setLocalPrecomputedRounds(null);
       setLocalRoundWarnings([]);
       setManualResetMsg(false);
@@ -183,7 +200,8 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
       setLocalPrecomputedRounds(null);
       setLocalRoundWarnings([]);
       if (isManual && localManualRounds.length > 0) {
-        setLocalManualRounds([]);
+        cancelManualSave();
+        setManual([]);
         setManualResetMsg(true);
         persistConfig({ courts: n, courtNames: normalizeCourtNames(tRef.current.config.courtNames, n), manualRoundsConfig: [] });
       } else {
@@ -202,10 +220,12 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
   }
 
   function handleManualRoundsChange(rounds) {
-    setLocalManualRounds(rounds);
+    setManual(rounds);
     clearTimeout(debManual.current);
+    manualSavePending.current = true;
     debManual.current = setTimeout(() => {
-      persistConfig({ manualRoundsConfig: rounds });
+      manualSavePending.current = false;
+      persistConfig({ manualRoundsConfig: manualRef.current });
     }, 600);
   }
 
@@ -232,9 +252,10 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
     if (!newName.trim()) return;
     const name = newName.trim();
     confirmManualReset(`Agregar a ${name}`, () => {
+      cancelManualSave();
       setLocalPrecomputedRounds(null);
       setLocalRoundWarnings([]);
-      setLocalManualRounds([]);
+      setManual([]);
       setManualResetMsg(false);
       const cur = tRef.current;
       const next = { ...cur, playerInputs: [...(cur.playerInputs || []), { name, level: useLevels ? newLvl : 0 }], config: { ...cur.config, manualRoundsConfig: [] } };
@@ -261,8 +282,9 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
     const cur = tRef.current;
     const arr = [...(cur.playerInputs || [])];
     arr[i] = { ...arr[i], level };
-    const manual = updatePlayerInManual(cur.config.manualRoundsConfig ?? [], i, { level });
-    setLocalManualRounds(manual);
+    cancelManualSave();
+    const manual = updatePlayerInManual(manualRef.current, i, { level });
+    setManual(manual);
     const next = { ...cur, playerInputs: arr, config: { ...cur.config, manualRoundsConfig: manual } };
     tRef.current = next;
     persist(next);
@@ -271,10 +293,11 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
   function removePlayer(i) {
     const name = (t.playerInputs || [])[i]?.name;
     confirmManualReset(`Quitar a ${name}`, () => {
+      cancelManualSave();
       setEditingIdx(null);
       setLocalPrecomputedRounds(null);
       setLocalRoundWarnings([]);
-      setLocalManualRounds([]);
+      setManual([]);
       setManualResetMsg(false);
       const cur = tRef.current;
       const next = { ...cur, playerInputs: (cur.playerInputs || []).filter((_, idx) => idx !== i), config: { ...cur.config, manualRoundsConfig: [] } };
@@ -364,10 +387,11 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
       const arr = [...(t.playerInputs || [])];
       const newName = editName.trim() || arr[i].name;
       arr[i] = { ...arr[i], name: newName, level: editLvl };
-      const existingManual = t.config.manualRoundsConfig ?? [];
+      cancelManualSave();
+      const existingManual = manualRef.current;
       const updatedManual = updatePlayerInManual(existingManual, i, { name: newName, level: editLvl });
-      setLocalManualRounds(updatedManual);
-      persist({ ...t, playerInputs: arr, config: { ...t.config, manualRoundsConfig: updatedManual } });
+      setManual(updatedManual);
+      { const cur = tRef.current; const next = { ...cur, playerInputs: arr, config: { ...cur.config, manualRoundsConfig: updatedManual } }; tRef.current = next; persist(next); }
     }
     setEditingIdx(null);
   }
@@ -395,7 +419,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
         courtNames={t.config.courtNames}
         rounds={localManualRounds}
         onChange={handleManualRoundsChange}
-        onBack={() => setShowManualBuilder(false)}
+        onBack={() => { flushManualSave(); setShowManualBuilder(false); }}
         config={{ useLevels: !!t.config.useLevels, maxRounds: t.config.maxRounds ?? 4 }}
       />
     );
@@ -855,7 +879,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
                     <SummaryRow label="Modalidad" value={isPairs ? "Parejas Fijas" : "Individual"} />
                     <SummaryRow label="Total" value={`${tot} ${isPairs ? "parejas" : "jugadores"}`} />
                     <SummaryRow label="Pistas" value={t.config.courts} />
-                    <SummaryRow label="Juegan por ronda" value={`${Math.min(tot, act)} ${isPairs ? "parejas" : "jugadores"}`} />
+                    <SummaryRow label="Juegan por ronda" value={`${act} ${isPairs ? "parejas" : "jugadores"}`} />
                     {sit > 0 && <SummaryRow label="Descansan por ronda" value={`${sit} ${isPairs ? (sit === 1 ? "pareja" : "parejas") : (sit === 1 ? "jugador" : "jugadores")}`} yellow />}
                     {!isPairs && <SummaryRow label="Niveles" value={useLevels ? "Activados" : "Desactivados"} />}
                   </SummaryCard>

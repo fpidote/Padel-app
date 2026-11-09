@@ -194,16 +194,11 @@ describe("repeticiones de rondas manuales", () => {
     const ids = repeatedIdsByRound(repeats);
 
     expect(ids.get(1)).toEqual(new Set([fede.id, juan.id, pedro.id, ana.id]));
-    expect(repeatsToWarnings(repeats)).toContainEqual({
-      round: 3,
-      constraint: "partner_repeat",
-      message: "Ronda 3: Fede y Juan ya fueron compañeros en la ronda 1",
-    });
-    expect(repeatsToWarnings(repeats)).toContainEqual({
-      round: 3,
-      constraint: "opponent_repeat",
-      message: "Ronda 3: Fede y Pedro ya se enfrentaron en la ronda 1",
-    });
+    // Un aviso por pareja de jugadores, no por cada vez que se repite, ordenados por ronda
+    const warnings = repeatsToWarnings(repeats);
+    expect(warnings).toContainEqual({ round: 3, constraint: "partner_repeat", message: "Fede y Juan: compañeros en R1, R3" });
+    expect(warnings).toContainEqual({ round: 3, constraint: "opponent_repeat", message: "Fede y Pedro: rivales en R1, R3" });
+    expect(warnings.map((w) => w.round)).toEqual([...warnings.map((w) => w.round)].sort((a, b) => a - b));
   });
 
   describe("repeatOffenders", () => {

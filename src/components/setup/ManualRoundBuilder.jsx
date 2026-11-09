@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   buildEmptyRound,
   isRoundComplete,
@@ -45,14 +45,14 @@ export default function ManualRoundBuilder({
   // Compañeros o rivales que se repiten entre rondas (solo canchas completas)
   const repeats = useMemo(() => findRepeats(rounds), [rounds]);
   const repeatedByRound = useMemo(() => repeatOffenders(repeats), [repeats]);
-  const repeatLines = useMemo(() => {
-    const roundsText = (list) => list.map((r) => `R${r}`).join(", ");
-    return [
-      ...repeats.partners.map((x) => `${x.a.name} y ${x.b.name}: compañeros en ${roundsText(x.rounds)}`),
-      ...repeats.opponents.map((x) => `${x.a.name} y ${x.b.name}: rivales en ${roundsText(x.rounds)}`),
-    ];
-  }, [repeats]);
+  const repeatLines = useMemo(() => repeatsToWarnings(repeats).map((w) => w.message), [repeats]);
   const repeatCount = repeatLines.length;
+  // La pestaña de la ronda activa siempre a la vista, aunque haya más rondas de las que caben
+  const tabRefs = useRef({});
+  const activeForScroll = Math.min(activeRound, Math.max(0, rounds.length - 1));
+  useEffect(() => {
+    tabRefs.current[activeForScroll]?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  }, [activeForScroll, rounds.length]);
   const hasPlayers = (r) => r.courts.some((c) => [...c.pairA, ...c.pairB].some(Boolean));
   const incompleteCount = rounds.filter((r) => !isRoundComplete(r)).length;
 
@@ -230,7 +230,7 @@ export default function ManualRoundBuilder({
             disabled={players.length < 4 || (rounds.length > 0 && incompleteCount === 0)}
             className="text-xs px-3 py-2 rounded-xl font-bold transition-colors bg-[#1f2937] border border-[#0284c7]/30 text-[#0284c7] disabled:opacity-50 disabled:cursor-not-allowed disabled:text-[#64748b] disabled:border-[#374151]"
           >
-            {rounds.length === 0 ? "↺ Autocompletar rondas" : "↺ Completar rondas faltantes"}
+            {rounds.length === 0 ? `↺ Autocompletar ${config.maxRounds ?? 4} rondas` : "↺ Completar rondas faltantes"}
           </button>
         </div>
 
@@ -294,6 +294,7 @@ export default function ManualRoundBuilder({
               return (
                 <div
                   key={i}
+                  ref={(el) => { tabRefs.current[i] = el; }}
                   className={`shrink-0 flex items-center rounded-xl text-sm font-bold transition-colors border ${isActive ? "bg-[#0284c7] border-[#0284c7]" : complete ? "bg-[#1f2937] border-[#4ade8040]" : "bg-[#1f2937] border-[#374151]"}`}
                 >
                   <button
@@ -307,7 +308,7 @@ export default function ManualRoundBuilder({
                     <button
                       onClick={() => toggleLock(i)}
                       data-testid={`candado-ronda-${i + 1}`}
-                      className={`pr-1.5 cursor-pointer bg-transparent border-0 text-xs leading-none transition-opacity ${lockedRounds.includes(i) ? "opacity-100" : "opacity-60 hover:opacity-100"}`}
+                      className={`pr-1.5 cursor-pointer bg-transparent border-0 text-sm leading-none transition-opacity ${lockedRounds.includes(i) ? "opacity-100" : "opacity-60 hover:opacity-100"}`}
                       title={lockedRounds.includes(i) ? "Ronda fijada: Re-optimizar no la toca" : "Fijar ronda para que Re-optimizar no la toque"}
                     >
                       {lockedRounds.includes(i) ? "🔒" : "🔓"}
@@ -333,6 +334,12 @@ export default function ManualRoundBuilder({
             + Ronda
           </button>
         </div>
+
+        {rounds.some(isRoundComplete) && (
+          <p className="-mt-3 mb-4 text-[11px] text-gray-500">
+            🔒 fija una ronda completa para que «Re-optimizar» no la toque.
+          </p>
+        )}
 
         {/* Repetidos entre rondas */}
         {repeatCount > 0 && (
@@ -513,7 +520,7 @@ export default function ManualRoundBuilder({
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2.5 bg-yellow-400/10 border border-yellow-400/20 rounded-xl text-sm">
                   <span>⏳</span>
                   <span className="text-yellow-400 font-semibold shrink-0">
-                    {resting.length === 1 ? "Descansa:" : "Descansan:"}
+                    {!isRoundComplete(round) ? "Sin asignar:" : resting.length === 1 ? "Descansa:" : "Descansan:"}
                   </span>
                   <span className="text-gray-400">
                     {resting.map((p) => p.name).join(" · ")}

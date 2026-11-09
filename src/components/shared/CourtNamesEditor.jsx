@@ -11,20 +11,34 @@ export default function CourtNamesEditor({ courts, courtNames, onSave, autoSave 
   const [names, setNames] = useState(() => normalizeCourtNames(courtNames, courts));
   const [saving, setSaving] = useState(false);
   const deb = useRef(null);
+  const pendingList = useRef(null); // nombres escritos que aún esperan su guardado automático
   // El guardado con retraso llama al último onSave, no al del render en que se escribió
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
+  const courtsRef = useRef(courts);
+  courtsRef.current = courts;
 
   // Si cambia el número de pistas o llegan nombres de otra pantalla, y no estamos editando, se reajusta
   const savedKey = JSON.stringify(normalizeCourtNames(courtNames, courts));
   useEffect(() => {
     if (!open) setNames(normalizeCourtNames(courtNames, courts));
   }, [savedKey, courts, open]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => () => clearTimeout(deb.current), []);
+  // Si el editor desaparece (p. ej. se abre el armador) con un guardado pendiente, se guarda ya en vez de perderlo
+  useEffect(() => () => {
+    clearTimeout(deb.current);
+    if (pendingList.current) {
+      const list = pendingList.current;
+      pendingList.current = null;
+      Promise.resolve(onSaveRef.current(normalizeCourtNames(list, courtsRef.current))).catch((err) => {
+        console.error("Error al guardar nombres de pista:", err);
+      });
+    }
+  }, []);
 
   const dirty = JSON.stringify(normalizeCourtNames(names, courts)) !== savedKey;
 
   async function save(list) {
+    pendingList.current = null;
     setSaving(true);
     try {
       const ok = await onSaveRef.current(normalizeCourtNames(list, courts));
@@ -42,6 +56,7 @@ export default function CourtNamesEditor({ courts, courtNames, onSave, autoSave 
     setNames(next);
     if (autoSave) {
       clearTimeout(deb.current);
+      pendingList.current = next;
       deb.current = setTimeout(() => save(next), 600);
     }
   }
