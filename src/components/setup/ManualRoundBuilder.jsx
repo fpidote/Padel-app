@@ -68,18 +68,15 @@ export default function ManualRoundBuilder({
   }
 
   // Genera las rondas dejando fijas las indicadas. Cada intento se mejora intercambiando jugadores dentro de cada
-  // ronda (menos repeticiones, ninguna pareja de rivales tres veces si se puede evitar) y gana el de menor coste.
+  // ronda (menos repeticiones, ningún rival tres veces si se puede evitar) y gana el de menor coste. El tiempo de
+  // búsqueda es fijo (~1,3 s): en un móvil lento se prueban menos combinaciones, pero no tarda más.
   function generateBest(fixedRounds, total) {
-    const weights = OPTIMIZER_WEIGHTS;
     const advancedPenalty = advancedPenaltyApplies(players, courts);
     const fixed = new Set(Object.keys(fixedRounds).map(Number));
-    const opts = { weights, useLevels: !!config.useLevels, advancedPenalty };
+    const opts = { weights: OPTIMIZER_WEIGHTS, useLevels: !!config.useLevels, advancedPenalty };
     let best = null;
     let bestCost = Infinity;
-    const start = Date.now();
-    for (let attempt = 0; attempt < 4; attempt++) {
-      // Con tiempo agotado solo se sigue si aún no hay ningún resultado
-      if (best && Date.now() - start > 2500) break;
+    for (let attempt = 0; attempt < 2; attempt++) {
       const { rounds: generated } = precomputeAllRounds(players, {
         courts,
         maxRounds: total,
@@ -87,7 +84,7 @@ export default function ManualRoundBuilder({
         useLevels: config.useLevels,
         fixedRounds,
       });
-      const improved = improveRounds(generated, { ...opts, fixed });
+      const improved = improveRounds(generated, { ...opts, fixed, annealMs: 600 });
       const cost = roundsCost(improved, opts);
       if (cost < bestCost) { best = improved; bestCost = cost; }
     }

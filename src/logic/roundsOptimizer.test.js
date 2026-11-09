@@ -67,6 +67,34 @@ describe("improveRounds", () => {
     expect(improved).toEqual(rounds);
   });
 
+  it("el coste que lleva por dentro coincide con el cálculo completo (también con niveles, avanzados y rondas fijas)", () => {
+    const lvl = (i) => (i < 4 ? 3 : i < 8 ? 2 : 1);
+    const mk = (a, b, c, d) => ({ pairA: [P(a, lvl(a)), P(b, lvl(b))], pairB: [P(c, lvl(c)), P(d, lvl(d))] });
+    const rounds = [
+      { courts: [mk(0, 1, 2, 3), mk(4, 5, 6, 7), mk(8, 9, 10, 11)] },
+      { courts: [mk(0, 1, 4, 5), mk(2, 3, 6, 7), mk(8, 9, 10, 11)] },
+      { courts: [mk(0, 1, 2, 3), mk(4, 5, 6, 7), mk(8, 9, 10, 11)] },
+      { courts: [mk(0, 4, 8, 9), mk(1, 5, 10, 11), mk(2, 6, 3, 7)] },
+    ];
+    for (const fixed of [new Set(), new Set([3])]) {
+      for (const advancedPenalty of [false, true]) {
+        // verify: lanza un error si el coste incremental se desvía del completo
+        expect(() => improveRounds(rounds, { weights: W, useLevels: true, advancedPenalty, fixed, verify: true })).not.toThrow();
+      }
+    }
+  });
+
+  it("con recocido simulado tampoco empeora, respeta lo fijado y el coste interno coincide con el completo", () => {
+    const rounds = bad();
+    // generador pseudoaleatorio fijo para que el test sea reproducible
+    let seed = 12345;
+    const random = () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
+    const improved = improveRounds(rounds, { weights: W, fixed: new Set([0]), annealMs: 60, random, verify: true });
+    expect(improved[0]).toEqual(rounds[0]);
+    improved.forEach((r, i) => expect(idsOf(r)).toEqual(idsOf(rounds[i])));
+    expect(roundsCost(improved, { weights: W })).toBeLessThanOrEqual(roundsCost(rounds, { weights: W }));
+  });
+
   it("nunca sube el coste", () => {
     const rounds = [
       { courts: [court(0, 1, 2, 3), court(4, 5, 6, 7)] },
