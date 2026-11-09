@@ -119,7 +119,8 @@ export function repeatedIdsByRound(repeats) {
 }
 
 // Un aviso por cada pareja de jugadores que se repite (la unidad que ve el organizador en todas partes):
-// "Fede y Juan: compañeros en R1, R3". `round` es la primera ronda donde ya se repite. Ordenados por ronda.
+// "Fede y Juan: compañeros en R1, R3". `round` es la primera ronda donde ya se repite. Primero los que más se repiten
+// (tres veces o más se marcan aparte), y a igualdad, por ronda.
 export function repeatsToWarnings(repeats) {
   const roundsText = (list) => list.map((r) => `R${r}`).join(", ");
   const warnings = [];
@@ -128,10 +129,11 @@ export function repeatsToWarnings(repeats) {
     ["opponents", "opponent_repeat", "rivales"],
   ].forEach(([type, constraint, label]) => {
     repeats[type].forEach(({ a, b, rounds }) => {
-      warnings.push({ round: rounds[1], constraint, message: `${a.name} y ${b.name}: ${label} en ${roundsText(rounds)}` });
+      const times = rounds.length >= 3 ? ` (${rounds.length} veces)` : "";
+      warnings.push({ round: rounds[1], times: rounds.length, constraint, message: `${a.name} y ${b.name}: ${label} en ${roundsText(rounds)}${times}` });
     });
   });
-  return warnings.sort((x, y) => x.round - y.round);
+  return warnings.sort((x, y) => y.times - x.times || x.round - y.round);
 }
 
 // Jugadores implicados en una repetición, solo en las rondas donde se repite (no en la primera vez que coincidieron):

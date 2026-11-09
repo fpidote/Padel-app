@@ -9,6 +9,7 @@ import {
   repeatsToWarnings,
 } from "../../logic/manualRounds";
 import { precomputeAllRounds, courtLabel } from "../../logic/americano";
+import { improveRounds, roundsCost, advancedPenaltyApplies, OPTIMIZER_PRIORITIES } from "../../logic/roundsOptimizer";
 import { SimpleModal } from "../shared/Components";
 
 const COLOR = "#0284c7";
@@ -41,6 +42,9 @@ export default function ManualRoundBuilder({
   const [pendingDelete, setPendingDelete] = useState(null); // índice de ronda a borrar
   const [lockedRounds, setLockedRounds] = useState([]); // índices de rondas que "Re-optimizar" no toca
   const [reoptMsg, setReoptMsg] = useState(null);
+  const [priority, setPriority] = useState("variedad"); // "variedad" (menos rivales repetidos) | "equilibrio" (partidos más igualados)
+  const [busy, setBusy] = useState(false); // optimizando: tarda un par de segundos con muchos jugadores
+  const [showAllRepeats, setShowAllRepeats] = useState(false);
 
   // Compañeros o rivales que se repiten entre rondas (solo canchas completas)
   const repeats = useMemo(() => findRepeats(rounds), [rounds]);
@@ -56,11 +60,27 @@ export default function ManualRoundBuilder({
   const hasPlayers = (r) => r.courts.some((c) => [...c.pairA, ...c.pairB].some(Boolean));
   const incompleteCount = rounds.filter((r) => !isRoundComplete(r)).length;
 
-  // Genera las rondas dejando fijas las indicadas; entre varios intentos se queda con el de menos repetidos
+  // Deja pintar «Optimizando…» antes de empezar el cálculo, que bloquea la pantalla un par de segundos
+  function runBusy(fn) {
+    setBusy(true);
+    setTimeout(() => {
+      try { fn(); } finally { setBusy(false); }
+    }, 30);
+  }
+
+  // Genera las rondas dejando fijas las indicadas. Cada intento se mejora intercambiando jugadores dentro de cada
+  // ronda (menos repeticiones, ninguna pareja de rivales tres veces si se puede evitar) y gana el de menor coste.
   function generateBest(fixedRounds, total) {
+    const weights = OPTIMIZER_PRIORITIES[config.useLevels ? priority : "variedad"];
+    const advancedPenalty = advancedPenaltyApplies(players, courts);
+    const fixed = new Set(Object.keys(fixedRounds).map(Number));
+    const opts = { weights, useLevels: !!config.useLevels, advancedPenalty };
     let best = null;
-    let bestCount = Infinity;
-    for (let attempt = 0; attempt < 8; attempt++) {
+    let bestCost = Infinity;
+    const start = Date.now();
+    for (let attempt = 0; attempt < 4; attempt++) {
+      // Con tiempo agotado solo se sigue si aún no hay ningún resultado
+      if (best && Date.now() - start > 2500) break;
       const { rounds: generated } = precomputeAllRounds(players, {
         courts,
         maxRounds: total,
@@ -68,27 +88,24 @@ export default function ManualRoundBuilder({
         useLevels: config.useLevels,
         fixedRounds,
       });
-      const count = repeatsToWarnings(findRepeats(generated)).length;
-      if (count < bestCount) { best = generated; bestCount = count; }
-      if (count === 0) break;
+      const improved = improveRounds(generated, { ...opts, fixed });
+      const cost = roundsCost(improved, opts);
+      if (cost < bestCost) { best = improved; bestCost = cost; }
     }
+    const bestCount = best ? repeatsToWarnings(findRepeats(best)).length : 0;
     return { best, bestCount };
   }
 
   function autoFillAll() {
-    const numRounds =
-      rounds.length > 0 ? rounds.length : (config.maxRounds ?? 4);
-    const { rounds: generated } = precomputeAllRounds(players, {
-      courts,
-      maxRounds: numRounds,
-      mode: "individual",
-      useLevels: config.useLevels,
-    });
-    onChange(generated);
-    setActiveRound(0);
     setPendingAutoFill(false);
-    setLockedRounds([]);
-    setReoptMsg(null);
+    runBusy(() => {
+      const numRounds = rounds.length > 0 ? rounds.length : (config.maxRounds ?? 4);
+      const { best } = generateBest({}, numRounds);
+      if (best) onChange(best);
+      setActiveRound(0);
+      setLockedRounds([]);
+      setReoptMsg(null);
+    });
   }
 
   function toggleLock(i) {
@@ -98,29 +115,33 @@ export default function ManualRoundBuilder({
 
   // Regenera solo las rondas sin fijar, respetando las fijadas, y se queda con el intento con menos repetidos
   function reoptimize() {
-    const fixedRounds = {};
-    rounds.forEach((r, i) => {
-      if (lockedRounds.includes(i) && isRoundComplete(r)) fixedRounds[i] = r;
-    });
-    const { best, bestCount } = generateBest(fixedRounds, rounds.length);
-    if (best) onChange(best);
     setPendingReopt(false);
-    setReoptMsg(
-      bestCount === 0
-        ? "✓ Sin repetidos."
-        : `Quedan ${bestCount} ${bestCount === 1 ? "repetición" : "repeticiones"}: con estos jugadores y rondas no se puede evitar del todo.`,
-    );
+    runBusy(() => {
+      const fixedRounds = {};
+      rounds.forEach((r, i) => {
+        if (lockedRounds.includes(i) && isRoundComplete(r)) fixedRounds[i] = r;
+      });
+      const { best, bestCount } = generateBest(fixedRounds, rounds.length);
+      if (best) onChange(best);
+      setReoptMsg(
+        bestCount === 0
+          ? "✓ Sin repetidos."
+          : `Quedan ${bestCount} ${bestCount === 1 ? "repetición" : "repeticiones"}: con estos jugadores y rondas no se puede evitar del todo.`,
+      );
+    });
   }
 
   // Completa solo las rondas que faltan: las completas se respetan y cuentan como historial
   function completeMissing() {
-    const fixedRounds = {};
-    rounds.forEach((r, i) => { if (isRoundComplete(r)) fixedRounds[i] = r; });
-    const { best } = generateBest(fixedRounds, rounds.length);
-    if (best) onChange(best);
-    setActiveRound(Math.max(0, rounds.findIndex((r) => !isRoundComplete(r))));
     setPendingComplete(false);
-    setReoptMsg(null);
+    runBusy(() => {
+      const fixedRounds = {};
+      rounds.forEach((r, i) => { if (isRoundComplete(r)) fixedRounds[i] = r; });
+      const { best } = generateBest(fixedRounds, rounds.length);
+      if (best) onChange(best);
+      setActiveRound(Math.max(0, rounds.findIndex((r) => !isRoundComplete(r))));
+      setReoptMsg(null);
+    });
   }
 
   function handleCompleteClick() {
@@ -227,12 +248,29 @@ export default function ManualRoundBuilder({
           <button
             onClick={handleCompleteClick}
             data-testid="completar-rondas"
-            disabled={players.length < 4 || (rounds.length > 0 && incompleteCount === 0)}
+            disabled={busy || players.length < 4 || (rounds.length > 0 && incompleteCount === 0)}
             className="text-xs px-3 py-2 rounded-xl font-bold transition-colors bg-[#1f2937] border border-[#0284c7]/30 text-[#0284c7] disabled:opacity-50 disabled:cursor-not-allowed disabled:text-[#64748b] disabled:border-[#374151]"
           >
-            {rounds.length === 0 ? `↺ Autocompletar ${config.maxRounds ?? 4} rondas` : "↺ Completar rondas faltantes"}
+            {busy ? "⏳ Optimizando…" : rounds.length === 0 ? `↺ Autocompletar ${config.maxRounds ?? 4} rondas` : "↺ Completar rondas faltantes"}
           </button>
         </div>
+
+        {config.useLevels && (
+          <div className="-mt-3 mb-4 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+            <span>Al armar, priorizar:</span>
+            {[["variedad", "Variedad de rivales"], ["equilibrio", "Equilibrio de nivel"]].map(([id, label]) => (
+              <button
+                key={id}
+                data-testid={`prioridad-${id}`}
+                onClick={() => setPriority(id)}
+                disabled={busy}
+                className={`px-2.5 py-1 rounded-lg font-bold cursor-pointer ${priority === id ? "bg-[#0284c7] text-white" : "bg-[#1f2937] text-[#94a3b8]"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {rounds.length > 0 && !pendingAutoFill && !pendingComplete && (
           <div className="-mt-3 mb-4 text-xs text-gray-500">
@@ -242,7 +280,7 @@ export default function ManualRoundBuilder({
             <button
               onClick={handleRedoAllClick}
               data-testid="rehacer-todo"
-              disabled={players.length < 4}
+              disabled={busy || players.length < 4}
               className="font-semibold text-sky-400 underline cursor-pointer bg-transparent border-0 p-0 disabled:opacity-50"
             >
               Rehacer todo desde cero
@@ -348,9 +386,17 @@ export default function ManualRoundBuilder({
               ⚠️ {repeatCount === 1 ? "Hay 1 repetición" : `Hay ${repeatCount} repeticiones`} entre rondas
             </p>
             <ul className="text-xs text-amber-200/90 space-y-0.5 mb-2.5">
-              {repeatLines.slice(0, 5).map((line) => <li key={line}>{line}</li>)}
-              {repeatLines.length > 5 && <li>y {repeatLines.length - 5} más</li>}
+              {(showAllRepeats ? repeatLines : repeatLines.slice(0, 5)).map((line) => <li key={line}>{line}</li>)}
             </ul>
+            {repeatLines.length > 5 && (
+              <button
+                data-testid="ver-todas-repeticiones"
+                onClick={() => setShowAllRepeats((v) => !v)}
+                className="text-xs font-semibold text-amber-300 underline cursor-pointer bg-transparent border-0 p-0 mb-2.5"
+              >
+                {showAllRepeats ? "Ver menos" : `Ver las ${repeatLines.length - 5} restantes`}
+              </button>
+            )}
             <p className="text-[11px] text-amber-200/70 mb-2.5">
               ⚠️ marca la ronda donde se repite. Con 🔒 fijas una ronda completa para que Re-optimizar no la toque.
             </p>
@@ -366,7 +412,7 @@ export default function ManualRoundBuilder({
               <button
                 onClick={() => setPendingReopt(true)}
                 data-testid="reoptimizar"
-                disabled={rounds.every((r, i) => lockedRounds.includes(i) && isRoundComplete(r))}
+                disabled={busy || rounds.every((r, i) => lockedRounds.includes(i) && isRoundComplete(r))}
                 className="text-xs px-3 py-1.5 rounded-lg font-bold cursor-pointer bg-[#1f2937] border border-amber-400/30 text-amber-300 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 ↺ Re-optimizar rondas sin fijar

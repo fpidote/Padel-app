@@ -196,9 +196,12 @@ describe("repeticiones de rondas manuales", () => {
     expect(ids.get(1)).toEqual(new Set([fede.id, juan.id, pedro.id, ana.id]));
     // Un aviso por pareja de jugadores, no por cada vez que se repite, ordenados por ronda
     const warnings = repeatsToWarnings(repeats);
-    expect(warnings).toContainEqual({ round: 3, constraint: "partner_repeat", message: "Fede y Juan: compañeros en R1, R3" });
-    expect(warnings).toContainEqual({ round: 3, constraint: "opponent_repeat", message: "Fede y Pedro: rivales en R1, R3" });
-    expect(warnings.map((w) => w.round)).toEqual([...warnings.map((w) => w.round)].sort((a, b) => a - b));
+    expect(warnings).toContainEqual({ round: 3, times: 2, constraint: "partner_repeat", message: "Fede y Juan: compañeros en R1, R3" });
+    expect(warnings).toContainEqual({ round: 3, times: 2, constraint: "opponent_repeat", message: "Fede y Pedro: rivales en R1, R3" });
+    // Los que se repiten tres veces o más se marcan y salen primero
+    expect(warnings[0].message).toMatch(/\(3 veces\)$/);
+    // Primero los que más se repiten; a igualdad, por ronda
+    expect(warnings.map((w) => w.times)).toEqual([...warnings.map((w) => w.times)].sort((a, b) => b - a));
   });
 
   describe("repeatOffenders", () => {
