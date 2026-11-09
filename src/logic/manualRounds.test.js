@@ -5,6 +5,9 @@ import {
   isRoundComplete,
   buildEmptyRound,
   availablePlayersForSlot,
+  findRepeats,
+  repeatedIdsByRound,
+  repeatsToWarnings,
 } from "./manualRounds";
 
 const p = (id) => ({ id, name: `J${id}`, level: 0, pts: 0, gf: 0, gc: 0 });
@@ -123,5 +126,81 @@ describe("availablePlayersForSlot", () => {
     expect(available[0].id).toBe(3);
     expect(available).toHaveLength(4);
     expect(assignedElsewhere).toHaveLength(0);
+  });
+});
+
+describe("repeticiones de rondas manuales", () => {
+  const fede = { id: "T-MAN-01", name: "Fede" };
+  const juan = { id: "T-MAN-02", name: "Juan" };
+  const pedro = { id: "T-MAN-03", name: "Pedro" };
+  const ana = { id: "T-MAN-04", name: "Ana" };
+  const lucia = { id: "T-MAN-05", name: "Lucia" };
+  const mario = { id: "T-MAN-06", name: "Mario" };
+  const sara = { id: "T-MAN-07", name: "Sara" };
+  const diego = { id: "T-MAN-08", name: "Diego" };
+  const court = (pairA, pairB) => ({ pairA, pairB });
+  const round = (...courts) => ({ courts });
+
+  it("detecta rivales repetidos aunque cambie el compañero", () => {
+    const repeats = findRepeats([
+      round(court([fede, ana], [juan, pedro])),
+      round(court([fede, pedro], [juan, lucia])),
+    ]);
+
+    expect(repeats.opponents).toEqual([
+      { a: fede, b: juan, rounds: [1, 2] },
+    ]);
+  });
+
+  it("detecta compañeros repetidos", () => {
+    const repeats = findRepeats([
+      round(court([fede, juan], [pedro, ana])),
+      round(court([juan, fede], [lucia, mario])),
+    ]);
+
+    expect(repeats.partners).toEqual([
+      { a: fede, b: juan, rounds: [1, 2] },
+    ]);
+  });
+
+  it("ignora canchas incompletas y no crea falsos positivos", () => {
+    const repeats = findRepeats([
+      round(court([fede, juan], [pedro, ana])),
+      round(court([fede, null], [pedro, ana])),
+      round(court([lucia, mario], [sara, diego])),
+    ]);
+
+    expect(repeats.partners).toEqual([]);
+    expect(repeats.opponents).toEqual([]);
+  });
+
+  it("no cuenta un mismo par contra sí mismo en una ronda", () => {
+    const repeats = findRepeats([
+      round(court([fede, juan], [fede, juan])),
+      round(court([fede, ana], [juan, pedro])),
+    ]);
+
+    expect(repeats.opponents).toEqual([]);
+  });
+
+  it("agrupa ids repetidos y genera avisos desde la segunda ocurrencia", () => {
+    const repeats = findRepeats([
+      round(court([fede, juan], [pedro, ana])),
+      round(court([fede, pedro], [juan, ana])),
+      round(court([fede, juan], [pedro, ana])),
+    ]);
+    const ids = repeatedIdsByRound(repeats);
+
+    expect(ids.get(1)).toEqual(new Set([fede.id, juan.id, pedro.id, ana.id]));
+    expect(repeatsToWarnings(repeats)).toContainEqual({
+      round: 3,
+      constraint: "partner_repeat",
+      message: "Ronda 3: Fede y Juan ya fueron compañeros en la ronda 1",
+    });
+    expect(repeatsToWarnings(repeats)).toContainEqual({
+      round: 3,
+      constraint: "opponent_repeat",
+      message: "Ronda 3: Fede y Pedro ya se enfrentaron en la ronda 1",
+    });
   });
 });

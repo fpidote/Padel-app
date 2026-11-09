@@ -1,3 +1,5 @@
+import { pk } from "./utils";
+
 export function calcularDescansos(entities, courts) {
   const assigned = new Set();
   courts.forEach((c) => {
@@ -55,4 +57,82 @@ export function availablePlayersForSlot(players, round, courtIdx, pairKey, slotI
     return { available: [currentPlayer, ...available], assignedElsewhere };
   }
   return { available, assignedElsewhere };
+}
+
+export function findRepeats(rounds) {
+  const partners = new Map();
+  const opponents = new Map();
+
+  rounds.forEach((round, roundIndex) => {
+    const roundNumber = roundIndex + 1;
+    (round.courts || []).forEach((court) => {
+      if (!isCourtComplete(court)) return;
+
+      const [a1, a2] = court.pairA;
+      const [b1, b2] = court.pairB;
+      const partnerKey = pk(a1.id, a2.id);
+      const opponentKeys = [
+        [a1, b1],
+        [a1, b2],
+        [a2, b1],
+        [a2, b2],
+      ];
+
+      if (!partners.has(partnerKey)) {
+        partners.set(partnerKey, { a: a1, b: a2, rounds: [] });
+      }
+      const partnerRounds = partners.get(partnerKey).rounds;
+      if (!partnerRounds.includes(roundNumber)) partnerRounds.push(roundNumber);
+
+      const pairAKey = pk(a1.id, a2.id);
+      const pairBKey = pk(b1.id, b2.id);
+      opponentKeys.forEach(([a, b]) => {
+        if (a.id === b.id || pairAKey === pairBKey) return;
+        const key = pk(a.id, b.id);
+        if (!opponents.has(key)) {
+          opponents.set(key, { a, b, rounds: [] });
+        }
+        const opponentRounds = opponents.get(key).rounds;
+        if (!opponentRounds.includes(roundNumber)) opponentRounds.push(roundNumber);
+      });
+    });
+  });
+
+  return {
+    partners: [...partners.values()].filter(({ rounds: occurrences }) => occurrences.length >= 2),
+    opponents: [...opponents.values()].filter(({ rounds: occurrences }) => occurrences.length >= 2),
+  };
+}
+
+export function repeatedIdsByRound(repeats) {
+  const result = new Map();
+  ["partners", "opponents"].forEach((type) => {
+    repeats[type].forEach(({ a, b, rounds }) => {
+      rounds.forEach((round) => {
+        if (!result.has(round)) result.set(round, new Set());
+        result.get(round).add(a.id);
+        result.get(round).add(b.id);
+      });
+    });
+  });
+  return result;
+}
+
+export function repeatsToWarnings(repeats) {
+  const warnings = [];
+  [
+    ["partners", "partner_repeat", "fueron compañeros"],
+    ["opponents", "opponent_repeat", "se enfrentaron"],
+  ].forEach(([type, constraint, verb]) => {
+    repeats[type].forEach(({ a, b, rounds }) => {
+      rounds.slice(1).forEach((round, index) => {
+        warnings.push({
+          round,
+          constraint,
+          message: `Ronda ${round}: ${a.name} y ${b.name} ya ${verb} en la ronda ${rounds[index]}`,
+        });
+      });
+    });
+  });
+  return warnings;
 }

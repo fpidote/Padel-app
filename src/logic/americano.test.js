@@ -874,6 +874,35 @@ describe("canFinishAnyRound", () => {
 // ═══════════════════════════════════════════════════════════════
 // restBalance / fairRoundOptions — que todos jueguen lo mismo
 // ═══════════════════════════════════════════════════════════════
+describe("precomputeAllRounds con rondas fijas", () => {
+  const players = Array.from({ length: 8 }, (_, i) => ({ id: i, name: `J${i}`, level: 0, pts: 0, gf: 0, gc: 0 }));
+  const P = (i) => players[i];
+  const fixedRound = {
+    courts: [
+      { pairA: [P(0), P(1)], pairB: [P(2), P(3)], scoreA: "", scoreB: "", saved: false },
+      { pairA: [P(4), P(5)], pairB: [P(6), P(7)], scoreA: "", scoreB: "", saved: false },
+    ],
+    sittingOut: [],
+  };
+
+  test("respeta la ronda fija y arma las demás sin repetir sus parejas", () => {
+    const { rounds } = precomputeAllRounds(players, { courts: 2, maxRounds: 3, mode: "individual", fixedRounds: { 0: fixedRound } });
+    expect(rounds).toHaveLength(3);
+    expect(rounds[0].courts).toEqual(fixedRound.courts);
+    const key = (c, side) => c[side].map((p) => p.id).sort().join("_");
+    const fixedPairs = new Set(fixedRound.courts.flatMap((c) => [key(c, "pairA"), key(c, "pairB")]));
+    rounds.slice(1).forEach((r) => r.courts.forEach((c) => {
+      expect(fixedPairs.has(key(c, "pairA"))).toBe(false);
+      expect(fixedPairs.has(key(c, "pairB"))).toBe(false);
+    }));
+  });
+
+  test("sin rondas fijas se comporta igual que antes", () => {
+    const { rounds } = precomputeAllRounds(players, { courts: 2, maxRounds: 3, mode: "individual" });
+    expect(rounds).toHaveLength(3);
+  });
+});
+
 describe("anyoneRests", () => {
   test("sin rondas o sin descansos no hay pestaña que mostrar", () => {
     expect(anyoneRests(undefined)).toBe(false);

@@ -221,7 +221,47 @@ export function precomputeAllRounds(entities, config) {
     },
   ];
 
+  // Actualiza el historial (parejas, rivales, pistas, descansos) con una ronda ya decidida
+  function recordRound(cs, sittingOut, active) {
+    // Actualizar courtHistory con claves "${id}_c${courtIndex}"
+    // Seguro porque los IDs son enteros 0..N y ningún entero formateado como string contiene "_c"
+    cs.forEach((court, ci) => {
+      const kA = pk(court.pairA[0].id, court.pairA[1].id);
+      const kB = pk(court.pairB[0].id, court.pairB[1].id);
+      ph[kA] = (ph[kA] || 0) + 1;
+      ph[kB] = (ph[kB] || 0) + 1;
+
+      court.pairA.forEach((a) => court.pairB.forEach((b) => {
+        const k = pk(a.id, b.id);
+        oh[k] = (oh[k] || 0) + 1;
+      }));
+
+      [...court.pairA, ...court.pairB].forEach((p) => {
+        const key = `${p.id}_c${ci}`;
+        courtHistory[key] = (courtHistory[key] || 0) + 1;
+      });
+    });
+
+    sittingOut.forEach((p) => {
+      soh[p.id] = (soh[p.id] || 0) + 1;
+      streak[p.id] = 0;
+    });
+    active.forEach((p) => {
+      streak[p.id] = (streak[p.id] || 0) + 1;
+    });
+  }
+
   for (let r = 0; r < totalRounds; r++) {
+    // Ronda fija (armado manual): se respeta tal cual y solo alimenta el historial de las demás
+    const fixed = config.fixedRounds?.[r];
+    if (fixed) {
+      const used = new Set(fixed.courts.flatMap((c) => [...c.pairA, ...c.pairB]).map((p) => p.id));
+      const fixedActive = entities.filter((p) => used.has(p.id));
+      const fixedSitting = entities.filter((p) => !used.has(p.id));
+      rounds.push({ courts: fixed.courts, sittingOut: fixedSitting });
+      recordRound(fixed.courts, fixedSitting, fixedActive);
+      continue;
+    }
     // Variables locales al loop de ronda (D-08 — las banderas de relajación no se filtran entre rondas)
     const { active, sittingOut } = selectSittingOut(entities, courts, soh, streak);
 
@@ -298,33 +338,7 @@ export function precomputeAllRounds(entities, config) {
 
     rounds.push({ courts: cs, sittingOut });
 
-    // Actualizar estado después de la ronda
-    // Actualizar courtHistory con claves "${id}_c${courtIndex}"
-    // Seguro porque los IDs son enteros 0..N y ningún entero formateado como string contiene "_c"
-    cs.forEach((court, ci) => {
-      const kA = pk(court.pairA[0].id, court.pairA[1].id);
-      const kB = pk(court.pairB[0].id, court.pairB[1].id);
-      ph[kA] = (ph[kA] || 0) + 1;
-      ph[kB] = (ph[kB] || 0) + 1;
-
-      court.pairA.forEach((a) => court.pairB.forEach((b) => {
-        const k = pk(a.id, b.id);
-        oh[k] = (oh[k] || 0) + 1;
-      }));
-
-      [...court.pairA, ...court.pairB].forEach((p) => {
-        const key = `${p.id}_c${ci}`;
-        courtHistory[key] = (courtHistory[key] || 0) + 1;
-      });
-    });
-
-    sittingOut.forEach((p) => {
-      soh[p.id] = (soh[p.id] || 0) + 1;
-      streak[p.id] = 0;
-    });
-    active.forEach((p) => {
-      streak[p.id] = (streak[p.id] || 0) + 1;
-    });
+    recordRound(cs, sittingOut, active);
   }
 
   return { rounds, warnings };

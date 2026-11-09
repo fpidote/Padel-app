@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { buildFirstRoundAmericano, precomputeAllRounds, isDuplicateName, duplicateNameKeys, normalizeName, MIN_ROUNDS, roundsCountError, restBalance, restBalanceText, fairRoundOptions, classicTotalRounds, courtLabel, normalizeCourtNames } from "../../logic/americano";
-import { calcularDescansos, isCourtComplete } from "../../logic/manualRounds";
+import { calcularDescansos, isCourtComplete, findRepeats, repeatsToWarnings } from "../../logic/manualRounds";
 import ManualRoundBuilder from "./ManualRoundBuilder";
 import { buildShareMessage } from "../../logic/utils";
 import MatchFormatPicker from "../shared/MatchFormatPicker";
@@ -112,6 +112,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
 
   const canShowMatchmakingTab = canReshuffle || (isManual && localManualRounds.length > 0);
   const roundsToPreview = isManual ? localManualRounds : localPrecomputedRounds;
+  const previewWarnings = isManual ? repeatsToWarnings(findRepeats(localManualRounds)) : localRoundWarnings;
 
   const scoringLabel  = scoring === "timed" ? "Por tiempo" : scoring === "rally" ? "Por puntos" : "Por games";
   const scoringDetail = scoring === "timed"
@@ -232,6 +233,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
           ...r,
           sittingOut: calcularDescansos(entities, r.courts),
         }));
+        roundWarnings = repeatsToWarnings(findRepeats(localManualRounds));
         const firstRound = precomputedRounds[0];
         currentRound = firstRound.courts.map((c) => ({ ...c, scoreA: "", scoreB: "", saved: false }));
         sittingOut = firstRound.sittingOut;
@@ -741,10 +743,10 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
                     </div>
                   </div>
                 ))}
-                {localRoundWarnings.length > 0 && (
+                {previewWarnings.length > 0 && (
                   <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-3 py-2.5">
                     <div className="text-xs font-bold text-yellow-500/70 mb-1.5">Advertencias de emparejamiento</div>
-                    {localRoundWarnings.map((w, wi) => <div key={wi} className="text-xs text-yellow-400/60">{w.message}</div>)}
+                    {previewWarnings.map((w, wi) => <div key={wi} className="text-xs text-yellow-400/60">{w.message}</div>)}
                   </div>
                 )}
               </div>
