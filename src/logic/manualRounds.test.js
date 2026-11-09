@@ -10,6 +10,7 @@ import {
   repeatOffenders,
   manualPlaysSummary,
   repeatsToWarnings,
+  repeatsSummary,
 } from "./manualRounds";
 
 const p = (id) => ({ id, name: `J${id}`, level: 0, pts: 0, gf: 0, gc: 0 });
@@ -239,5 +240,18 @@ describe("repeticiones de rondas manuales", () => {
       expect(r.equal).toBe(false);
       expect(r.text).toBe("3 jugadores jugarán 2 partidos y 2 jugarán 1.");
     });
+  });
+});
+
+describe("repeatsSummary", () => {
+  it("cuenta parejas repetidas y el máximo de veces", () => {
+    const r = {
+      partners: [],
+      opponents: [{ rounds: [1, 3] }, { rounds: [2, 4, 6] }],
+    };
+    expect(repeatsSummary(r)).toEqual({ partners: 0, opponents: 2, maxPartnerTimes: 0, maxOpponentTimes: 3 });
+  });
+  it("sin repeticiones todo es cero", () => {
+    expect(repeatsSummary({ partners: [], opponents: [] })).toEqual({ partners: 0, opponents: 0, maxPartnerTimes: 0, maxOpponentTimes: 0 });
   });
 });

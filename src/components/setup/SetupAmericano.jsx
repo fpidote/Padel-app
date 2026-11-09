@@ -427,7 +427,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
         rounds={localManualRounds}
         onChange={handleManualRoundsChange}
         onBack={() => { flushManualSave(); setShowManualBuilder(false); }}
-        config={{ useLevels: !!t.config.useLevels, maxRounds: t.config.maxRounds ?? 4 }}
+        config={{ useLevels: !!t.config.useLevels, maxRounds: t.config.maxRounds ?? classicTotalRounds(tot, null) }}
       />
     );
   }

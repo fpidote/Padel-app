@@ -7,6 +7,7 @@ import {
   findRepeats,
   repeatOffenders,
   repeatsToWarnings,
+  repeatsSummary,
 } from "../../logic/manualRounds";
 import { precomputeAllRounds, courtLabel } from "../../logic/americano";
 import { improveRounds, roundsCost, advancedPenaltyApplies, OPTIMIZER_WEIGHTS } from "../../logic/roundsOptimizer";
@@ -50,6 +51,7 @@ export default function ManualRoundBuilder({
   const repeatedByRound = useMemo(() => repeatOffenders(repeats), [repeats]);
   const repeatLines = useMemo(() => repeatsToWarnings(repeats).map((w) => w.message), [repeats]);
   const repeatCount = repeatLines.length;
+  const repeatSummary = useMemo(() => repeatsSummary(repeats), [repeats]);
   // La pestaña de la ronda activa siempre a la vista, aunque haya más rondas de las que caben
   const tabRefs = useRef({});
   const activeForScroll = Math.min(activeRound, Math.max(0, rounds.length - 1));
@@ -365,6 +367,15 @@ export default function ManualRoundBuilder({
             <p className="text-xs font-bold text-amber-400 mb-1.5">
               ⚠️ {repeatCount === 1 ? "Hay 1 repetición" : `Hay ${repeatCount} repeticiones`} entre rondas
             </p>
+            <p data-testid="resumen-repetidos" className="text-xs text-amber-200/90 mb-2">
+              {repeatSummary.partners === 0 ? "Nadie repite compañero" : `${repeatSummary.partners} ${repeatSummary.partners === 1 ? "pareja de compañeros se repite" : "parejas de compañeros se repiten"}`}
+              {" · "}
+              {repeatSummary.maxOpponentTimes >= 3 ? `algún rival se repite ${repeatSummary.maxOpponentTimes} veces` : repeatSummary.opponents > 0 ? "nadie se enfrenta 3 veces al mismo rival" : ""}
+              {repeatSummary.opponents > 0 && ` · ${repeatSummary.opponents} ${repeatSummary.opponents === 1 ? "rival repetido" : "rivales repetidos"}`}
+            </p>
+            {repeatSummary.partners === 0 && repeatSummary.maxOpponentTimes < 3 && repeatSummary.opponents > 5 && (
+              <p className="text-[11px] text-amber-200/70 mb-2">Con muchas rondas y pocos jugadores, que algunos rivales se vuelvan a ver es normal: lo importante es que no se repitan compañeros.</p>
+            )}
             <ul className="text-xs text-amber-200/90 space-y-0.5 mb-2.5">
               {(showAllRepeats ? repeatLines : repeatLines.slice(0, 5)).map((line) => <li key={line}>{line}</li>)}
             </ul>

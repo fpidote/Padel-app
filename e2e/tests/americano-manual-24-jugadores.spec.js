@@ -86,3 +86,20 @@ test("con 12 rondas: nadie repite compañero ni se enfrenta 3 veces al mismo riv
   expect(Math.max(...Object.values(veces))).toBeLessThanOrEqual(3);
   expect(Object.values(veces).filter((n) => n >= 3).length).toBeLessThanOrEqual(2); // antes ~12
 });
+
+test("sin elegir rondas, Manual propone las automáticas (12) y el aviso trae un resumen", async ({ page }) => {
+  test.setTimeout(90000);
+  await seedTournament(CODE, {
+    type: "americano", status: "setup",
+    config: { name: "Veinticuatro", courts: 6, matchmaking: "manual", mode: "individual", scoringSystem: "timed", matchMinutes: 10, maxRounds: null, useLevels: true, goldenPoint: true },
+    playerInputs: Array.from({ length: 24 }, (_, i) => ({ name: `Jugador ${String(i + 1).padStart(2, "0")}`, level: nivel(i) })),
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/torneo/${CODE}`);
+  await page.evaluate(async (t) => { await window.__e2eSignIn(t); }, await getTestToken());
+  await page.getByRole("button", { name: /Armar rondas/ }).click();
+  await expect(page.getByTestId("completar-rondas")).toContainText("Autocompletar 12 rondas", { timeout: 8000 });
+  await page.getByTestId("completar-rondas").click();
+  await expect(page.getByTestId("resumen-repetidos")).toContainText("Nadie repite compañero", { timeout: 20000 });
+  await expect(page.getByTestId("resumen-repetidos")).toContainText("nadie se enfrenta 3 veces");
+});

@@ -104,6 +104,18 @@ export function findRepeats(rounds) {
   };
 }
 
+// Resumen para el organizador: cuántas parejas de compañeros y de rivales se repiten y cuántas veces como máximo
+// se enfrenta o juega junta la misma pareja de jugadores (las que se repiten 3 o más veces son las que más molestan)
+export function repeatsSummary(repeats) {
+  const maxOf = (list) => list.reduce((m, { rounds: r }) => Math.max(m, r.length), 0);
+  return {
+    partners: repeats.partners.length,
+    opponents: repeats.opponents.length,
+    maxPartnerTimes: maxOf(repeats.partners),
+    maxOpponentTimes: maxOf(repeats.opponents),
+  };
+}
+
 export function repeatedIdsByRound(repeats) {
   const result = new Map();
   ["partners", "opponents"].forEach((type) => {
