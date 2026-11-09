@@ -14,6 +14,24 @@ export const OPTIMIZER_WEIGHTS = { partner: 3000, opponent: 300, advanced: 5000,
 
 const level = (p) => p?.level || 0;
 
+// Cuando una repetición de rival no se puede evitar, conviene que la asuman los avanzados (son los que menos
+// combinaciones tienen para igualar los partidos) y no los principiantes: repetir entre dos avanzados pesa la mitad
+// y repetir con un principiante pesa más. Solo se aplica con niveles activados.
+export const RIVAL_FACTOR = { advancedPair: 0.7, beginner: 1.3 };
+// Coste de que dos jugadores se enfrenten `n` veces: la segunda vez pesa según el nivel (factor), pero la tercera y las
+// siguientes pesan mucho más sea cual sea el nivel, para que nadie se enfrente tres veces al mismo rival.
+export function opponentRepeatCost(n, factor) {
+  return n > 1 ? factor * (n - 1) + 3 * (n - 1) * (n - 2) : 0;
+}
+
+export function rivalFactor(x, y) {
+  const a = level(x);
+  const b = level(y);
+  if (a >= 3 && b >= 3) return RIVAL_FACTOR.advancedPair;
+  if (a === 1 || b === 1) return RIVAL_FACTOR.beginner;
+  return 1;
+}
+
 // Coste de un conjunto de rondas. `useLevels` activa el equilibrio de nivel y la penalización de dos avanzados juntos.
 export function roundsCost(rounds, { weights, useLevels = false, advancedPenalty = false }) {
   const partners = {};
@@ -31,7 +49,8 @@ export function roundsCost(rounds, { weights, useLevels = false, advancedPenalty
       for (const x of court.pairA) {
         for (const y of court.pairB) {
           const k = pk(x.id, y.id);
-          opponents[k] = (opponents[k] || 0) + 1;
+          const o = opponents[k] || (opponents[k] = { n: 0, f: useLevels ? rivalFactor(x, y) : 1 });
+          o.n++;
         }
       }
       if (useLevels) {
@@ -40,7 +59,7 @@ export function roundsCost(rounds, { weights, useLevels = false, advancedPenalty
     }
   }
   for (const n of Object.values(partners)) if (n > 1) cost += weights.partner * (n - 1) * (n - 1);
-  for (const n of Object.values(opponents)) if (n > 1) cost += weights.opponent * (n - 1) * (n - 1);
+  for (const { n, f } of Object.values(opponents)) cost += weights.opponent * opponentRepeatCost(n, f);
   return cost;
 }
 
@@ -82,17 +101,23 @@ export function improveRounds(rounds, { fixed = new Set(), weights, useLevels = 
     let delta = 0;
     const [a1, a2] = court.pairA;
     const [b1, b2] = court.pairB;
-    const bump = (map, k, w) => {
+    const bump = (map, k, costOf) => {
       const n = map.get(k) || 0;
       const m = n + sign;
       map.set(k, m);
-      delta += w * (repeatCost(m) - repeatCost(n));
+      delta += costOf(m) - costOf(n);
     };
+    const partnerCost = (n) => weights.partner * repeatCost(n);
     for (const [x, y] of [[a1, a2], [b1, b2]]) {
-      bump(partners, pk(x.id, y.id), weights.partner);
+      bump(partners, pk(x.id, y.id), partnerCost);
       if (useLevels && advancedPenalty && level(x) >= 3 && level(y) >= 3) delta += sign * weights.advanced;
     }
-    for (const x of court.pairA) for (const y of court.pairB) bump(opponents, pk(x.id, y.id), weights.opponent);
+    for (const x of court.pairA) {
+      for (const y of court.pairB) {
+        const f = useLevels ? rivalFactor(x, y) : 1;
+        bump(opponents, pk(x.id, y.id), (n) => weights.opponent * opponentRepeatCost(n, f));
+      }
+    }
     if (useLevels) delta += sign * weights.balance * Math.abs(level(a1) + level(a2) - level(b1) - level(b2));
     return delta;
   }

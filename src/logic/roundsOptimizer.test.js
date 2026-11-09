@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { roundsCost, improveRounds, advancedPenaltyApplies, OPTIMIZER_WEIGHTS } from "./roundsOptimizer";
+import { roundsCost, improveRounds, advancedPenaltyApplies, rivalFactor, opponentRepeatCost, OPTIMIZER_WEIGHTS } from "./roundsOptimizer";
 import { findRepeats } from "./manualRounds";
 
 const P = (id, level = 0) => ({ id, name: `J${id}`, level });
@@ -123,5 +123,28 @@ describe("advancedPenaltyApplies", () => {
   });
   it("no se aplica si hay más de 2 avanzados por pista", () => {
     expect(advancedPenaltyApplies(players([3, 3, 3, 3, 3, 3, 3, 3]), 2)).toBe(false);
+  });
+});
+
+describe("reparto de las repeticiones de rival por nivel", () => {
+  it("repetir entre dos avanzados cuesta menos que entre medios, y con un principiante cuesta más", () => {
+    expect(rivalFactor(P(0, 3), P(1, 3))).toBeLessThan(rivalFactor(P(0, 2), P(1, 2)));
+    expect(rivalFactor(P(0, 2), P(1, 1))).toBeGreaterThan(rivalFactor(P(0, 2), P(1, 2)));
+    expect(rivalFactor(P(0, 1), P(1, 1))).toBeGreaterThan(rivalFactor(P(0, 3), P(1, 3)));
+  });
+
+  it("la tercera vez pesa mucho más que la segunda, sea cual sea el nivel", () => {
+    for (const f of [rivalFactor(P(0, 3), P(1, 3)), 1, rivalFactor(P(0, 1), P(1, 1))]) {
+      expect(opponentRepeatCost(1, f)).toBe(0);
+      expect(opponentRepeatCost(3, f)).toBeGreaterThan(4 * opponentRepeatCost(2, f));
+    }
+  });
+
+  it("sin niveles activados todas las repeticiones pesan igual", () => {
+    const dosVeces = (a, b) => [
+      { courts: [{ pairA: [P(0, a), P(2, 0)], pairB: [P(1, b), P(3, 0)] }] },
+      { courts: [{ pairA: [P(0, a), P(4, 0)], pairB: [P(1, b), P(5, 0)] }] },
+    ];
+    expect(roundsCost(dosVeces(3, 3), { weights: W })).toBe(roundsCost(dosVeces(1, 1), { weights: W }));
   });
 });
