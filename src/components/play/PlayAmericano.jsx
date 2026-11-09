@@ -2,11 +2,12 @@ import { useState, useMemo, useEffect, useContext } from "react";
 import { generateRules, TOURNAMENT_TYPES } from "../../logic/constants";
 import { pk } from "../../logic/utils";
 import { standingsLabels } from "../../logic/standings";
-import { buildRoundAmericano, americanoStandings, americanoPodium, americanoMatchesPlayed, canFinishAnyRound, startEditCourt, adminCourtView, roundAllSaved, standingsTitle, hasStandingsData, anyoneRests } from "../../logic/americano";
+import { buildRoundAmericano, americanoStandings, americanoPodium, americanoMatchesPlayed, canFinishAnyRound, startEditCourt, adminCourtView, roundAllSaved, standingsTitle, hasStandingsData, anyoneRests, courtLabel } from "../../logic/americano";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import { RoleContext } from "../shared/RoleContext";
 import { helperAllows } from "../../logic/helpers";
 import History from "../shared/History";
+import CourtNamesEditor from "../shared/CourtNamesEditor";
 import PodiumCard from "../shared/PodiumCard";
 import { validateGamesScore, clearScoreInputs } from "../../logic/sets";
 import { scoreInputProps } from "../../logic/scoreInput";
@@ -399,6 +400,7 @@ export default function PlayAmericano({ t, serverT, code, isAdmin, persist, copy
                 {shownRound !== null ? (
                   (t.precomputedRounds?.length && shownRound > t.roundNum) ? (
                     <FutureRound
+                      courtNames={t.config.courtNames}
                       round={t.precomputedRounds[shownRound - 1]}
                       roundNum={shownRound}
                       matchesSearch={matchesSearch}
@@ -409,6 +411,7 @@ export default function PlayAmericano({ t, serverT, code, isAdmin, persist, copy
                     />
                   ) : (
                     <HistoryRound
+                      courtNames={t.config.courtNames}
                       round={t.rounds[shownRound - 1]}
                       roundNum={shownRound}
                       matchesSearch={matchesSearch}
@@ -459,7 +462,7 @@ export default function PlayAmericano({ t, serverT, code, isAdmin, persist, copy
                 ))}
               </select>
             </div>
-            <History rounds={t.rounds} matchesSearch={matchesSearch} />
+            <History courtNames={t.config.courtNames} rounds={t.rounds} matchesSearch={matchesSearch} />
           </>
         )}
         {tab === "rules" && (
@@ -576,7 +579,7 @@ function FilteredCurrentRound({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSe
 
           return (
             <div key={ci} className="px-4 py-4">
-              <div className="text-xs font-bold text-gray-500 tracking-widest mb-3">PISTA {ci + 1}</div>
+              <div className="text-xs font-bold text-gray-500 tracking-widest mb-3">{courtLabel(t.config.courtNames, ci, true)}</div>
               <div className="grid grid-cols-[1fr_auto_1fr] gap-[10px]">
                 <div className="flex flex-col items-end self-center">{renderName(court.pairA)}</div>
                 <div className="flex items-center gap-1.5 self-center">
@@ -662,6 +665,7 @@ function AllRoundsPlayerView({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSea
     <div className="space-y-3">
       {(t.rounds || []).map((round, i) => (
         <HistoryRound
+          courtNames={t.config.courtNames}
           key={i}
           round={round}
           roundNum={round.num || i + 1}
@@ -692,6 +696,7 @@ function AllRoundsPlayerView({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSea
         .slice(t.roundNum)
         .map((round, i) => (
           <FutureRound
+            courtNames={t.config.courtNames}
             key={`future-${t.roundNum + i}`}
             round={round}
             roundNum={t.roundNum + 1 + i}
@@ -836,7 +841,7 @@ function CourtsAmericano({ t, isAdmin, canRename, ls, setLs, allSaved, onSave, o
         const levelsB = getLevels(court.pairB);
 
         return (
-          <MatchShell key={ci} label={`PISTA ${ci + 1}`} accentColor={ACCENT} saved={court.saved} onEdit={court.saved && isAdmin ? () => onEdit(ci) : undefined}>
+          <MatchShell key={ci} label={courtLabel(t.config.courtNames, ci, true)} accentColor={ACCENT} saved={court.saved} onEdit={court.saved && isAdmin ? () => onEdit(ci) : undefined}>
             <div className="grid grid-cols-[1fr_auto_1fr] gap-[10px] px-4 py-4">
               {/* Equipo A */}
               <div className="flex flex-col items-end self-center">
@@ -986,11 +991,19 @@ function CourtsAmericano({ t, isAdmin, canRename, ls, setLs, allSaved, onSave, o
           </div>
         </div>
       )}
+
+      {isAdmin && !isFinished && (
+        <CourtNamesEditor
+          courts={t.config.courts}
+          courtNames={t.config.courtNames}
+          onSave={(courtNames) => persist({ ...t, config: { ...t.config, courtNames } })}
+        />
+      )}
     </div>
   );
 }
 
-function HistoryRound({ round, roundNum, matchesSearch, isAdmin, useLevels, showLevelsToggle, players, highlightId, playerView }) {
+function HistoryRound({ courtNames, round, roundNum, matchesSearch, isAdmin, useLevels, showLevelsToggle, players, highlightId, playerView }) {
   const playersDict = useMemo(() => {
     const dict = {};
     players?.forEach(p => { dict[p.id] = p; });
@@ -1031,7 +1044,7 @@ function HistoryRound({ round, roundNum, matchesSearch, isAdmin, useLevels, show
     if (playerView) {
       return (
         <div key={i} className="px-4 py-4 border-t border-gray-800 first:border-0">
-          <div className="text-xs font-bold text-gray-500 tracking-widest mb-3">PISTA {i + 1}</div>
+          <div className="text-xs font-bold text-gray-500 tracking-widest mb-3">{courtLabel(courtNames, i, true)}</div>
           <div className="grid grid-cols-[1fr_auto_1fr] gap-2.5">
             <div className="flex flex-col items-end self-center">
               <div className={`font-bold text-[14px] text-right ${wonA ? "text-[#4ade80]" : "text-[#f1f5f9]"}`}>
@@ -1058,7 +1071,7 @@ function HistoryRound({ round, roundNum, matchesSearch, isAdmin, useLevels, show
     }
     return (
       <div key={i} className="bg-[#1e293b] rounded-xl p-4 border-l-4 border-[#334155]">
-        <div className="text-[13px] text-[#94a3b8] font-bold mb-3">Pista {i + 1}</div>
+        <div className="text-[13px] text-[#94a3b8] font-bold mb-3">{courtLabel(courtNames, i)}</div>
         <div className="flex items-center justify-between gap-3">
           <div className="flex-1 text-right">
             <div className={`font-bold text-[14px] ${wonA ? "text-[#4ade80]" : "text-[#f1f5f9]"}`}>
@@ -1107,7 +1120,7 @@ function HistoryRound({ round, roundNum, matchesSearch, isAdmin, useLevels, show
   );
 }
 
-function FutureRound({ round, roundNum, matchesSearch, isAdmin, useLevels, showLevelsToggle, players, highlightId, playerView }) {
+function FutureRound({ courtNames, round, roundNum, matchesSearch, isAdmin, useLevels, showLevelsToggle, players, highlightId, playerView }) {
   const playersDict = useMemo(() => {
     const dict = {};
     players?.forEach(p => { dict[p.id] = p; });
@@ -1158,7 +1171,7 @@ function FutureRound({ round, roundNum, matchesSearch, isAdmin, useLevels, showL
     if (playerView) {
       return (
         <div key={i} className="px-4 py-4 border-t border-gray-800 first:border-0">
-          <div className="text-xs font-bold text-gray-500 tracking-widest mb-3">PISTA {i + 1}</div>
+          <div className="text-xs font-bold text-gray-500 tracking-widest mb-3">{courtLabel(courtNames, i, true)}</div>
           {courtBody}
         </div>
       );
@@ -1166,7 +1179,7 @@ function FutureRound({ round, roundNum, matchesSearch, isAdmin, useLevels, showL
     return (
       <div key={i} className="bg-[#1f2937] rounded-2xl border border-gray-700 overflow-hidden mb-3 opacity-70">
         <div className="flex items-center px-4 py-2.5 border-b border-gray-700">
-          <span className="text-xs font-bold text-gray-600 tracking-widest">PISTA {i + 1}</span>
+          <span className="text-xs font-bold text-gray-600 tracking-widest">{courtLabel(courtNames, i, true)}</span>
         </div>
         <div className="px-4 py-4">{courtBody}</div>
       </div>

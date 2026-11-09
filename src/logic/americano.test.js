@@ -12,6 +12,8 @@ import {
   canFinishAnyRound,
   restBalance,
   anyoneRests,
+  courtLabel,
+  normalizeCourtNames,
   fairRoundOptions,
   classicTotalRounds,
   restBalanceText,
@@ -881,6 +883,26 @@ describe("anyoneRests", () => {
 
   test("si alguien descansa en alguna ronda, sí", () => {
     expect(anyoneRests([{ sittingOut: [] }, { sittingOut: [{ id: 1 }] }])).toBe(true);
+  });
+});
+
+describe("courtLabel / normalizeCourtNames", () => {
+  test("sin nombres usa Pista N (torneos viejos incluidos)", () => {
+    expect(courtLabel(undefined, 0)).toBe("Pista 1");
+    expect(courtLabel(["", "  "], 1)).toBe("Pista 2");
+    expect(courtLabel(["Pajarito"], 2)).toBe("Pista 3");
+  });
+
+  test("usa el nombre dado, recortado y en mayúsculas si se pide", () => {
+    expect(courtLabel(["  Pista   Pajarito "], 0)).toBe("Pista Pajarito");
+    expect(courtLabel(["Pajarito"], 0, true)).toBe("PAJARITO");
+    expect(courtLabel(["x".repeat(40)], 0)).toHaveLength(20);
+  });
+
+  test("normalizeCourtNames deja exactamente una entrada por pista", () => {
+    expect(normalizeCourtNames(["A", " B ", "C"], 2)).toEqual(["A", "B"]);
+    expect(normalizeCourtNames(["A"], 3)).toEqual(["A", "", ""]);
+    expect(normalizeCourtNames(undefined, 2)).toEqual(["", ""]);
   });
 });
 

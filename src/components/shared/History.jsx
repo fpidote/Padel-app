@@ -1,4 +1,5 @@
-export default function History({ rounds, matchesSearch }) {
+import { courtLabel } from "../../logic/americano";
+export default function History({ rounds, matchesSearch, courtNames }) {
   const filterCourt = matchesSearch ?? (() => true);
   if (!rounds?.length)
     return (
@@ -67,7 +68,7 @@ export default function History({ rounds, matchesSearch }) {
                   {/* Score badge con label de pista */}
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-xs font-bold text-gray-600 tracking-widest">
-                      PISTA {idx + 1}
+                      {courtLabel(courtNames, idx, true)}
                     </span>
                     <div className="flex items-center gap-1.5 bg-[#0f172a] border border-gray-700 rounded-lg px-3 py-1.5">
                       <span

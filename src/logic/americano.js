@@ -545,6 +545,22 @@ export function anyoneRests(rounds) {
   return Array.isArray(rounds) && rounds.some((r) => r?.sittingOut?.length > 0);
 }
 
+// ── Nombres de pista ─────────────────────────────────────────
+// Nombre que el organizador dio a cada pista (t.config.courtNames, por índice). Vacío o ausente → "Pista N".
+export const COURT_NAME_MAX = 20;
+export function courtLabel(courtNames, i, upper = false) {
+  const raw = Array.isArray(courtNames) ? courtNames[i] : "";
+  const name = typeof raw === "string" ? raw.trim().replace(/\s+/g, " ").slice(0, COURT_NAME_MAX) : "";
+  const label = name || `Pista ${i + 1}`;
+  return upper ? label.toLocaleUpperCase("es") : label;
+}
+
+// Deja courtNames con exactamente `courts` entradas (recorta o completa con vacío) y sin espacios de sobra.
+export function normalizeCourtNames(courtNames, courts) {
+  const arr = Array.isArray(courtNames) ? courtNames : [];
+  return Array.from({ length: courts }, (_, i) => (typeof arr[i] === "string" ? arr[i].trim().replace(/\s+/g, " ").slice(0, COURT_NAME_MAX) : ""));
+}
+
 // Frase para el organizador sobre cómo quedan repartidos los partidos.
 export function restBalanceText(b, isPairs) {
   if (!b) return "";

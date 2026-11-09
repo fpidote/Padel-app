@@ -5,7 +5,7 @@ import {
   availablePlayersForSlot,
   calcularDescansos,
 } from "../../logic/manualRounds";
-import { precomputeAllRounds } from "../../logic/americano";
+import { precomputeAllRounds, courtLabel } from "../../logic/americano";
 
 const COLOR = "#0284c7";
 
@@ -24,6 +24,7 @@ function levelLabel(p) {
 export default function ManualRoundBuilder({
   players,
   courts,
+  courtNames,
   rounds,
   onChange,
   onBack,
@@ -205,7 +206,7 @@ export default function ManualRoundBuilder({
               >
                 <div className="px-4 py-2.5 border-b border-gray-700">
                   <span className="text-xs font-bold text-gray-500 tracking-widest">
-                    PISTA {ci + 1}
+                    {courtLabel(courtNames, ci, true)}
                   </span>
                 </div>
                 <div

@@ -1,10 +1,11 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { buildFirstRoundAmericano, precomputeAllRounds, isDuplicateName, duplicateNameKeys, normalizeName, MIN_ROUNDS, roundsCountError, restBalance, restBalanceText, fairRoundOptions, classicTotalRounds } from "../../logic/americano";
+import { buildFirstRoundAmericano, precomputeAllRounds, isDuplicateName, duplicateNameKeys, normalizeName, MIN_ROUNDS, roundsCountError, restBalance, restBalanceText, fairRoundOptions, classicTotalRounds, courtLabel, normalizeCourtNames } from "../../logic/americano";
 import { calcularDescansos, isCourtComplete } from "../../logic/manualRounds";
 import ManualRoundBuilder from "./ManualRoundBuilder";
 import { buildShareMessage } from "../../logic/utils";
 import MatchFormatPicker from "../shared/MatchFormatPicker";
+import CourtNamesEditor from "../shared/CourtNamesEditor";
 import { BackButton } from "../shared/Components";
 import LaunchModal, { SummaryRow, SummaryCard } from "../shared/LaunchModal";
 
@@ -153,9 +154,9 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
     if (isManual && localManualRounds.length > 0) {
       setLocalManualRounds([]);
       setManualResetMsg(true);
-      persist({ ...t, config: { ...t.config, courts: n, manualRoundsConfig: [] } });
+      persist({ ...t, config: { ...t.config, courts: n, courtNames: normalizeCourtNames(t.config.courtNames, n), manualRoundsConfig: [] } });
     } else {
-      persist({ ...t, config: { ...t.config, courts: n } });
+      persist({ ...t, config: { ...t.config, courts: n, courtNames: normalizeCourtNames(t.config.courtNames, n) } });
     }
   }
 
@@ -321,6 +322,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
       <ManualRoundBuilder
         players={players}
         courts={t.config.courts}
+        courtNames={t.config.courtNames}
         rounds={localManualRounds}
         onChange={handleManualRoundsChange}
         onBack={() => setShowManualBuilder(false)}
@@ -542,6 +544,12 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
                 >{n}</button>
               ))}
             </div>
+            <CourtNamesEditor
+              autoSave
+              courts={t.config.courts}
+              courtNames={t.config.courtNames}
+              onSave={(courtNames) => persist({ ...t, config: { ...t.config, courtNames } })}
+            />
 
             {/* ── 5. Formato de partido ── */}
             <SectionHeader>🎾 Formato de partido</SectionHeader>
@@ -711,7 +719,7 @@ export default function SetupAmericano({ t, code, isAdmin, saving, persist, onEx
                     <div className="space-y-2">
                       {round.courts.map((court, ci) => (
                         <div key={ci} className="bg-[#1f2937] rounded-xl px-3 py-2.5 border border-gray-700">
-                          <div className="text-xs text-gray-500 font-semibold mb-1">Pista {ci + 1}</div>
+                          <div className="text-xs text-gray-500 font-semibold mb-1">{courtLabel(t.config.courtNames, ci)}</div>
                           <div className="text-sm text-gray-100 flex flex-wrap items-center gap-x-1">
                             {useLevels && (() => { const l = LEVELS[court.pairA[0].level || 0]; return <span className="text-xs font-black mr-0.5" style={{ color: l.color }}>{l.short}</span>; })()}
                             <span className="font-medium">{court.pairA[0].name}</span>
