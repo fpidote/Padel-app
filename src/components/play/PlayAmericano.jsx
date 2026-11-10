@@ -595,10 +595,12 @@ function FilteredCurrentRound({ t, isAdmin, ls, setLs, onSave, onEdit, onDelete,
           const scoreB = parseInt(court.scoreB);
           const wonA = !isNaN(scoreA) && !isNaN(scoreB) && scoreA > scoreB;
           const wonB = !isNaN(scoreA) && !isNaN(scoreB) && scoreB > scoreA;
-          const scoreError = validateGamesScore(ls[`${ci}_A`], ls[`${ci}_B`]);
+          // Al corregir, las casillas parten del resultado guardado aunque no haya nada escrito todavía
+          const shown = (side) => ls[`${ci}_${side}`] ?? (court.editing ? String(court[`score${side}`] ?? "") : undefined);
+          const scoreError = validateGamesScore(shown("A"), shown("B"));
           const hasValid =
-            ls[`${ci}_A`] !== undefined && ls[`${ci}_B`] !== undefined &&
-            ls[`${ci}_A`] !== "" && ls[`${ci}_B`] !== "" && !scoreError;
+            shown("A") !== undefined && shown("B") !== undefined &&
+            shown("A") !== "" && shown("B") !== "" && !scoreError;
 
           return (
             <div key={ci} className="px-4 py-4">
@@ -622,7 +624,7 @@ function FilteredCurrentRound({ t, isAdmin, ls, setLs, onSave, onEdit, onDelete,
                     <>
                       <input
                         type="number" min="0"
-                        value={ls[`${ci}_A`] ?? ""}
+                        value={shown("A") ?? ""}
                         onChange={(e) => setLs((p) => ({ ...p, [`${ci}_A`]: e.target.value }))}
                         {...scoreInputProps}
                         className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-700 text-center text-xl font-black text-sky-400 outline-none focus:border-sky-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -630,7 +632,7 @@ function FilteredCurrentRound({ t, isAdmin, ls, setLs, onSave, onEdit, onDelete,
                       <span className="text-gray-600 font-black text-lg">-</span>
                       <input
                         type="number" min="0"
-                        value={ls[`${ci}_B`] ?? ""}
+                        value={shown("B") ?? ""}
                         onChange={(e) => setLs((p) => ({ ...p, [`${ci}_B`]: e.target.value }))}
                         {...scoreInputProps}
                         className="w-11 h-11 rounded-xl bg-[#111827] border border-gray-700 text-center text-xl font-black text-sky-400 outline-none focus:border-sky-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -719,7 +721,7 @@ function AllRoundsPlayerView({ t, isAdmin, ls, setLs, onSave, onEdit, onDelete, 
           setLs={setLs}
           onSave={onSave}
           onEdit={onEdit}
-                onDelete={onDelete}
+          onDelete={onDelete}
           matchesSearch={matchesSearch}
           highlightId={search}
           useLevels={useLevels}
