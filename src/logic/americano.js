@@ -601,6 +601,11 @@ export function startEditCourt(currentRound, ci) {
   return (currentRound || []).map((c, i) => (i === ci ? { ...c, editing: true } : c));
 }
 
+// Elimina el resultado de una pista de la ronda actual: queda sin jugar, como antes de cargarlo.
+export function clearCourtResult(currentRound, ci) {
+  return (currentRound || []).map((c, i) => (i === ci ? { ...c, scoreA: "", scoreB: "", saved: false, editing: false } : c));
+}
+
 // Lo que ve el organizador: la pista en edición aparece con sus casillas abiertas.
 export function adminCourtView(court) {
   return court?.editing ? { ...court, saved: false } : court;

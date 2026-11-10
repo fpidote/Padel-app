@@ -19,6 +19,7 @@ import {
   classicTotalRounds,
   restBalanceText,
   startEditCourt,
+  clearCourtResult,
   adminCourtView,
   roundAllSaved,
   standingsTitle,
@@ -1061,5 +1062,21 @@ describe("tabla de la ronda en curso", () => {
   test("hasStandingsData: sin ningún resultado cerrado no hay clasificación que premiar", () => {
     expect(hasStandingsData([{ pts: 0, gf: 0, gc: 0 }, { pts: 0, gf: 0, gc: 0 }])).toBe(false);
     expect(hasStandingsData([{ pts: 0, gf: 0, gc: 0 }, { pts: 1, gf: 7, gc: 2 }])).toBe(true);
+  });
+});
+
+describe("clearCourtResult", () => {
+  const round = [
+    { scoreA: "7", scoreB: "2", saved: true, editing: true },
+    { scoreA: "5", scoreB: "4", saved: true },
+  ];
+  test("deja sin jugar solo la pista indicada", () => {
+    const out = clearCourtResult(round, 0);
+    expect(out[0]).toMatchObject({ scoreA: "", scoreB: "", saved: false, editing: false });
+    expect(out[1]).toEqual(round[1]);
+  });
+  test("no modifica la ronda original", () => {
+    clearCourtResult(round, 0);
+    expect(round[0].saved).toBe(true);
   });
 });

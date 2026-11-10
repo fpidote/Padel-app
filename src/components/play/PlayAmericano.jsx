@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useContext } from "react";
 import { generateRules, TOURNAMENT_TYPES } from "../../logic/constants";
 import { pk } from "../../logic/utils";
 import { standingsLabels } from "../../logic/standings";
-import { buildRoundAmericano, americanoStandings, americanoPodium, americanoMatchesPlayed, canFinishAnyRound, startEditCourt, adminCourtView, roundAllSaved, standingsTitle, hasStandingsData, anyoneRests, courtLabel, americanoTotalRounds } from "../../logic/americano";
+import { buildRoundAmericano, americanoStandings, americanoPodium, americanoMatchesPlayed, canFinishAnyRound, startEditCourt, clearCourtResult, adminCourtView, roundAllSaved, standingsTitle, hasStandingsData, anyoneRests, courtLabel, americanoTotalRounds } from "../../logic/americano";
 import { THeader, Tabs, SimpleModal } from "../shared/Components";
 import { RoleContext } from "../shared/RoleContext";
 import { helperAllows } from "../../logic/helpers";
@@ -50,6 +50,7 @@ export default function PlayAmericano({ t, serverT, code, isAdmin, persist, copy
   const [viewingRound, setViewingRound] = useState(null); // null = ronda actual
   const [search, setSearch] = useState(null); // null = todos, playerID/pairID = filtrado
   const [modalMsg, setModalMsg] = useState(null);
+  const [deleteCi, setDeleteCi] = useState(null); // pista cuyo resultado se va a eliminar (pide confirmación)
   const [showLevelsToggle, setShowLevelsToggle] = useState(true);
   // El ayudante solo ve niveles y renombra jugadores si el dueño lo activó (t.helperPerms)
   const { isHelper } = useContext(RoleContext);
@@ -111,6 +112,19 @@ export default function PlayAmericano({ t, serverT, code, isAdmin, persist, copy
         return n;
       });
       setModalMsg("No se pudo editar el resultado. Intenta de nuevo.");
+    }
+  }
+
+  async function onDeleteResult(ci) {
+    setDeleteCi(null);
+    const cr = clearCourtResult(t.currentRound, ci);
+    try {
+      const ok = await persist({ ...t, currentRound: cr });
+      if (ok) setLs((prev) => clearScoreInputs(prev, ci, prev));
+      else setModalMsg("No se pudo eliminar el resultado. Intenta de nuevo.");
+    } catch (err) {
+      console.error("Error al eliminar resultado:", err);
+      setModalMsg("No se pudo eliminar el resultado. Intenta de nuevo.");
     }
   }
 
@@ -335,6 +349,7 @@ export default function PlayAmericano({ t, serverT, code, isAdmin, persist, copy
                 setLs={setLs}
                 onSave={onSave}
                 onEdit={onEdit}
+                onDelete={isAdmin ? (ci) => setDeleteCi(ci) : undefined}
                 matchesSearch={matchesSearch}
                 useLevels={!!t.config.useLevels}
                 showLevelsToggle={showLevelsEff}
@@ -431,6 +446,7 @@ export default function PlayAmericano({ t, serverT, code, isAdmin, persist, copy
                     onNext={onNext}
                     onFinish={onFinish}
                     onEdit={onEdit}
+                onDelete={isAdmin ? (ci) => setDeleteCi(ci) : undefined}
                     matchesSearch={matchesSearch}
                     persist={persist}
                     isFinished={isFinished}
@@ -508,11 +524,20 @@ export default function PlayAmericano({ t, serverT, code, isAdmin, persist, copy
         )}
       </div>
       {modalMsg && <SimpleModal message={modalMsg} onClose={() => setModalMsg(null)} />}
+      {deleteCi !== null && (
+        <SimpleModal
+          icon="🗑️"
+          message="¿Eliminar este resultado? El partido quedará sin jugar y podrás cargarlo de nuevo."
+          confirmLabel="Eliminar"
+          onClose={() => setDeleteCi(null)}
+          onConfirm={() => onDeleteResult(deleteCi)}
+        />
+      )}
     </div>
   );
 }
 
-function FilteredCurrentRound({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSearch, highlightId, useLevels, showLevelsToggle }) {
+function FilteredCurrentRound({ t, isAdmin, ls, setLs, onSave, onEdit, onDelete, matchesSearch, highlightId, useLevels, showLevelsToggle }) {
   const courts = (t.currentRound || [])
     .map((court, ci) => ({ court: isAdmin ? adminCourtView(court) : court, ci }))
     .filter(({ court }) => matchesSearch(court));
@@ -627,6 +652,16 @@ function FilteredCurrentRound({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSe
                   >
                     ✕ Cancelar
                   </button>
+                  {onDelete && (
+                    <button
+                      type="button"
+                      data-testid="btn-eliminar-resultado"
+                      onClick={() => onDelete(ci)}
+                      className="block mx-auto mt-3 text-xs font-semibold text-gray-400 hover:text-gray-200 bg-transparent border-0 cursor-pointer transition-colors"
+                    >
+                      🗑 Eliminar resultado
+                    </button>
+                  )}
                 </div>
               )}
               {isAdmin && !court.saved && scoreError && (
@@ -651,7 +686,7 @@ function FilteredCurrentRound({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSe
   );
 }
 
-function AllRoundsPlayerView({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSearch, useLevels, showLevelsToggle, search }) {
+function AllRoundsPlayerView({ t, isAdmin, ls, setLs, onSave, onEdit, onDelete, matchesSearch, useLevels, showLevelsToggle, search }) {
   const hasPast = (t.rounds || []).length > 0;
   const hasFuture = t.precomputedRounds && t.precomputedRounds.length > t.roundNum;
 
@@ -684,6 +719,7 @@ function AllRoundsPlayerView({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSea
           setLs={setLs}
           onSave={onSave}
           onEdit={onEdit}
+                onDelete={onDelete}
           matchesSearch={matchesSearch}
           highlightId={search}
           useLevels={useLevels}
@@ -712,7 +748,7 @@ function AllRoundsPlayerView({ t, isAdmin, ls, setLs, onSave, onEdit, matchesSea
   );
 }
 
-function CourtsAmericano({ t, isAdmin, canRename, ls, setLs, allSaved, onSave, onNext, onFinish, onEdit, matchesSearch, persist, isFinished, isLastRound, showLevelsToggle }) {
+function CourtsAmericano({ t, isAdmin, canRename, ls, setLs, allSaved, onSave, onNext, onFinish, onEdit, onDelete, matchesSearch, persist, isFinished, isLastRound, showLevelsToggle }) {
   const [renameModal, setRenameModal] = useState(null);
   const [confirmAdvance, setConfirmAdvance] = useState(false);
   const [confirmFinishNow, setConfirmFinishNow] = useState(false);
@@ -893,6 +929,7 @@ function CourtsAmericano({ t, isAdmin, canRename, ls, setLs, allSaved, onSave, o
                 canSave={hasValidScore(ci)}
                 onSave={() => onSave(ci)}
                 onCancel={() => onSave(ci, true)}
+                onDelete={onDelete ? () => onDelete(ci) : undefined}
                 accentColor={ACCENT}
               />
             )}

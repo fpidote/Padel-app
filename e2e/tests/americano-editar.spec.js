@@ -64,3 +64,45 @@ test("editar mantiene el resultado para el espectador, se puede cancelar y guard
   await expect.poll(async () => (await pista(CODE)).editing, { timeout: 8000 }).toBe(false);
   expect(await pista(CODE)).toMatchObject({ saved: true, scoreA: "9", scoreB: "2" });
 });
+
+// Eliminar vive dentro de la corrección (como en la Liga): pide confirmar, deja la pista sin jugar y se puede cargar de nuevo
+test("americano a puntos: eliminar un resultado antes de pasar de ronda lo deja sin jugar y se puede volver a cargar", async ({ page }) => {
+  await seedTournament(CODE, {
+    type: "americano", status: "setup",
+    config: { name: "Eliminar", courts: 2, matchmaking: "americano", mode: "individual", scoringSystem: "timed", timedMetric: "points", matchMinutes: 10, maxRounds: 2, useLevels: false, goldenPoint: true },
+    playerInputs: NOMBRES.map((name) => ({ name, level: 0 })),
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/torneo/${CODE}`);
+  await page.evaluate(async (t) => { await window.__e2eSignIn(t); }, await getTestToken());
+  await page.getByTestId("btn-open-modal").click();
+  await page.getByTestId("btn-iniciar").click();
+  const casillas = page.locator('input[type="number"]');
+  await expect(casillas.first()).toBeVisible({ timeout: 8000 });
+  await casillas.nth(0).fill("21");
+  await casillas.nth(1).fill("15");
+  await page.getByRole("button", { name: "Guardar resultado" }).first().click();
+  await expect.poll(async () => (await pista(CODE)).saved, { timeout: 8000 }).toBe(true);
+
+  // Editar -> Eliminar resultado: pide confirmación y cancelar la conserva
+  await page.getByText("21", { exact: true }).first().click();
+  await page.getByRole("button", { name: "Eliminar resultado" }).click();
+  const modal = page.locator(".fixed.inset-0");
+  await expect(modal.getByText(/Eliminar este resultado/)).toBeVisible();
+  await modal.getByRole("button", { name: "Cancelar" }).click();
+  expect(await pista(CODE)).toMatchObject({ saved: true, scoreA: "21", scoreB: "15" });
+
+  // Confirmar: la pista queda sin jugar
+  await page.getByRole("button", { name: "Eliminar resultado" }).click();
+  await page.locator(".fixed.inset-0").getByRole("button", { name: "Eliminar" }).click();
+  await expect.poll(async () => (await pista(CODE)).saved, { timeout: 8000 }).toBe(false);
+  expect(await pista(CODE)).toMatchObject({ saved: false, editing: false, scoreA: "", scoreB: "" });
+  await expect(casillas.first()).toBeVisible();
+  await expect(casillas.first()).toHaveValue("");
+
+  // Se puede volver a cargar
+  await casillas.nth(0).fill("10");
+  await casillas.nth(1).fill("12");
+  await page.getByRole("button", { name: "Guardar resultado" }).first().click();
+  await expect.poll(async () => (await pista(CODE)).scoreB, { timeout: 8000 }).toBe("12");
+});
